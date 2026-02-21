@@ -3,9 +3,9 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
 
-function signToken(id: string, email: string, role: string): string {
+function signToken(id: string, email: string, role: string, storeId: string): string {
   return jwt.sign(
-    { id, email, role },
+    { id, email, role, storeId },
     process.env.JWT_SECRET as string,
     { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
   );
@@ -37,7 +37,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
 
-  const token = signToken(user.id as string, user.email, user.role);
+  const token = signToken(user.id as string, user.email, user.role, user.storeId);
 
   res.status(200).json({
     token,
@@ -80,7 +80,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     storeId: storeId ?? 'STORE-2025-001',
   });
 
-  const token = signToken(user.id as string, user.email, user.role);
+  const token = signToken(user.id as string, user.email, user.role, user.storeId);
 
   res.status(201).json({
     token,

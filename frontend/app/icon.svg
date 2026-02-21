@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b7fff"/>
+      <stop offset="100%" stop-color="#0f4ac4"/>
+    </linearGradient>
+    <linearGradient id="bag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#dce8ff" stop-opacity="1"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0a2e8a" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+
+  <!-- Subtle shine overlay -->
+  <ellipse cx="28" cy="14" rx="20" ry="10" fill="white" fill-opacity="0.08"/>
+
+  <!-- Shopping bag body -->
+  <path d="M15 27 L18.5 51 L45.5 51 L49 27 Z"
+        fill="url(#bag)" filter="url(#shadow)"/>
+
+  <!-- Bag fold line at top -->
+  <line x1="15" y1="27" x2="49" y2="27" stroke="#b8cef5" stroke-width="1"/>
+
+  <!-- Handle -->
+  <path d="M24 27 C24 19 27.5 14 32 14 C36.5 14 40 19 40 27"
+        fill="none" stroke="white" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Checkmark -->
+  <path d="M24.5 39.5 L29.5 45 L39.5 33"
+        fill="none" stroke="#155dfc" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,13 +1,27 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { Category } from '../models/Category';
+import { Product } from '../models/Product';
 
 // GET /api/categories
 export async function getCategories(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const storeId = req.user?.storeId ?? 'STORE-2025-001';
     const categories = await Category.find({ storeId }).sort({ name: 1 });
-    res.json({ data: categories, total: categories.length });
+
+    // Compute live productCount from the products collection (avoids stale stored counts)
+    const counts = await Product.aggregate([
+      { $match: { storeId } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(counts.map((c) => [c._id as string, c.count as number]));
+
+    const result = categories.map((cat) => ({
+      ...cat.toJSON(),
+      productCount: countMap.get(cat.name) ?? 0,
+    }));
+
+    res.json({ data: result, total: result.length });
   } catch (err) {
     next(err);
   }

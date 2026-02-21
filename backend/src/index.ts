@@ -3,6 +3,11 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth';
+import productRoutes from './routes/products';
+import categoryRoutes from './routes/categories';
+import customerRoutes from './routes/customers';
+import transactionRoutes from './routes/transactions';
+import employeeRoutes from './routes/employees';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -23,6 +28,11 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/employees', employeeRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {
