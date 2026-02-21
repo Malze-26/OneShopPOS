@@ -28,17 +28,17 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { label: 'Orders', icon: ShoppingBag, path: '/dashboard/orders' },
-  { label: 'Refunds', icon: RotateCcw, path: '/dashboard/refunds' },
-  { label: 'Transactions', icon: CreditCard, path: '/dashboard/transactions' },
-  { label: 'Products', icon: Package, path: '/dashboard/products' },
-  { label: 'Inventory', icon: Warehouse, path: '/dashboard/inventory' },
-  { label: 'Categories', icon: Tag, path: '/dashboard/categories' },
-  { label: 'Employees', icon: Users, path: '/dashboard/employees' },
-  { label: 'Customers', icon: UserIcon, path: '/dashboard/customers' },
-  { label: 'Reports', icon: BarChart3, path: '/dashboard/reports' },
-  { label: 'Alerts', icon: Bell, path: '/dashboard/alerts', badge: 12 },
-  { label: 'Settings', icon: Settings, path: '/dashboard/settings' },
+  { label: 'Orders', icon: ShoppingBag, path: '/orders' },
+  { label: 'Refunds', icon: RotateCcw, path: '/refunds' },
+  { label: 'Transactions', icon: CreditCard, path: '/transactions' },
+  { label: 'Products', icon: Package, path: '/products' },
+  { label: 'Inventory', icon: Warehouse, path: '/inventory' },
+  { label: 'Categories', icon: Tag, path: '/categories' },
+  { label: 'Employees', icon: Users, path: '/employees' },
+  { label: 'Customers', icon: UserIcon, path: '/customers' },
+  { label: 'Reports', icon: BarChart3, path: '/reports' },
+  { label: 'Alerts', icon: Bell, path: '/alerts', badge: 12 },
+  { label: 'Settings', icon: Settings, path: '/settings' },
 ];
 
 export function Sidebar() {
