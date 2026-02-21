@@ -1,170 +1,20 @@
-import { useState, useMemo } from 'react';
-import { Edit2, Package as PackageIcon, ChevronLeft, ChevronRight, Boxes } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { Edit2, Package as PackageIcon, ChevronLeft, ChevronRight, Boxes, Loader2 } from 'lucide-react';
+import api from '@/app/lib/api';
 
 interface Product {
-  id: string;
-  image: string;
+  _id: string;
   name: string;
   sku: string;
   category: string;
-  price: number;
+  sellingPrice: number;
   stock: number;
-  status: 'in-stock' | 'low-stock';
+  lowStockThreshold: number;
+  status: 'in-stock' | 'low-stock' | 'out-of-stock';
 }
-
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=80&h=80&fit=crop',
-    name: 'Samsung Galaxy A54 5G',
-    sku: 'MOB-SAM-A54-001',
-    category: 'Mobile Phones',
-    price: 89990,
-    stock: 45,
-    status: 'in-stock'
-  },
-  {
-    id: '2',
-    image: 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=80&h=80&fit=crop',
-    name: 'Dell Inspiron 15 Laptop',
-    sku: 'LAP-DEL-INS-002',
-    category: 'Computers & Laptops',
-    price: 145000,
-    stock: 12,
-    status: 'low-stock'
-  },
-  {
-    id: '3',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&h=80&fit=crop',
-    name: 'Sony WH-1000XM5 Headphones',
-    sku: 'AUD-SON-WH5-003',
-    category: 'Audio & Sound',
-    price: 65000,
-    stock: 28,
-    status: 'in-stock'
-  },
-  {
-    id: '4',
-    image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=80&h=80&fit=crop',
-    name: 'Logitech MX Master 3S Mouse',
-    sku: 'ACC-LOG-MX3-004',
-    category: 'Accessories',
-    price: 15500,
-    stock: 8,
-    status: 'low-stock'
-  },
-  {
-    id: '5',
-    image: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=80&h=80&fit=crop',
-    name: 'Apple iPhone 15 Pro',
-    sku: 'MOB-APP-IP15-005',
-    category: 'Mobile Phones',
-    price: 285000,
-    stock: 18,
-    status: 'in-stock'
-  },
-  {
-    id: '6',
-    image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=80&h=80&fit=crop',
-    name: 'Keychron K2 Mechanical Keyboard',
-    sku: 'ACC-KEY-K2V-006',
-    category: 'Accessories',
-    price: 18500,
-    stock: 35,
-    status: 'in-stock'
-  },
-  {
-    id: '7',
-    image: 'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=80&h=80&fit=crop',
-    name: 'JBL Flip 6 Bluetooth Speaker',
-    sku: 'AUD-JBL-FL6-007',
-    category: 'Audio & Sound',
-    price: 24500,
-    stock: 9,
-    status: 'low-stock'
-  },
-  {
-    id: '8',
-    image: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=80&h=80&fit=crop',
-    name: 'Asus ROG Strix Gaming Laptop',
-    sku: 'LAP-ASU-ROG-008',
-    category: 'Computers & Laptops',
-    price: 325000,
-    stock: 6,
-    status: 'low-stock'
-  },
-  {
-    id: '9',
-    image: 'https://images.unsplash.com/photo-1635514569146-9a9607ecf303?w=80&h=80&fit=crop',
-    name: 'Anker PowerCore 20000mAh',
-    sku: 'ACC-ANK-PC2-009',
-    category: 'Accessories',
-    price: 8500,
-    stock: 52,
-    status: 'in-stock'
-  },
-  {
-    id: '10',
-    image: 'https://images.unsplash.com/photo-1621768216002-5ac171876625?w=80&h=80&fit=crop',
-    name: 'Xiaomi Redmi Note 12 Pro',
-    sku: 'MOB-XIA-RN12-010',
-    category: 'Mobile Phones',
-    price: 67500,
-    stock: 41,
-    status: 'in-stock'
-  },
-  {
-    id: '11',
-    image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=80&h=80&fit=crop',
-    name: 'Apple MacBook Air M2',
-    sku: 'LAP-APP-MBA-011',
-    category: 'Computers & Laptops',
-    price: 285000,
-    stock: 7,
-    status: 'low-stock'
-  },
-  {
-    id: '12',
-    image: 'https://images.unsplash.com/photo-1606841837239-c5a1a4a07af7?w=80&h=80&fit=crop',
-    name: 'Bose QuietComfort 45',
-    sku: 'AUD-BOS-QC4-012',
-    category: 'Audio & Sound',
-    price: 58500,
-    stock: 15,
-    status: 'in-stock'
-  },
-  {
-    id: '13',
-    image: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=80&h=80&fit=crop',
-    name: 'LG 27" 4K Monitor',
-    sku: 'ELE-LG-27M-013',
-    category: 'Electronics',
-    price: 75000,
-    stock: 10,
-    status: 'low-stock'
-  },
-  {
-    id: '14',
-    image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=80&h=80&fit=crop',
-    name: 'Canon EOS M50 Camera',
-    sku: 'ELE-CAN-M50-014',
-    category: 'Electronics',
-    price: 125000,
-    stock: 8,
-    status: 'low-stock'
-  },
-  {
-    id: '15',
-    image: 'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=80&h=80&fit=crop',
-    name: 'Samsung Galaxy Watch 6',
-    sku: 'ACC-SAM-GW6-015',
-    category: 'Accessories',
-    price: 48500,
-    stock: 22,
-    status: 'in-stock'
-  }
-];
 
 interface ProductTableProps {
   searchQuery: string;
@@ -173,46 +23,70 @@ interface ProductTableProps {
 
 const ITEMS_PER_PAGE = 10;
 
-export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
+const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
+  'in-stock':     { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'In Stock' },
+  'low-stock':    { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Low Stock' },
+  'out-of-stock': { bg: 'bg-red-100',     text: 'text-red-700',     label: 'Out of Stock' },
+};
 
-  const filteredProducts = useMemo(() => {
-    return mockProducts.filter((product) => {
-      const matchesSearch = !searchQuery || 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-      
-      return matchesSearch && matchesCategory;
-    });
+export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: Record<string, string> = {};
+      if (searchQuery) params.search = searchQuery;
+      if (categoryFilter && categoryFilter !== 'all') params.category = categoryFilter;
+
+      const res = await api.get('/products', { params });
+      setProducts(res.data.data ?? []);
+      setTotal(res.data.total ?? 0);
+      setCurrentPage(1);
+    } catch {
+      setError('Failed to load products. Make sure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
   }, [searchQuery, categoryFilter]);
 
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
-  const getStatusBadge = (status: Product['status'], stock: number) => {
-    const isLowStock = status === 'low-stock';
-    
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginated = products.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  if (loading) {
     return (
-      <div className="flex items-center gap-2">
-        <div className={`flex-1 px-3 py-1.5 rounded-lg text-sm ${
-          isLowStock 
-            ? 'bg-amber-100 text-amber-700' 
-            : 'bg-emerald-100 text-emerald-700'
-        }`}>
-          {isLowStock ? 'Low Stock' : 'In Stock'}
-        </div>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-16 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+        <span className="ml-3 text-gray-600">Loading products…</span>
       </div>
     );
-  };
+  }
 
-  const formatPrice = (price: number) => {
-    return `Rs ${price.toLocaleString('en-LK')}`;
-  };
+  if (error) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-16 text-center">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={fetchProducts}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
-  if (filteredProducts.length === 0) {
+  if (products.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-16">
         <div className="text-center">
@@ -221,13 +95,16 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
           </div>
           <h3 className="text-gray-900 text-xl mb-2">No Products Found</h3>
           <p className="text-gray-600 mb-6">
-            {searchQuery || categoryFilter !== 'all' 
-              ? 'Try adjusting your search or filters' 
+            {searchQuery || categoryFilter !== 'all'
+              ? 'Try adjusting your search or filters'
               : 'Get started by adding your first product'}
           </p>
-          <button className="px-6 py-3 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 shadow-md transition-all">
+          <Link
+            href="/products/add"
+            className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-md transition-all inline-block"
+          >
             Add Your First Product
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -239,50 +116,27 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Product
-              </th>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                SKU
-              </th>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Price
-              </th>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Stock Quantity
-              </th>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Actions
-              </th>
+              {['Product', 'SKU', 'Category', 'Price', 'Stock Quantity', 'Status', 'Actions'].map((h) => (
+                <th key={h} className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {paginatedProducts.map((product) => {
-              const isLowStock = product.status === 'low-stock';
-              
+            {paginated.map((product) => {
+              const style = statusStyles[product.status] ?? statusStyles['in-stock'];
+              const isLow = product.status === 'low-stock';
+
               return (
-                <tr 
-                  key={product.id} 
-                  className={`transition-colors ${
-                    isLowStock 
-                      ? 'bg-amber-50/30 hover:bg-amber-50/50' 
-                      : 'hover:bg-gray-50'
-                  }`}
+                <tr
+                  key={product._id}
+                  className={`transition-colors ${isLow ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-gray-50'}`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <ImageWithFallback
-                        src={product.image}
-                        alt={product.name}
-                        className="w-12 h-12 rounded-lg object-cover border border-gray-200"
-                      />
-                      <span className="text-gray-900">{product.name}</span>
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        <PackageIcon className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <span className="text-gray-900 font-medium">{product.name}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -292,34 +146,36 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                     <span className="text-gray-600">{product.category}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-gray-900">{formatPrice(product.price)}</span>
+                    <span className="text-gray-900">Rs {product.sellingPrice.toLocaleString('en-LK')}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`${isLow ? 'text-amber-700' : 'text-gray-900'}`}>
+                      {product.stock} units
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1.5 rounded-lg text-sm ${style.bg} ${style.text}`}>
+                      {style.label}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <span className={`text-gray-900 ${isLowStock ? 'text-amber-700' : ''}`}>
-                        {product.stock} units
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {getStatusBadge(product.status, product.stock)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button 
-                        className="group flex items-center gap-2 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      <Link
+                        href={`/products/${product._id}/edit`}
+                        className="flex items-center gap-2 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                         title="Edit Product"
                       >
                         <Edit2 className="w-4 h-4" />
                         <span className="text-sm">Edit</span>
-                      </button>
-                      <button 
-                        className="group flex items-center gap-2 px-3 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      </Link>
+                      <Link
+                        href={`/products/${product._id}`}
+                        className="flex items-center gap-2 px-3 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                         title="Adjust Stock"
                       >
                         <Boxes className="w-4 h-4" />
                         <span className="text-sm">Adjust Stock</span>
-                      </button>
+                      </Link>
                     </div>
                   </td>
                 </tr>
@@ -331,32 +187,30 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
 
       <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Showing <span className="text-gray-900">{startIndex + 1}</span> to <span className="text-gray-900">{Math.min(startIndex + ITEMS_PER_PAGE, filteredProducts.length)}</span> of <span className="text-gray-900">{filteredProducts.length}</span> products
+          Showing{' '}
+          <span className="text-gray-900">{products.length === 0 ? 0 : startIndex + 1}</span> to{' '}
+          <span className="text-gray-900">{Math.min(startIndex + ITEMS_PER_PAGE, products.length)}</span> of{' '}
+          <span className="text-gray-900">{total}</span> products
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
             className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700"
           >
             <ChevronLeft className="w-4 h-4" />
             <span className="text-sm">Previous</span>
           </button>
-          
+
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              
+              let pageNum: number;
+              if (totalPages <= 5) pageNum = i + 1;
+              else if (currentPage <= 3) pageNum = i + 1;
+              else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+              else pageNum = currentPage - 2 + i;
+
               return (
                 <button
                   key={pageNum}
@@ -372,10 +226,10 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
               );
             })}
           </div>
-          
+
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages || totalPages === 0}
             className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700"
           >
             <span className="text-sm">Next</span>

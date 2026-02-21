@@ -1,4 +1,13 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
+import api from '@/app/lib/api';
+
+interface Category {
+  _id: string;
+  name: string;
+}
 
 interface SearchFilterProps {
   searchQuery: string;
@@ -7,12 +16,21 @@ interface SearchFilterProps {
   onCategoryChange: (category: string) => void;
 }
 
-export function SearchFilter({ 
-  searchQuery, 
-  categoryFilter, 
-  onSearchChange, 
-  onCategoryChange 
+export function SearchFilter({
+  searchQuery,
+  categoryFilter,
+  onSearchChange,
+  onCategoryChange,
 }: SearchFilterProps) {
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    api
+      .get('/categories')
+      .then((res) => setCategories(res.data.data ?? []))
+      .catch(() => {}); // fail silently – the 'All Categories' option still works
+  }, []);
+
   return (
     <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm mb-6">
       <div className="flex flex-col md:flex-row gap-4">
@@ -28,7 +46,7 @@ export function SearchFilter({
             />
           </div>
         </div>
-        
+
         <div className="w-full md:w-64">
           <select
             value={categoryFilter}
@@ -39,16 +57,15 @@ export function SearchFilter({
               backgroundRepeat: 'no-repeat',
               backgroundPosition: 'right 0.75rem center',
               backgroundSize: '1.5em 1.5em',
-              paddingRight: '2.5rem'
+              paddingRight: '2.5rem',
             }}
           >
             <option value="all">All Categories</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Mobile Phones">Mobile Phones</option>
-            <option value="Computers & Laptops">Computers & Laptops</option>
-            <option value="Audio & Sound">Audio & Sound</option>
-            <option value="Accessories">Accessories</option>
-            <option value="Home Appliances">Home Appliances</option>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat.name}>
+                {cat.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
