@@ -19,11 +19,11 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
       const message =
-        err instanceof Error
-          ? err.message
-          : (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-            'Invalid email or password';
+        axiosErr?.response?.data?.message ||
+        (err instanceof Error ? err.message : null) ||
+        'Invalid email or password';
       setError(message);
     } finally {
       setLoading(false);
