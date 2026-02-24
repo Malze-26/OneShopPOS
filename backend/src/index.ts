@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -8,6 +9,7 @@ import categoryRoutes from './routes/categories';
 import customerRoutes from './routes/customers';
 import transactionRoutes from './routes/transactions';
 import employeeRoutes from './routes/employees';
+import stockRoutes from './routes/stocks';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -21,6 +23,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
@@ -33,6 +36,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/stocks', stockRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {

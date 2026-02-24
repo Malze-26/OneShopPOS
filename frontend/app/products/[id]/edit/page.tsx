@@ -1,37 +1,154 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Upload, Sparkles } from 'lucide-react';
+import { Upload, X, Sparkles } from 'lucide-react';
+import api from '@/app/lib/api';
 
-// In a real app, this would be fetched from the API using the product ID
-const existingProduct = {
-  name: 'Product 001',
-  sku: 'SKU-001',
-  description: 'This is a detailed description of Product 001.',
-  sellingPrice: '1250',
-  costPrice: '850',
-  initialStock: '150',
-  lowStockThreshold: '20',
-  category: 'Electronics',
-};
+interface Category {
+  _id: string;
+  name: string;
+}
+
+interface ImagePreview {
+  file: File;
+  previewUrl: string;
+}
+
+const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
 export default function EditProductPage() {
   const params = useParams();
   const router = useRouter();
-  const [formData, setFormData] = useState(existingProduct);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    sku: '',
+    description: '',
+    sellingPrice: '',
+    costPrice: '',
+    initialStock: '',
+    lowStockThreshold: '',
+    category: '',
+  });
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<ImagePreview[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const id = params.id as string;
+    Promise.all([api.get(`/products/${id}`), api.get('/categories')])
+      .then(([productRes, catRes]) => {
+        const p = productRes.data.data;
+        setFormData({
+          name: p.name,
+          sku: p.sku,
+          description: p.description || '',
+          sellingPrice: String(p.sellingPrice),
+          costPrice: String(p.costPrice),
+          initialStock: String(p.stock),
+          lowStockThreshold: String(p.lowStockThreshold),
+          category: p.category,
+        });
+        setExistingImages(p.images ?? []);
+        setCategories(catRes.data.data);
+      })
+      .catch(() => setError('Failed to load product'))
+      .finally(() => setFetchLoading(false));
+  }, [params.id]);
+
+  // Revoke object URLs on unmount
+  useEffect(() => {
+    return () => newImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+  }, [newImages]);
+
+  const totalImages = existingImages.length + newImages.length;
+
+  const addFiles = (files: FileList | File[]) => {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    const valid = Array.from(files).filter((f) => allowed.includes(f.type));
+    if (valid.length === 0) return;
+    const previews: ImagePreview[] = valid.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setNewImages((prev) => [...prev, ...previews].slice(0, Math.max(0, 10 - existingImages.length)));
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    addFiles(e.dataTransfer.files);
+  };
+
+  const removeNewImage = (index: number) => {
+    setNewImages((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const removeExistingImage = async (imagePath: string) => {
+    const filename = imagePath.split('/').pop()!;
+    try {
+      const res = await api.delete(`/products/${params.id}/images/${filename}`);
+      setExistingImages(res.data.data.images ?? []);
+    } catch {
+      setError('Failed to delete image');
+    }
+  };
 
   const generateSKU = () => {
     const randomSKU = `SKU-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     setFormData({ ...formData, sku: randomSKU });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: PUT /api/products/:id
-    router.push(`/products/${params.id}`);
+    setError('');
+    setLoading(true);
+    try {
+      await api.put(`/products/${params.id}`, {
+        name: formData.name,
+        sku: formData.sku,
+        description: formData.description,
+        sellingPrice: Number(formData.sellingPrice),
+        costPrice: Number(formData.costPrice),
+        stock: Number(formData.initialStock),
+        lowStockThreshold: Number(formData.lowStockThreshold),
+        category: formData.category,
+      });
+
+      if (newImages.length > 0) {
+        const formPayload = new FormData();
+        newImages.forEach((img) => formPayload.append('images', img.file));
+        await api.post(`/products/${params.id}/images`, formPayload, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+
+      router.push(`/products/${params.id}`);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setError(axiosErr?.response?.data?.message || 'Failed to update product');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (fetchLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center h-64">
+        <div className="text-sm text-[#4a5565]">Loading product...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-[1200px] mx-auto">
@@ -40,6 +157,12 @@ export default function EditProductPage() {
         <h1 className="text-xl font-bold text-[#101828] mb-1">Edit Product</h1>
         <p className="text-sm text-[#4a5565]">Update the details for this product</p>
       </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-[#fef3f2] border border-[#f04438]/20 rounded-lg text-sm text-[#f04438]">
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -164,22 +287,90 @@ export default function EditProductPage() {
           <div className="space-y-6">
             {/* Product Images */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e4e7ec]">
-              <h2 className="text-base font-semibold text-[#101828] mb-4">Product Images</h2>
-              <div className="border-2 border-dashed border-[#e4e7ec] rounded-lg p-8 text-center hover:border-[#155dfc] hover:bg-[#eff4ff]/30 transition-colors cursor-pointer">
-                <Upload className="w-8 h-8 text-[#4a5565] mx-auto mb-3" />
-                <p className="text-sm font-medium text-[#101828] mb-1">Drag & drop images here</p>
-                <p className="text-xs text-[#4a5565] mb-3">or click to browse</p>
-                <button type="button" className="px-4 py-2 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm transition-colors">
-                  Choose Files
-                </button>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="aspect-square bg-[#f9fafb] border border-[#e4e7ec] rounded-lg flex items-center justify-center">
-                    <span className="text-xs text-[#4a5565]">IMG</span>
+              <h2 className="text-base font-semibold text-[#101828] mb-4">
+                Product Images
+                <span className="text-xs font-normal text-[#4a5565] ml-2">({totalImages}/10)</span>
+              </h2>
+
+              {/* Drop zone */}
+              {totalImages < 10 && (
+                <>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                      isDragging
+                        ? 'border-[#155dfc] bg-[#eff4ff]'
+                        : 'border-[#e4e7ec] hover:border-[#155dfc] hover:bg-[#eff4ff]/30'
+                    }`}
+                  >
+                    <Upload className="w-7 h-7 text-[#4a5565] mx-auto mb-2" />
+                    <p className="text-sm font-medium text-[#101828] mb-1">Drag & drop images here</p>
+                    <p className="text-xs text-[#4a5565] mb-3">or click to browse</p>
+                    <span className="px-4 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm transition-colors">
+                      Choose Files
+                    </span>
+                    <p className="text-xs text-[#4a5565] mt-2">JPEG, PNG, WebP, GIF · max 5 MB each</p>
                   </div>
-                ))}
-              </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) addFiles(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                </>
+              )}
+
+              {/* Existing images from server */}
+              {existingImages.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-[#4a5565] mb-2">Saved images</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {existingImages.map((src) => (
+                      <div key={src} className="relative aspect-square rounded-lg overflow-hidden border border-[#e4e7ec] group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`${SERVER_URL}${src}`} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(src)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New (pending upload) images */}
+              {newImages.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-[#4a5565] mb-2">New images (will upload on save)</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {newImages.map((img, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-[#155dfc]/40 group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeNewImage(idx); }}
+                          className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Category */}
@@ -195,15 +386,9 @@ export default function EditProductPage() {
                   required
                 >
                   <option value="">Choose a category</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Clothing">Clothing</option>
-                  <option value="Food & Beverage">Food & Beverage</option>
-                  <option value="Home & Garden">Home & Garden</option>
-                  <option value="Beauty">Beauty</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Books">Books</option>
-                  <option value="Toys">Toys</option>
-                  <option value="Automotive">Automotive</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat.name}>{cat.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -220,9 +405,10 @@ export default function EditProductPage() {
           </Link>
           <button
             type="submit"
-            className="px-6 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+            disabled={loading}
+            className="px-6 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Save Changes
+            {loading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>

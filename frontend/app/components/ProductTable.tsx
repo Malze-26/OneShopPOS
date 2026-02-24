@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Edit2, Package as PackageIcon, ChevronLeft, ChevronRight, Boxes, Loader2 } from 'lucide-react';
 import api from '@/app/lib/api';
+
+const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
 interface Product {
   _id: string;
@@ -14,6 +17,7 @@ interface Product {
   stock: number;
   lowStockThreshold: number;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
+  images: string[];
 }
 
 interface ProductTableProps {
@@ -30,6 +34,7 @@ const statusStyles: Record<string, { bg: string; text: string; label: string }> 
 };
 
 export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps) {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -129,12 +134,22 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
               return (
                 <tr
                   key={product._id}
-                  className={`transition-colors ${isLow ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-gray-50'}`}
+                  onClick={() => router.push(`/products/${product._id}`)}
+                  className={`cursor-pointer transition-colors ${isLow ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-gray-50'}`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                        <PackageIcon className="w-6 h-6 text-gray-400" />
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {product.images?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`${SERVER_URL}${product.images[0]}`}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <PackageIcon className="w-6 h-6 text-gray-400" />
+                        )}
                       </div>
                       <span className="text-gray-900 font-medium">{product.name}</span>
                     </div>
@@ -158,7 +173,7 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                       {style.label}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/products/${product._id}/edit`}
