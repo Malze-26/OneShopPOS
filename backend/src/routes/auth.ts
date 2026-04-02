@@ -18,13 +18,7 @@ function asyncHandler(
 router.post('/login', asyncHandler(login));
 
 // Protected routes
-router.post(
-  '/register',
-  protect,
-  requireRole('Manager'),
-  asyncHandler(register)
-);
-
+router.post('/register', protect, requireRole('Manager'), asyncHandler(register));
 router.get('/me', protect, asyncHandler((req, res, next) => getMe(req as AuthRequest, res, next)));
 
 export default router;

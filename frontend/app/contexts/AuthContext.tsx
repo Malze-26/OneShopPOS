@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       Cookies.set('token', data.token, { expires: 7, sameSite: 'Strict' });
       setToken(data.token);
       setUser(data.user);
-      router.push('/dashboard');
+      router.push('/pos/dashboard');
     },
     [router]
   );
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     Cookies.remove('token');
     setToken(null);
     setUser(null);
-    router.push('/login');
+    router.push('/pos/login');
   }, [router]);
 
   return (

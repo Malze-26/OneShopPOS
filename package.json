@@ -1,0 +1,22 @@
+{
+  "name": "oneshoppos",
+  "version": "1.0.0",
+  "description": "OneShop POS System",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "start:backend": "npm run start -w backend",
+    "start:frontend": "npm run start -w frontend"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.0",
+    "mongoose": "^9.3.3"
+  }
+}
