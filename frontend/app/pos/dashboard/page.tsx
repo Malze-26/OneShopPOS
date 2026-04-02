@@ -1,8 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
 import api from "@/app/lib/api";
+import { savePendingTransaction, getPendingCount } from "@/app/lib/offlineDB";
+import { syncPendingTransactions } from "@/app/lib/syncManager";
+import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -52,6 +55,7 @@ function CheckoutModal({
   subtotal,
   tax,
   total,
+  isOnline,
   onClose,
   onSuccess,
 }: {
@@ -59,12 +63,14 @@ function CheckoutModal({
   subtotal: number;
   tax: number;
   total: number;
+  isOnline: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [method, setMethod] = useState("cash");
   const [cash, setCash] = useState("");
   const [step, setStep] = useState<"pay" | "success">("pay");
+  const [savedOffline, setSavedOffline] = useState(false);
   const [orderId] = useState(genId);
 
   const cashAmt = parseFloat(cash) || 0;
@@ -72,18 +78,31 @@ function CheckoutModal({
   const canPay = method !== "cash" || cashAmt >= total;
 
   const confirm = async () => {
-    try {
-      await api.post("/transactions", {
-        orderId: orderId,
-        customer: state.customer?.name || "Guest Customer",
-        paymentMethod: method === "cash" ? "Cash" : method === "card" ? "Card" : "Bank Transfer",
-        amount: total,
-        status: "success",
-      });
+    const transactionData = {
+      orderId,
+      customer: state.customer?.name || "Guest Customer",
+      paymentMethod: method === "cash" ? "Cash" : method === "card" ? "Card" : "Bank Transfer",
+      amount: total,
+      status: "success",
+    };
+
+    if (isOnline) {
+      try {
+        await api.post("/transactions", transactionData);
+        setSavedOffline(false);
+        setStep("success");
+      } catch (err: any) {
+        console.error(err);
+        // If online request fails, save offline
+        await savePendingTransaction(transactionData);
+        setSavedOffline(true);
+        setStep("success");
+      }
+    } else {
+      // Save offline
+      await savePendingTransaction(transactionData);
+      setSavedOffline(true);
       setStep("success");
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || "Failed to create order");
     }
   };
 
@@ -91,108 +110,44 @@ function CheckoutModal({
     try {
       const receiptWindow = window.open("", "_blank", "width=700,height=900");
       if (!receiptWindow) return alert("Unable to open print window. Please allow popups.");
-
       const now = new Date();
-      const itemsHtml = state.items
-        .map(
-          (i) => `
+      const itemsHtml = state.items.map((i) => `
         <tr>
           <td style="padding:6px 8px">${i.name} × ${i.qty}</td>
           <td style="padding:6px 8px;text-align:right">${fmt(i.price * i.qty)}</td>
-        </tr>`
-        )
-        .join("");
-
-      const html = `<!doctype html>
-        <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Receipt ${orderId}</title>
-          <style>
-            body{font-family:Inter,Arial,Helvetica,sans-serif;color:#111;margin:0;padding:24px;background:#fff}
-            .wrap{display:flex;justify-content:center}
-            .receipt{width:320px;border:4px solid #24106d;padding:16px}
-            .brand{font-weight:800;color:#24106d;margin-bottom:8px}
-            .muted{color:#6b7280;font-size:12px}
-            table{width:100%;border-collapse:collapse;margin-top:12px}
-            td{font-size:13px;padding:6px 8px}
-            @media print{body{margin:0;padding:8px}.receipt{border:none}}
-          </style>
-        </head>
-        <body>
-          <div class="wrap">
-            <div class="receipt">
-              <div class="brand">OneShop POS</div>
-              <div class="muted">STORE-2025-001</div>
-              <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
-              <div style="font-size:13px">Receipt: <strong>#${orderId}</strong></div>
-              <div style="font-size:13px">Date: <strong>${now.toLocaleDateString()}</strong></div>
-              <div style="font-size:13px">Time: <strong>${now.toLocaleTimeString()}</strong></div>
-              <table><tbody>${itemsHtml}</tbody></table>
-              <div style="border-top:1px solid #eee;margin-top:8px;padding-top:8px">
-                <div style="display:flex;justify-content:space-between;font-size:13px"><div>SUBTOTAL</div><div>${fmt(subtotal)}</div></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px"><div>TAX (8%)</div><div>${fmt(tax)}</div></div>
-                ${state.discount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px"><div>DISCOUNT</div><div>-${fmt(state.discount)}</div></div>` : ""}
-                <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-top:6px"><div>TOTAL</div><div>${fmt(total)}</div></div>
-                ${method === "cash" && cashAmt > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px"><div>Cash Tendered</div><div>${fmt(cashAmt)}</div></div>` : ""}
-                ${method === "cash" && cashAmt > total ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px"><div>Change Due</div><div>${fmt(Math.max(0, cashAmt - total))}</div></div>` : ""}
-              </div>
-              <div style="text-align:center;margin-top:12px;font-size:11px;color:#9ca3af">THANK YOU FOR CHOOSING US</div>
-            </div>
-          </div>
-        </body>
-        </html>`;
-
+        </tr>`).join("");
+      const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Receipt ${orderId}</title>
+        <style>body{font-family:Inter,Arial,sans-serif;color:#111;margin:0;padding:24px;background:#fff}.wrap{display:flex;justify-content:center}.receipt{width:320px;border:4px solid #24106d;padding:16px}.brand{font-weight:800;color:#24106d;margin-bottom:8px}.muted{color:#6b7280;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:12px}td{font-size:13px;padding:6px 8px}@media print{body{margin:0;padding:8px}.receipt{border:none}}</style>
+        </head><body><div class="wrap"><div class="receipt">
+        <div class="brand">OneShop POS</div>
+        <div class="muted">STORE-2025-001</div>
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+        <div style="font-size:13px">Receipt: <strong>#${orderId}</strong></div>
+        <div style="font-size:13px">Date: <strong>${now.toLocaleDateString()}</strong></div>
+        <div style="font-size:13px">Time: <strong>${now.toLocaleTimeString()}</strong></div>
+        <table><tbody>${itemsHtml}</tbody></table>
+        <div style="border-top:1px solid #eee;margin-top:8px;padding-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><div>SUBTOTAL</div><div>${fmt(subtotal)}</div></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><div>TAX (8%)</div><div>${fmt(tax)}</div></div>
+        ${state.discount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px"><div>DISCOUNT</div><div>-${fmt(state.discount)}</div></div>` : ""}
+        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-top:6px"><div>TOTAL</div><div>${fmt(total)}</div></div>
+        ${savedOffline ? `<div style="margin-top:8px;font-size:11px;color:#F59E0B">⚠ Saved offline - will sync when online</div>` : ""}
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:11px;color:#9ca3af">THANK YOU FOR CHOOSING US</div>
+        </div></div></body></html>`;
       receiptWindow.document.open();
       receiptWindow.document.write(html);
       receiptWindow.document.close();
       receiptWindow.focus();
       setTimeout(() => { receiptWindow.print(); }, 600);
     } catch (err) {
-      console.error(err);
       alert("Printing failed");
-    }
-  };
-
-  const sendEmail = async () => {
-    try {
-      let to = state.customer?.email;
-      if (!to) to = window.prompt("Enter recipient email:");
-      if (!to) return alert("Please select a customer or enter an email address.");
-
-      const now = new Date();
-      const lines: string[] = [];
-      lines.push("OneShop POS");
-      lines.push("STORE-2025-001");
-      lines.push("\n");
-      lines.push(`Receipt: #${orderId}`);
-      lines.push(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
-      lines.push("\nItems:");
-      state.items.forEach((i) => lines.push(`${i.name} x${i.qty} \t ${fmt(i.price * i.qty)}`));
-      lines.push("\n");
-      lines.push(`SUBTOTAL: ${fmt(subtotal)}`);
-      lines.push(`TAX (8%): ${fmt(tax)}`);
-      if (state.discount > 0) lines.push(`DISCOUNT: -${fmt(state.discount)}`);
-      lines.push(`TOTAL: ${fmt(total)}`);
-      if (method === "cash" && cashAmt > 0) lines.push(`Cash Tendered: ${fmt(cashAmt)}`);
-      if (method === "cash" && cashAmt > total) lines.push(`Change Due: ${fmt(Math.max(0, cashAmt - total))}`);
-      lines.push("\nThank you for choosing us.");
-
-      const subject = encodeURIComponent(`Receipt #${orderId}`);
-      const body = encodeURIComponent(lines.join("\n"));
-      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`;
-    } catch (err) {
-      console.error(err);
-      alert("Failed to open email client");
     }
   };
 
   return (
     <div
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)",
-        zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-      }}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <style>{`
@@ -205,13 +160,15 @@ function CheckoutModal({
         .pay-btn.active { background:${C.brand};color:#fff;border-color:${C.brand}; }
         .modal-input { width:100%;padding:10px 14px;border:1.5px solid ${C.border};border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;background:#fff;color:${C.text}; }
         .modal-input:focus { border-color:${C.brandMid}; }
-        .success-check { width:64px;height:64px;background:#D1FAE5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto; }
+        .success-check { width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto; }
       `}</style>
 
       <div style={{ background: "#fff", borderRadius: 24, width: "100%", maxWidth: 440, overflow: "hidden", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 16px", borderBottom: `1px solid ${C.border}` }}>
-          <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{step === "success" ? "Order Complete ✓" : "Checkout"}</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
+            {step === "success" ? (savedOffline ? "Saved Offline ⚠" : "Order Complete ✓") : "Checkout"}
+          </span>
           <button onClick={step === "success" ? onSuccess : onClose}
             style={{ width: 28, height: 28, borderRadius: "50%", background: "#F3F4F6", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -220,6 +177,14 @@ function CheckoutModal({
 
         {step === "pay" ? (
           <div style={{ padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Offline warning */}
+            {!isOnline && (
+              <div style={{ padding: "10px 14px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>⚠️</span>
+                <span style={{ fontSize: 13, color: "#92400E", fontWeight: 600 }}>You're offline. Transaction will be saved locally and synced when back online.</span>
+              </div>
+            )}
+
             {/* Order summary */}
             <div style={{ background: C.surface2, borderRadius: 12, padding: "12px 14px", border: `1px solid ${C.border}` }}>
               {state.items.map((i) => (
@@ -237,8 +202,7 @@ function CheckoutModal({
                 </div>
                 {state.discount > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.brand, fontWeight: 600, marginBottom: 4 }}>
-                    <span>Discount {state.discountCode ? `(${state.discountCode})` : ""}</span>
-                    <span>−{fmt(state.discount)}</span>
+                    <span>Discount</span><span>−{fmt(state.discount)}</span>
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 800, marginTop: 6 }}>
@@ -284,49 +248,43 @@ function CheckoutModal({
             )}
 
             <button className="checkout-btn" disabled={!canPay} onClick={confirm} style={{ marginTop: 4 }}>
-              Confirm Payment · {fmt(total)}
+              {isOnline ? `Confirm Payment · ${fmt(total)}` : `Save Offline · ${fmt(total)}`}
             </button>
           </div>
         ) : (
           /* Success */
           <div style={{ padding: "28px 24px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-            <div className="success-check">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div className="success-check" style={{ background: savedOffline ? "#FEF3C7" : "#D1FAE5" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={savedOffline ? "#D97706" : "#10B981"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 4 }}>Payment Successful!</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+                {savedOffline ? "Saved Offline!" : "Payment Successful!"}
+              </div>
               <div style={{ fontSize: 12, color: C.muted }}>
-                Order <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 600, color: C.text }}>{orderId}</span>
+                {savedOffline
+                  ? "Will sync to database when back online"
+                  : <>Order <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 600, color: C.text }}>{orderId}</span></>
+                }
               </div>
             </div>
-            <div style={{ width: "100%", background: C.surface2, borderRadius: 12, padding: "12px 16px", border: `1px solid ${C.border}` }}>
-              {[
-                { label: "Total Paid", value: fmt(total) },
-                { label: "Method", value: method.charAt(0).toUpperCase() + method.slice(1) },
-                ...(method === "cash" && cashAmt > total ? [{ label: "Change", value: fmt(change) }] : []),
-                ...(state.customer ? [{ label: "Customer", value: state.customer.name }] : []),
-              ].map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: C.muted }}>{label}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{value}</span>
-                </div>
-              ))}
-            </div>
+
+            {savedOffline && (
+              <div style={{ padding: "10px 14px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, width: "100%" }}>
+                <p style={{ fontSize: 12, color: "#92400E", textAlign: "center" }}>
+                  📱 Transaction stored locally. It will automatically sync when your internet connection is restored.
+                </p>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 8, width: "100%" }}>
               <button className="modal-ghost-btn" style={{ flex: 1, justifyContent: "center" }} onClick={printReceipt}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9"/>
-                  <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
                 </svg>
                 Print
-              </button>
-              <button className="modal-ghost-btn" style={{ flex: 1, justifyContent: "center" }} onClick={sendEmail}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16v12H4z"/><polyline points="22,6 12,13 2,6"/>
-                </svg>
-                Email
               </button>
               <button className="checkout-btn" onClick={onSuccess} style={{ flex: 1 }}>
                 New Order
@@ -343,6 +301,7 @@ function CheckoutModal({
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
+  const isOnline = useOnlineStatus();
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [cart, setCart] = useState<{ id: string; name: string; price: number; qty: number }[]>([]);
@@ -358,6 +317,9 @@ export default function POSDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -386,6 +348,40 @@ export default function POSDashboard() {
     };
     fetchData();
   }, [user]);
+
+  // Update pending count
+  const refreshPendingCount = useCallback(async () => {
+    const count = await getPendingCount();
+    setPendingCount(count);
+  }, []);
+
+  useEffect(() => {
+    refreshPendingCount();
+  }, [refreshPendingCount]);
+
+  // Auto sync when back online
+  useEffect(() => {
+    if (isOnline && pendingCount > 0) {
+      handleSync();
+    }
+  }, [isOnline]);
+
+  const handleSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    setSyncMessage("");
+    try {
+      const { synced, failed } = await syncPendingTransactions();
+      await refreshPendingCount();
+      if (synced > 0) setSyncMessage(`✓ ${synced} transaction${synced > 1 ? 's' : ''} synced!`);
+      if (failed > 0) setSyncMessage(`⚠ ${failed} failed to sync`);
+      setTimeout(() => setSyncMessage(""), 3000);
+    } catch (err) {
+      setSyncMessage("Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -425,6 +421,7 @@ export default function POSDashboard() {
     setDiscount(0);
     setPromoCode("");
     setShowCheckout(false);
+    refreshPendingCount();
   };
 
   const checkoutState = {
@@ -479,11 +476,15 @@ export default function POSDashboard() {
         .cart-item:hover .del-btn { opacity:1; }
         .del-btn { opacity:0;transition:opacity .15s;background:none;border:none;cursor:pointer;color:#F87171;padding:2px;border-radius:4px; }
         .del-btn:hover { color:${C.danger}; }
-        .menu-dropdown { position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1px solid ${C.border};z-index:50;min-width:140px;overflow:hidden;animation:fadeIn .15s; }
+        .menu-dropdown { position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);border:1px solid ${C.border};z-index:50;min-width:160px;overflow:hidden;animation:fadeIn .15s; }
         .menu-item { width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:${C.text};font-family:inherit;text-align:left; }
         .menu-item:hover { background:#F5F4FF;color:${C.brand}; }
         .input-field { width:100%;padding:10px 14px;border:1.5px solid ${C.border};border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;background:#fff;color:${C.text}; }
         .input-field:focus { border-color:${C.brandMid}; }
+        .sync-btn { background:none;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:inherit; }
+        .sync-btn:hover { background:rgba(255,255,255,.15); }
+        .sync-btn:disabled { opacity:.5;cursor:not-allowed; }
+        @keyframes syncSpin { to { transform:rotate(360deg); } }
       `}</style>
 
       {/* ── Top Bar ─────────────────────────────────────────────────────────── */}
@@ -511,10 +512,42 @@ export default function POSDashboard() {
           <span style={{ color: "rgba(255,255,255,.6)", fontSize: 12, fontFamily: "'DM Mono',monospace", letterSpacing: "1px" }}>
             {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", background: "rgba(16,185,129,.2)", borderRadius: 100 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34D399" }}/>
-            <span style={{ color: "#6EE7B7", fontSize: 11, fontWeight: 600 }}>Online</span>
+
+          {/* Online/Offline badge */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", background: isOnline ? "rgba(16,185,129,.2)" : "rgba(239,68,68,.2)", borderRadius: 100 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#34D399" : "#F87171" }}/>
+            <span style={{ color: isOnline ? "#6EE7B7" : "#FCA5A5", fontSize: 11, fontWeight: 600 }}>
+              {isOnline ? "Online" : "Offline"}
+            </span>
           </div>
+
+          {/* Pending sync badge + sync button */}
+          {pendingCount > 0 && (
+            <button
+              className="sync-btn"
+              onClick={handleSync}
+              disabled={syncing || !isOnline}
+              title={isOnline ? "Click to sync" : "Will sync when online"}
+            >
+              <svg
+                width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ animation: syncing ? "syncSpin 0.8s linear infinite" : "none" }}
+              >
+                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+              </svg>
+              <span style={{ background: "#F87171", borderRadius: 100, padding: "1px 6px", fontSize: 10 }}>{pendingCount}</span>
+              {syncing ? "Syncing…" : "Pending"}
+            </button>
+          )}
+
+          {/* Sync success message */}
+          {syncMessage && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: syncMessage.includes("✓") ? "#6EE7B7" : "#FCA5A5" }}>
+              {syncMessage}
+            </span>
+          )}
+
           <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ textAlign: "right" }}>
               <div style={{ color: "#fff", fontSize: 12, fontWeight: 700, lineHeight: 1 }}>{user?.name || "User"}</div>
@@ -528,6 +561,13 @@ export default function POSDashboard() {
             </button>
             {showMenu && (
               <div className="menu-dropdown">
+                <button className="menu-item" onClick={handleSync} disabled={syncing || !isOnline || pendingCount === 0}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                  </svg>
+                  Sync Now {pendingCount > 0 ? `(${pendingCount})` : ""}
+                </button>
                 <button className="menu-item" onClick={handleLogout}>
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -571,14 +611,7 @@ export default function POSDashboard() {
                       key={product._id}
                       onClick={() => addToCart(product)}
                       className={`prod-card${addedId === product._id ? " pop" : ""}`}
-                      style={{
-                        background: "#fff",
-                        borderRadius: 16,
-                        border: `1.5px solid ${C.border}`,
-                        overflow: "hidden",
-                        opacity: product.stock === 0 ? 0.5 : 1,
-                        cursor: product.stock === 0 ? "not-allowed" : "pointer",
-                      }}
+                      style={{ background: "#fff", borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: "hidden", opacity: product.stock === 0 ? 0.5 : 1, cursor: product.stock === 0 ? "not-allowed" : "pointer" }}
                     >
                       <div style={{ background: `linear-gradient(135deg, ${g1}, ${g2})`, aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                         <span style={{ fontSize: 36, opacity: .6, userSelect: "none" }}>📦</span>
@@ -620,26 +653,16 @@ export default function POSDashboard() {
 
         {/* ── Right: Cart ──────────────────────────────────────────────────── */}
         <aside style={{ width: 300, flexShrink: 0, borderLeft: `1px solid ${C.border}`, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* Customer */}
           <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 8 }}>Selected Customer</div>
-            <input
-              type="text"
-              placeholder="Search customer..."
-              value={selectedCustomer}
-              onChange={e => setSelectedCustomer(e.target.value)}
-              className="input-field"
-              style={{ fontSize: 13 }}
-            />
+            <input type="text" placeholder="Search customer..." value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)} className="input-field" style={{ fontSize: 13 }} />
           </div>
 
-          {/* Cart Items */}
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
             {cart.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: C.muted, gap: 10 }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.border} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 01-8 0"/>
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
                 </svg>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Cart is empty</div>
@@ -669,7 +692,6 @@ export default function POSDashboard() {
             )}
           </div>
 
-          {/* Totals */}
           <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: "14px 16px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontSize: 13, color: C.muted }}>Subtotal</span>
@@ -699,7 +721,6 @@ export default function POSDashboard() {
             </div>
           )}
 
-          {/* Actions */}
           <div style={{ flexShrink: 0, padding: "12px 16px" }}>
             <div style={{ marginBottom: 10 }}>
               <button className="ghost-btn" style={{ width: "100%", justifyContent: "center" }}>
@@ -723,19 +744,19 @@ export default function POSDashboard() {
                 <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                 <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
               </svg>
-              CHECKOUT
+              {isOnline ? "CHECKOUT" : "CHECKOUT (OFFLINE)"}
             </button>
           </div>
         </aside>
       </div>
 
-      {/* ── Checkout Modal ───────────────────────────────────────────────────── */}
       {showCheckout && (
         <CheckoutModal
           state={checkoutState}
           subtotal={subtotal}
           tax={tax}
           total={total}
+          isOnline={isOnline}
           onClose={() => setShowCheckout(false)}
           onSuccess={handleCheckoutSuccess}
         />
