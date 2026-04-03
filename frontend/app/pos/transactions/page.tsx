@@ -12,7 +12,7 @@ interface Transaction {
   customer: string;
   paymentMethod: "Cash" | "Card" | "Bank Transfer";
   amount: number;
-  status: "success" | "pending" | "failed";
+  status: "success" | "pending" | "failed" | "refunded" | "voided";
   createdAt: string;
 }
 
@@ -69,7 +69,10 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [paymentFilter, setPaymentFilter] = useState("All");
-
+  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+const [showActionModal, setShowActionModal] = useState(false);
+const [actionLoading, setActionLoading] = useState(false);
+const [actionMessage, setActionMessage] = useState("");
   useEffect(() => {
     if (!authLoading && !user) router.push("/pos/login");
   }, [user, authLoading, router]);
@@ -261,12 +264,26 @@ export default function TransactionsPage() {
                     {t.paymentMethod}
                   </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="11" fill={t.status === 'success' ? "#D1FAE5" : t.status === 'pending' ? "#FEF3C7" : "#FEE2E2"}/>
-                    <polyline points="7 12 10.5 15.5 17 9" stroke={t.status === 'success' ? "#10B981" : t.status === 'pending' ? "#D97706" : "#EF4444"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="11" fill={
+      t.status === 'success' ? "#D1FAE5" :
+      t.status === 'refunded' ? "#FEF3C7" :
+      t.status === 'voided' ? "#F3F4F6" : "#FEE2E2"
+    }/>
+    <polyline points="7 12 10.5 15.5 17 9" stroke={
+      t.status === 'success' ? "#10B981" :
+      t.status === 'refunded' ? "#D97706" :
+      t.status === 'voided' ? "#9CA3AF" : "#EF4444"
+    } strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+  <button
+    onClick={(e) => { e.stopPropagation(); setSelectedTxn(t); setShowActionModal(true); setActionMessage(""); }}
+    style={{ fontSize: 10, fontWeight: 700, color: C.brandMid, background: "#F0F2F8", border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}
+  >
+    ···
+  </button>
+</div>
               </div>
             ))
           )}
@@ -304,6 +321,120 @@ export default function TransactionsPage() {
         </div>
 
       </div>
+
+      {/* Action Modal */}
+{showActionModal && selectedTxn && (
+  <div
+    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+    onClick={(e) => { if (e.target === e.currentTarget) { setShowActionModal(false); setActionMessage(""); } }}
+  >
+    <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 400, padding: 28, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Manage Transaction</h3>
+        <button
+          onClick={() => { setShowActionModal(false); setActionMessage(""); }}
+          style={{ width: 28, height: 28, borderRadius: "50%", background: "#F3F4F6", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      {/* Transaction Info */}
+      <div style={{ background: "#F7F8FC", borderRadius: 12, padding: "14px 16px", marginBottom: 20, border: `1px solid ${C.border}` }}>
+        {[
+          { label: "Transaction", value: `#${selectedTxn.txnId}` },
+          { label: "Customer", value: selectedTxn.customer },
+          { label: "Amount", value: `Rs. ${selectedTxn.amount.toLocaleString()}` },
+          { label: "Status", value: selectedTxn.status.charAt(0).toUpperCase() + selectedTxn.status.slice(1) },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: C.muted }}>{label}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {actionMessage && (
+        <div style={{ marginBottom: 16, padding: "10px 14px", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 10 }}>
+          <p style={{ fontSize: 13, color: "#065F46", margin: 0, fontWeight: 600 }}>✓ {actionMessage}</p>
+        </div>
+      )}
+
+      {/* Actions */}
+      {selectedTxn.status === 'success' && !actionMessage && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ fontSize: 12, color: C.muted, margin: 0, textAlign: "center" }}>What would you like to do with this transaction?</p>
+          
+          {/* Refund */}
+          <button
+            disabled={actionLoading}
+            onClick={async () => {
+              setActionLoading(true);
+              try {
+                await api.patch(`/transactions/${selectedTxn._id}/refund`);
+                setActionMessage("Transaction marked as refunded");
+                setTransactions(prev => prev.map(t => t._id === selectedTxn._id ? { ...t, status: 'refunded' } : t));
+              } catch (err: any) {
+                setActionMessage(err.response?.data?.message || "Failed to refund");
+              } finally {
+                setActionLoading(false);
+              }
+            }}
+            style={{ width: "100%", padding: "12px", background: "#FEF3C7", border: "1.5px solid #FDE68A", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "#92400E", cursor: actionLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+            </svg>
+            Mark as Refunded
+          </button>
+
+          {/* Void */}
+          <button
+            disabled={actionLoading}
+            onClick={async () => {
+              if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
+              setActionLoading(true);
+              try {
+                await api.patch(`/transactions/${selectedTxn._id}/void`);
+                setActionMessage("Transaction voided successfully");
+                setTransactions(prev => prev.map(t => t._id === selectedTxn._id ? { ...t, status: 'voided' } : t));
+              } catch (err: any) {
+                setActionMessage(err.response?.data?.message || "Failed to void");
+              } finally {
+                setActionLoading(false);
+              }
+            }}
+            style={{ width: "100%", padding: "12px", background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "#DC2626", cursor: actionLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+            </svg>
+            Void Transaction
+          </button>
+        </div>
+      )}
+
+      {/* Already refunded/voided message */}
+      {(selectedTxn.status === 'refunded' || selectedTxn.status === 'voided') && !actionMessage && (
+        <div style={{ padding: "14px", background: "#F3F4F6", borderRadius: 12, textAlign: "center" }}>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+            This transaction has already been <strong>{selectedTxn.status}</strong>.
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={() => { setShowActionModal(false); setActionMessage(""); }}
+        style={{ width: "100%", marginTop: 14, padding: "10px", background: "none", border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontWeight: 600, color: C.muted, cursor: "pointer" }}
+      >
+        Close
+      </button>
     </div>
+  </div>
+)}
+    </div>
+    
   );
+  
 }
