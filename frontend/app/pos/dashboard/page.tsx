@@ -311,7 +311,6 @@ export default function POSDashboard() {
   const [addedId, setAddedId] = useState<string | null>(null);
   const [time, setTime] = useState(new Date());
   const [showCheckout, setShowCheckout] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [error, setError] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
@@ -320,7 +319,12 @@ export default function POSDashboard() {
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
-
+const [showPromo, setShowPromo] = useState(false);
+const [promoInput, setPromoInput] = useState("");
+const [promoLoading, setPromoLoading] = useState(false);
+const [promoError, setPromoError] = useState("");
+const [promoSuccess, setPromoSuccess] = useState("");
+const [promoCode, setPromoCode] = useState("");
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
@@ -723,12 +727,16 @@ export default function POSDashboard() {
 
           <div style={{ flexShrink: 0, padding: "12px 16px" }}>
             <div style={{ marginBottom: 10 }}>
-              <button className="ghost-btn" style={{ width: "100%", justifyContent: "center" }}>
+              <button
+                className="ghost-btn"
+                style={{ width: "100%", justifyContent: "center" }}
+                onClick={() => { setShowPromo(true); setPromoError(""); setPromoSuccess(""); }}
+>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
-                  <line x1="7" y1="7" x2="7.01" y2="7"/>
-                </svg>
-                Promo
+               <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+               <line x1="7" y1="7" x2="7.01" y2="7"/>
+               </svg>
+                 {discount > 0 ? `Promo: -Rs. ${discount.toFixed(2)}` : "Promo"}
               </button>
             </div>
             <button
@@ -761,6 +769,89 @@ export default function POSDashboard() {
           onSuccess={handleCheckoutSuccess}
         />
       )}
+      {/* Promo Modal */}
+{showPromo && (
+  <div
+    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+    onClick={(e) => { if (e.target === e.currentTarget) { setShowPromo(false); setPromoError(""); setPromoSuccess(""); } }}
+  >
+    <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 380, padding: 28, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Apply Promo Code</h3>
+        <button
+          onClick={() => { setShowPromo(false); setPromoError(""); setPromoSuccess(""); }}
+          style={{ width: 28, height: 28, borderRadius: "50%", background: "#F3F4F6", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      {/* Current discount */}
+      {discount > 0 && (
+        <div style={{ marginBottom: 16, padding: "10px 14px", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <p style={{ fontSize: 12, color: "#065F46", margin: 0, fontWeight: 700 }}>✓ Applied: {promoCode}</p>
+            <p style={{ fontSize: 12, color: "#065F46", margin: 0 }}>Saving Rs. {discount.toFixed(2)}</p>
+          </div>
+          <button
+            onClick={() => { setDiscount(0); setPromoCode(""); setPromoInput(""); setPromoSuccess(""); }}
+            style={{ fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+            Remove
+          </button>
+        </div>
+      )}
+
+      {promoError && (
+        <div style={{ marginBottom: 12, padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10 }}>
+          <p style={{ fontSize: 13, color: "#EF4444", margin: 0 }}>{promoError}</p>
+        </div>
+      )}
+
+      {promoSuccess && (
+        <div style={{ marginBottom: 12, padding: "10px 14px", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 10 }}>
+          <p style={{ fontSize: 13, color: "#065F46", margin: 0, fontWeight: 600 }}>✓ {promoSuccess}</p>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          type="text"
+          placeholder="Enter promo code"
+          value={promoInput}
+          onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); setPromoSuccess(""); }}
+          style={{ flex: 1, padding: "10px 14px", border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: "none", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "1px" }}
+        />
+        <button
+          disabled={promoLoading || !promoInput.trim()}
+          onClick={async () => {
+            setPromoLoading(true);
+            setPromoError("");
+            setPromoSuccess("");
+            try {
+              const { data } = await api.post('/promos/validate', {
+                code: promoInput,
+                orderAmount: subtotal,
+              });
+              setDiscount(data.data.discountAmount);
+              setPromoCode(data.data.code);
+              setPromoSuccess(data.data.message);
+            } catch (err: any) {
+              setPromoError(err.response?.data?.message || "Invalid promo code");
+            } finally {
+              setPromoLoading(false);
+            }
+          }}
+          style={{ padding: "10px 18px", background: promoLoading || !promoInput.trim() ? "#9290C3" : C.brand, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: promoLoading || !promoInput.trim() ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+        >
+          {promoLoading ? "..." : "Apply"}
+        </button>
+      </div>
+
+      <p style={{ fontSize: 11, color: C.muted, marginTop: 10, textAlign: "center" }}>
+        Promo codes are case-insensitive
+      </p>
+    </div>
+  </div>
+)}
     </div>
   );
 }
