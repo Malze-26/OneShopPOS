@@ -12,17 +12,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+ const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
   setError("");
   setLoading(true);
-
   try {
-    await login(email, password);
+    await login(email, password, rememberMe);
   } catch (err: any) {
-    console.log("Full error:", err);
-    console.log("Response:", err.response);
-    console.log("Message:", err.response?.data?.message);
     setError(err.response?.data?.message || "Login failed. Please try again.");
   } finally {
     setLoading(false);
