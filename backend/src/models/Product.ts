@@ -13,6 +13,8 @@ export interface IProduct extends Document {
   storeId: string;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
   createdBy: mongoose.Types.ObjectId;
+  isWeightBased: boolean;
+  unit: 'kg' | 'item';
 }
 
 const productSchema = new Schema<IProduct>(
@@ -72,6 +74,15 @@ const productSchema = new Schema<IProduct>(
       ref: 'User',
       required: true,
     },
+    isWeightBased: {
+  type: Boolean,
+  default: false,
+},
+unit: {
+  type: String,
+  enum: ['kg', 'item'],
+  default: 'item',
+},
   },
   {
     timestamps: true,
