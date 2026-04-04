@@ -66,7 +66,7 @@ const salesTrendData = [
 const paymentMethodData = [
   { name: 'Cash', value: 45, amount: 110250, color: '#12b76a' },
   { name: 'Card', value: 40, amount: 98000, color: '#155dfc' },
-  { name: 'Bank Transfer', value: 15, amount: 36750, color: '#f79009' },
+  
 ];
 
 const topProducts = [

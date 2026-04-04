@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Edit, ArrowLeftRight, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, ArrowLeftRight, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import api from '@/app/lib/api';
 
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
@@ -99,24 +99,33 @@ export default function ProductDetailPage() {
   return (
     <div className="p-6 max-w-[1200px] mx-auto">
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6">
         <Link
-          href={`/products/${params.id}/edit`}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+          href="/products"
+          className="inline-flex items-center gap-2 px-4 py-2 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm font-medium transition-colors"
         >
-          <Edit className="w-4 h-4" />
-          Edit Product
+          <ArrowLeft className="w-4 h-4" />
+          Back to Products
         </Link>
-        <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
-          <ArrowLeftRight className="w-4 h-4" />
-          Adjust Stock
-        </button>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="px-4 py-2 text-[#f04438] hover:bg-[#fef3f2] rounded-lg text-sm font-medium transition-colors"
-        >
-          Delete
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/products/${params.id}/edit`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Edit className="w-4 h-4" />
+            Edit Product
+          </Link>
+          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
+            <ArrowLeftRight className="w-4 h-4" />
+            Adjust Stock
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="px-4 py-2 text-[#f04438] hover:bg-[#fef3f2] rounded-lg text-sm font-medium transition-colors"
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
       {/* Product Details Grid */}

@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 *.log
+
+# Uploaded files – re-created by npm run seed or user uploads
+uploads/
+!uploads/products/.gitkeep

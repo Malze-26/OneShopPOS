@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Edit2, Package as PackageIcon, ChevronLeft, ChevronRight, Boxes, Loader2 } from 'lucide-react';
+import { Eye, Package as PackageIcon, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import api from '@/app/lib/api';
 
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
@@ -174,24 +174,14 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                     </span>
                   </td>
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/products/${product._id}/edit`}
-                        className="flex items-center gap-2 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit Product"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        <span className="text-sm">Edit</span>
-                      </Link>
-                      <Link
-                        href={`/products/${product._id}`}
-                        className="flex items-center gap-2 px-3 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        title="Adjust Stock"
-                      >
-                        <Boxes className="w-4 h-4" />
-                        <span className="text-sm">Adjust Stock</span>
-                      </Link>
-                    </div>
+                    <Link
+                      href={`/products/${product._id}`}
+                      className="flex items-center gap-2 px-3 py-2 text-[#155dfc] hover:bg-[#eff4ff] rounded-lg transition-colors w-fit"
+                      title="View Product"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span className="text-sm">View</span>
+                    </Link>
                   </td>
                 </tr>
               );
