@@ -17,7 +17,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -41,22 +41,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
-        email,
-        password,
-      });
-      // Persist in localStorage + cookie (cookie used by Next.js middleware)
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      Cookies.set('token', data.token, { expires: 7, sameSite: 'Strict' });
-      setToken(data.token);
-      setUser(data.user);
-      router.push('/dashboard');
-    },
-    [router]
-  );
+ const login = useCallback(
+  async (email: string, password: string, rememberMe: boolean = false) => {
+    const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
+      email,
+      password,
+    });
+    const expiryDays = rememberMe ? 7 : 1;
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    Cookies.set('token', data.token, { expires: expiryDays, sameSite: 'Strict' });
+    setToken(data.token);
+    setUser(data.user);
+    router.push('/pos/dashboard');
+  },
+  [router]
+);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     Cookies.remove('token');
     setToken(null);
     setUser(null);
-    router.push('/login');
+    router.push('/pos/login');
   }, [router]);
 
   return (

@@ -105,3 +105,39 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
     next(err);
   }
 }
+
+// DELETE /api/transactions/:id/void — Void transaction
+export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
+  const transaction = await Transaction.findById(req.params.id);
+  if (!transaction) {
+    res.status(404).json({ message: 'Transaction not found' });
+    return;
+  }
+  if (transaction.status === 'voided') {
+    res.status(400).json({ message: 'Transaction already voided' });
+    return;
+  }
+  transaction.status = 'voided';
+  await transaction.save();
+  res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
+}
+
+// PATCH /api/transactions/:id/refund — Refund transaction
+export async function refundTransaction(req: AuthRequest, res: Response): Promise<void> {
+  const transaction = await Transaction.findById(req.params.id);
+  if (!transaction) {
+    res.status(404).json({ message: 'Transaction not found' });
+    return;
+  }
+  if (transaction.status === 'refunded') {
+    res.status(400).json({ message: 'Transaction already refunded' });
+    return;
+  }
+  if (transaction.status === 'voided') {
+    res.status(400).json({ message: 'Cannot refund a voided transaction' });
+    return;
+  }
+  transaction.status = 'refunded';
+  await transaction.save();
+  res.status(200).json({ message: 'Transaction refunded successfully', data: transaction });
+}
