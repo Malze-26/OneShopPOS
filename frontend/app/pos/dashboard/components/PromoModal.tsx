@@ -29,31 +29,36 @@ export default function PromoModal({
 }: PromoModalProps) {
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm z-50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 380, padding: 28, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div className="bg-white rounded-[20px] w-full max-w-[380px] p-7 font-sans">
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Apply Promo Code</h3>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-[17px] font-extrabold text-[color:var(--color-text)]">Apply Promo Code</h3>
           <button
             onClick={onClose}
-            style={{ width: 28, height: 28, borderRadius: "50%", background: "#F3F4F6", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
           </button>
         </div>
 
         {/* Current discount */}
         {discount > 0 && (
-          <div style={{ marginBottom: 16, padding: "10px 14px", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="flex justify-between items-center mb-4 p-3 bg-green-100 border border-green-300 rounded-lg">
             <div>
-              <p style={{ fontSize: 12, color: "#065F46", margin: 0, fontWeight: 700 }}>✓ Applied: {promoCode}</p>
-              <p style={{ fontSize: 12, color: "#065F46", margin: 0 }}>Saving Rs. {discount.toFixed(2)}</p>
+              <p className="text-[12px] font-bold text-green-800 m-0">✓ Applied: {promoCode}</p>
+              <p className="text-[12px] text-green-800 m-0">Saving Rs. {discount.toFixed(2)}</p>
             </div>
             <button
               onClick={onRemove}
-              style={{ fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+              className="text-[11px] font-bold text-red-500 cursor-pointer bg-none border-none"
+            >
               Remove
             </button>
           </div>
@@ -61,37 +66,39 @@ export default function PromoModal({
 
         {/* Error */}
         {promoError && (
-          <div style={{ marginBottom: 12, padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10 }}>
-            <p style={{ fontSize: 13, color: "#EF4444", margin: 0 }}>{promoError}</p>
+          <div className="mb-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+            <p className="text-[13px] text-red-500 m-0">{promoError}</p>
           </div>
         )}
 
         {/* Success */}
         {promoSuccess && (
-          <div style={{ marginBottom: 12, padding: "10px 14px", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 10 }}>
-            <p style={{ fontSize: 13, color: "#065F46", margin: 0, fontWeight: 600 }}>✓ {promoSuccess}</p>
+          <div className="mb-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+            <p className="text-[13px] text-green-800 font-semibold m-0">✓ {promoSuccess}</p>
           </div>
         )}
 
         {/* Input + Apply */}
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex gap-2 mb-2">
           <input
             type="text"
             placeholder="Enter promo code"
             value={promoInput}
             onChange={(e) => onPromoInputChange(e.target.value.toUpperCase())}
-            style={{ flex: 1, padding: "10px 14px", border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: "none", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "1px" }}
+            className={`flex-1 p-3 border-[1.5px] rounded-lg text-[14px] font-sans outline-none text-uppercase tracking-wider ${C.border}`}
           />
           <button
             disabled={promoLoading || !promoInput.trim()}
             onClick={onApply}
-            style={{ padding: "10px 18px", background: promoLoading || !promoInput.trim() ? "#9290C3" : C.brand, color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: promoLoading || !promoInput.trim() ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+            className={`px-4 py-2 rounded-lg font-bold text-[13px] text-white ${
+              promoLoading || !promoInput.trim() ? "bg-gray-400 cursor-not-allowed" : "bg-[color:var(--color-primary)] cursor-pointer"
+            }`}
           >
             {promoLoading ? "..." : "Apply"}
           </button>
         </div>
 
-        <p style={{ fontSize: 11, color: C.muted, marginTop: 10, textAlign: "center" }}>
+        <p className="text-[11px] text-[color:var(--color-secondary)] text-center mt-2">
           Promo codes are case-insensitive
         </p>
       </div>

@@ -23,5 +23,8 @@
     "dotenv": "^17.4.0",
     "lucide-react": "^0.487.0",
     "mongoose": "^9.3.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.2.2"
   }
 }

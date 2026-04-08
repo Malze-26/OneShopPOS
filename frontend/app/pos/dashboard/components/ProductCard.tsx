@@ -1,3 +1,5 @@
+"use client";
+
 import { C, CARD_GRADIENTS } from "../constants/tokens";
 
 interface Product {
@@ -36,113 +38,80 @@ export default function ProductCard({
 
   return (
     <div
-      onClick={() => onAdd(product)}
-      className={`prod-card${addedId === product._id ? " pop" : ""}`}
-      style={{
-        background: "#fff",
-        borderRadius: 16,
-        border: `1.5px solid ${inCart ? C.brand : C.border}`,
-        overflow: "hidden",
-        opacity: product.stock === 0 ? 0.6 : 1,
-        cursor: product.stock === 0 ? "not-allowed" : "pointer",
-        boxShadow: inCart ? `0 4px 16px rgba(27,26,85,0.15)` : "none",
-        transition: "all .15s",
-      }}
+      onClick={() => product.stock > 0 && onAdd(product)}
+      className={`relative rounded-[var(--radius-lg)] overflow-hidden cursor-pointer transition-all duration-150 border ${
+        inCart ? "border-[var(--color-primary)] shadow-[0_4px_16px_rgba(27,26,85,0.15)]" : "border-[var(--color-border)]"
+      } ${addedId === product._id ? "animate-pulse" : ""}`}
+      style={{ opacity: product.stock === 0 ? 0.6 : 1 }}
     >
       {/* Card Image Area */}
-      <div style={{ background: `linear-gradient(135deg, ${g1}, ${g2})`, aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-
+      <div
+        className="relative flex items-center justify-center aspect-[4/3]"
+        style={{ background: `linear-gradient(135deg, ${g1}, ${g2})` }}
+      >
         {/* Initial Avatar */}
-        <div style={{
-          width: 52, height: 52, borderRadius: 14,
-          background: "rgba(255,255,255,0.5)",
-          backdropFilter: "blur(8px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 24, fontWeight: 900, color: C.brand,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        }}>
+        <div className="w-13 h-13 rounded-[var(--radius-md)] bg-[rgba(255,255,255,0.5)] backdrop-blur-sm flex items-center justify-center text-[24px] font-black text-[var(--color-primary)] shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
           {initial}
         </div>
 
-        {/* Category badge */}
-        <div style={{
-          position: "absolute", top: 8, left: 8,
-          background: "rgba(255,255,255,0.75)",
-          backdropFilter: "blur(4px)",
-          padding: "2px 8px", borderRadius: 100,
-          fontSize: 9, fontWeight: 700, color: C.brandMid,
-          textTransform: "uppercase", letterSpacing: "0.5px",
-        }}>
+        {/* Category Badge */}
+        <div className="absolute top-2 left-2 px-2 py-[2px] rounded-full text-[9px] font-bold text-[var(--color-secondary)] uppercase tracking-[0.5px] bg-[rgba(255,255,255,0.75)] backdrop-blur-[4px]">
           {product.category}
         </div>
 
-        {/* Cart qty badge */}
+        {/* Cart Quantity Badge */}
         {inCart && (
-          <div style={{
-            position: "absolute", top: 8, right: 8,
-            background: C.brand, color: "#fff",
-            width: 22, height: 22, borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, fontWeight: 800,
-            boxShadow: "0 2px 6px rgba(27,26,85,0.3)",
-          }}>
+          <div className="absolute top-2 right-2 w-5.5 h-5.5 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-[11px] font-extrabold shadow-[0_2px_6px_rgba(27,26,85,0.3)]">
             {cartQty}
           </div>
         )}
 
-        {/* Out of stock overlay */}
+        {/* Out of Stock Overlay */}
         {product.stock === 0 && (
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "rgba(0,0,0,0.35)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <span style={{
-              color: "#fff", fontSize: 10, fontWeight: 800,
-              background: C.danger, padding: "3px 10px", borderRadius: 100,
-              letterSpacing: "0.5px",
-            }}>OUT OF STOCK</span>
+          <div className="absolute inset-0 bg-[rgba(0,0,0,0.35)] flex items-center justify-center">
+            <span className="text-[10px] font-extrabold bg-[var(--color-danger)] text-white px-3 py-[3px] rounded-full tracking-[0.5px]">
+              OUT OF STOCK
+            </span>
           </div>
         )}
 
-        {/* Low stock warning */}
+        {/* Low Stock Warning */}
         {isLowStock && (
-          <div style={{
-            position: "absolute", bottom: 8, left: 8,
-            background: "#FEF3C7", border: "1px solid #FDE68A",
-            padding: "2px 8px", borderRadius: 100,
-            fontSize: 9, fontWeight: 700, color: "#92400E",
-          }}>
+          <div className="absolute bottom-2 left-2 px-2 py-[2px] rounded-full text-[9px] font-bold text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A]">
             ⚠ LOW STOCK
           </div>
         )}
       </div>
 
       {/* Card Body */}
-      <div style={{ padding: "10px 12px 12px" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <div className="px-3 pt-2 pb-3">
+        <div className="text-[12px] font-bold text-[var(--color-dark)] mb-1 truncate">
           {product.name}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: C.brand, fontFamily: "'DM Mono', monospace" }}>
+        <div className="flex justify-between items-center mb-2">
+          <div className="font-extrabold text-[15px] text-[var(--color-primary)] font-mono">
             Rs. {product.sellingPrice.toLocaleString()}
           </div>
         </div>
 
-        {/* Stock bar */}
+        {/* Stock Bar */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-            <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.5px" }}>Stock</span>
-            <span style={{ fontSize: 9, fontWeight: 700, color: stockColor }}>{product.stock}</span>
+          <div className="flex justify-between items-center mb-[3px]">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--color-secondary)]">
+              Stock
+            </span>
+            <span className="text-[9px] font-bold" style={{ color: stockColor }}>
+              {product.stock}
+            </span>
           </div>
-          <div style={{ height: 4, background: "#F3F4F6", borderRadius: 100, overflow: "hidden" }}>
-            <div style={{
-              height: "100%",
-              width: `${Math.min(100, (product.stock / 120) * 100)}%`,
-              background: stockColor,
-              borderRadius: 100,
-              transition: "width .3s ease",
-            }}/>
+          <div className="h-1 rounded-full bg-[#F3F4F6] overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.min(100, (product.stock / 120) * 100)}%`,
+                background: stockColor,
+              }}
+            />
           </div>
         </div>
       </div>
