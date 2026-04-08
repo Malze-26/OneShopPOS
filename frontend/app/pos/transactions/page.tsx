@@ -110,15 +110,15 @@ const [actionMessage, setActionMessage] = useState("");
   const avgBill = transactions.length ? Math.round(todaySales / transactions.length) : 0;
 
   if (authLoading || loadingData) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: C.bg }}>
-      <div style={{ width: 40, height: 40, border: `3px solid ${C.brand}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+    <div className="flex items-center justify-center h-screen" style={{ background: C.bg }}>
+      <div className="animate-spin" style={{ width: 40, height: 40, border: `3px solid ${C.brand}`, borderTopColor: "transparent", borderRadius: "50%" }} />
     </div>
   );
 
   if (!user) return null;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div className="min-h-screen" style={{ background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -138,57 +138,57 @@ const [actionMessage, setActionMessage] = useState("");
         .filter-pill.inactive:hover { border-color:${C.brandLight};color:${C.brand}; }
       `}</style>
 
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "32px 24px" }}>
+      <div className="max-w-[1040px] mx-auto px-6 py-8">
 
         {/* Breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: C.muted, marginBottom: 20 }}>
-          <button onClick={() => router.push("/pos")} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 13, fontFamily: "inherit" }}>Home</button>
+        <div className="flex items-center gap-1.5 text-[13px] mb-5" style={{ color: C.muted }}>
+          <button onClick={() => router.push("/pos")} className="bg-transparent border-none cursor-pointer" style={{ color: C.muted, fontFamily: "inherit" }}>Home</button>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          <span style={{ color: C.text, fontWeight: 600 }}>Transaction History</span>
+          <span className="font-semibold" style={{ color: C.text }}>Transaction History</span>
         </div>
 
         {/* Page Title */}
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: C.text, letterSpacing: "-0.5px", marginBottom: 4 }}>Transaction History</h1>
-          <p style={{ fontSize: 13, color: C.muted }}>Manage and audit your business sales performance</p>
+        <div className="mb-7">
+          <h1 className="text-[28px] font-extrabold mb-1" style={{ color: C.text, letterSpacing: "-0.5px" }}>Transaction History</h1>
+          <p className="text-[13px]" style={{ color: C.muted }}>Manage and audit your business sales performance</p>
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 28 }} className="fade-up">
+        <div className="grid gap-4 mb-7 fade-up" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
           {/* Total Sales */}
-          <div style={{ borderRadius: 16, background: `linear-gradient(135deg, ${C.brand} 0%, #2D2B8F 100%)`, padding: "24px 24px 20px", position: "relative", overflow: "hidden", minHeight: 130 }}>
-            <div style={{ position: "absolute", right: -10, top: -10, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,.06)" }}/>
-            <div style={{ position: "absolute", right: 20, bottom: -20, width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,.05)" }}/>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Total Sales</p>
-            <p style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-1px", fontFamily: "'DM Mono',monospace", marginBottom: 12 }}>Rs. {todaySales.toLocaleString()}</p>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(52,211,153,.2)", borderRadius: 100, padding: "3px 10px" }}>
+          <div className="relative overflow-hidden min-h-[130px] rounded-2xl" style={{ background: `linear-gradient(135deg, ${C.brand} 0%, #2D2B8F 100%)`, padding: "24px 24px 20px" }}>
+            <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full" style={{ background: "rgba(255,255,255,.06)" }} />
+            <div className="absolute right-5 bottom-[-20px] w-[70px] h-[70px] rounded-full" style={{ background: "rgba(255,255,255,.05)" }} />
+            <p className="text-[11px] font-bold uppercase mb-2" style={{ color: "rgba(255,255,255,.65)", letterSpacing: "1px" }}>Total Sales</p>
+            <p className="text-[28px] font-black mb-3" style={{ color: "#fff", letterSpacing: "-1px", fontFamily: "'DM Mono',monospace" }}>Rs. {todaySales.toLocaleString()}</p>
+            <div className="inline-flex items-center gap-1.5 rounded-full" style={{ background: "rgba(52,211,153,.2)", padding: "3px 10px" }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#6EE7B7" }}>{transactions.length} transactions</span>
+              <span className="text-[11px] font-bold" style={{ color: "#6EE7B7" }}>{transactions.length} transactions</span>
             </div>
           </div>
 
           {/* Transactions Count */}
-          <div style={{ borderRadius: 16, background: `linear-gradient(135deg, ${C.brandMid} 0%, #6D75C0 100%)`, padding: "24px 24px 20px", position: "relative", overflow: "hidden", minHeight: 130 }}>
-            <div style={{ position: "absolute", right: -10, top: -10, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,.06)" }}/>
-            <svg style={{ position: "absolute", right: 20, bottom: 20, opacity: .15 }} width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className="relative overflow-hidden min-h-[130px] rounded-2xl" style={{ background: `linear-gradient(135deg, ${C.brandMid} 0%, #6D75C0 100%)`, padding: "24px 24px 20px" }}>
+            <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full" style={{ background: "rgba(255,255,255,.06)" }} />
+            <svg className="absolute right-5 bottom-5 opacity-15" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
             </svg>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Transactions</p>
-            <p style={{ fontSize: 36, fontWeight: 900, color: "#fff", letterSpacing: "-1px", marginBottom: 8 }}>{transactions.length}</p>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,.6)", fontWeight: 500 }}>Avg: Rs. {avgBill.toLocaleString()}</p>
+            <p className="text-[11px] font-bold uppercase mb-2" style={{ color: "rgba(255,255,255,.65)", letterSpacing: "1px" }}>Transactions</p>
+            <p className="text-[36px] font-black mb-2" style={{ color: "#fff", letterSpacing: "-1px" }}>{transactions.length}</p>
+            <p className="text-[12px] font-medium" style={{ color: "rgba(255,255,255,.6)" }}>Avg: Rs. {avgBill.toLocaleString()}</p>
           </div>
 
           {/* Success Rate */}
-          <div style={{ borderRadius: 16, background: `linear-gradient(135deg, ${C.brandLight} 0%, #A8A6D8 100%)`, padding: "24px 24px 20px", position: "relative", overflow: "hidden", minHeight: 130 }}>
-            <div style={{ position: "absolute", right: -10, top: -10, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,.06)" }}/>
-            <svg style={{ position: "absolute", right: 16, bottom: 12, opacity: .18 }} width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className="relative overflow-hidden min-h-[130px] rounded-2xl" style={{ background: `linear-gradient(135deg, ${C.brandLight} 0%, #A8A6D8 100%)`, padding: "24px 24px 20px" }}>
+            <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full" style={{ background: "rgba(255,255,255,.06)" }} />
+            <svg className="absolute right-4 bottom-3 opacity-18" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.65)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Success Rate</p>
-            <p style={{ fontSize: 36, fontWeight: 900, color: "#fff", letterSpacing: "-1px", marginBottom: 8 }}>
+            <p className="text-[11px] font-bold uppercase mb-2" style={{ color: "rgba(255,255,255,.65)", letterSpacing: "1px" }}>Success Rate</p>
+            <p className="text-[36px] font-black mb-2" style={{ color: "#fff", letterSpacing: "-1px" }}>
               {transactions.length ? Math.round((transactions.filter(t => t.status === 'success').length / transactions.length) * 100) : 0}%
             </p>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{transactions.filter(t => t.status === 'success').length} successful</p>
+            <p className="text-[12px] font-medium" style={{ color: "rgba(255,255,255,.7)" }}>{transactions.filter(t => t.status === 'success').length} successful</p>
           </div>
         </div>
 

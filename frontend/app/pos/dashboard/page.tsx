@@ -214,10 +214,13 @@ export default function POSDashboard() {
 
   if (authLoading || loadingData) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: C.bg }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 48, height: 48, border: `3px solid ${C.brand}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-          <p style={{ marginTop: 16, color: C.muted, fontFamily: "system-ui" }}>Loading...</p>
+      <div className="flex items-center justify-center h-screen" style={{ background: C.bg }}>
+        <div className="text-center">
+          <div
+            className="mx-auto animate-spin"
+            style={{ width: 48, height: 48, border: `3px solid ${C.brand}`, borderTopColor: "transparent", borderRadius: "50%" }}
+          />
+          <p className="mt-4" style={{ color: C.muted, fontFamily: "system-ui" }}>Loading...</p>
         </div>
       </div>
     );
@@ -226,7 +229,7 @@ export default function POSDashboard() {
   if (!user) return null;
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif", overflow: "hidden" }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500&display=swap');
         * { box-sizing:border-box; margin:0; padding:0; }
@@ -283,11 +286,11 @@ export default function POSDashboard() {
         onLogout={handleLogout}
       />
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+      <div className="flex flex-1 min-h-0">
 
-        <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px 10px", flexShrink: 0 }}>
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
+          <div className="flex-shrink-0 px-4 pt-3 pb-2" style={{ paddingTop: 12, paddingBottom: 10 }}>
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {["All", ...categories.map(c => c.name)].map(cat => (
                 <button key={cat} onClick={() => setActiveCategory(cat)} className={`cat-pill ${activeCategory === cat ? "active" : "inactive"}`}>
                   {cat}
@@ -296,14 +299,14 @@ export default function POSDashboard() {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
             {filteredProducts.length === 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 200, color: C.muted, gap: 8 }}>
-                <span style={{ fontSize: 40 }}>🔍</span>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>No products found</span>
+              <div className="flex flex-col items-center justify-center h-[200px] gap-2" style={{ color: C.muted }}>
+                <span className="text-[40px]">🔍</span>
+                <span className="text-sm font-medium">No products found</span>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
                 {filteredProducts.map((product, i) => {
                   const inCart = cart.find(c => c.id === product._id);
                   return (
@@ -322,8 +325,8 @@ export default function POSDashboard() {
             )}
           </div>
 
-          <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, background: C.bg, padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex items-center justify-between flex-shrink-0 px-4 py-2 border-t" style={{ borderTop: `1px solid ${C.border}`, background: C.bg }}>
+            <div className="flex gap-2">
               <button className="ghost-btn" onClick={() => router.push("/pos/transactions")}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 History
@@ -333,7 +336,7 @@ export default function POSDashboard() {
                 Customers
               </button>
             </div>
-            <span style={{ fontSize: 12, color: C.muted }}>{filteredProducts.length} item{filteredProducts.length !== 1 ? "s" : ""}</span>
+            <span className="text-xs" style={{ color: C.muted }}>{filteredProducts.length} item{filteredProducts.length !== 1 ? "s" : ""}</span>
           </div>
         </main>
 
