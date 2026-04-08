@@ -35,40 +35,41 @@ export default function TopBar({
   onLogout,
 }: TopBarProps) {
   return (
-    <header style={{ height: 56, background: C.brand, display: "flex", alignItems: "center", padding: "0 16px", gap: 12, flexShrink: 0, zIndex: 20 }}>
+    <header className="flex items-center px-4 gap-3 h-14 flex-shrink-0 z-20" style={{ background: C.brand }}>
 
       {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "-1px" }}>POS</span>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)" }}>
+          <span className="text-white font-black text-[10px] tracking-[-1px]">POS</span>
         </div>
-        <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, letterSpacing: "-.3px" }}>OneShop POS</span>
+        <span className="text-white font-bold text-[14px] tracking-[-0.3px]">OneShop POS</span>
       </div>
 
       {/* Search */}
-      <div style={{ flex: 1, maxWidth: 420, margin: "0 auto", position: "relative" }}>
-        <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", opacity: .4, pointerEvents: "none" }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      <div className="relative flex-1 max-w-[420px] mx-auto">
+        <svg className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40 pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="M21 21l-4.35-4.35"/>
         </svg>
         <input
           value={search}
           onChange={e => onSearch(e.target.value)}
           placeholder="Search products…"
-          style={{ width: "100%", padding: "7px 12px 7px 30px", background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)", borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", fontFamily: "inherit" }}
+          className="w-full pl-7 pr-3 py-1 bg-white/12 border border-white/18 rounded text-white text-[13px] outline-none font-sans"
         />
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <div className="flex items-center gap-2 flex-shrink-0">
 
         {/* Clock */}
-        <span style={{ color: "rgba(255,255,255,.6)", fontSize: 12, fontFamily: "'DM Mono',monospace", letterSpacing: "1px" }}>
+        <span className="text-white/60 text-[12px] font-mono tracking-wide">
           {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
 
         {/* Online/Offline badge */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", background: isOnline ? "rgba(16,185,129,.2)" : "rgba(239,68,68,.2)", borderRadius: 100 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: isOnline ? "#34D399" : "#F87171" }}/>
-          <span style={{ color: isOnline ? "#6EE7B7" : "#FCA5A5", fontSize: 11, fontWeight: 600 }}>
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${isOnline ? "bg-green-200/20" : "bg-red-200/20"}`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-green-400" : "bg-red-400"}`} />
+          <span className={`text-[11px] font-semibold ${isOnline ? "text-green-300" : "text-red-300"}`}>
             {isOnline ? "Online" : "Offline"}
           </span>
         </div>
@@ -76,53 +77,54 @@ export default function TopBar({
         {/* Pending sync button */}
         {pendingCount > 0 && (
           <button
-            className="sync-btn"
+            className="flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded cursor-pointer"
             onClick={onSync}
             disabled={syncing || !isOnline}
-            title={isOnline ? "Click to sync" : "Will sync when online"}
           >
             <svg
               width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ animation: syncing ? "syncSpin 0.8s linear infinite" : "none" }}
+              className={syncing ? "animate-spin" : ""}
             >
-              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
               <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
             </svg>
-            <span style={{ background: "#F87171", borderRadius: 100, padding: "1px 6px", fontSize: 10 }}>{pendingCount}</span>
+            <span className="bg-red-400 text-white rounded-full px-1 text-[10px]">{pendingCount}</span>
             {syncing ? "Syncing…" : "Pending"}
           </button>
         )}
 
         {/* Sync message */}
         {syncMessage && (
-          <span style={{ fontSize: 11, fontWeight: 700, color: syncMessage.includes("✓") ? "#6EE7B7" : "#FCA5A5" }}>
+          <span className={`text-[11px] font-bold ${syncMessage.includes("✓") ? "text-green-300" : "text-red-300"}`}>
             {syncMessage}
           </span>
         )}
 
         {/* User menu */}
-        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ color: "#fff", fontSize: 12, fontWeight: 700, lineHeight: 1 }}>{user.name}</div>
-            <div style={{ color: "rgba(255,255,255,.5)", fontSize: 10, marginTop: 2 }}>{user.role}</div>
+        <div className="relative flex items-center gap-2">
+          <div className="text-right">
+            <div className="text-white text-[12px] font-bold leading-none">{user.name}</div>
+            <div className="text-white/50 text-[10px] mt-0.5">{user.role}</div>
           </div>
           <button
             onClick={onToggleMenu}
-            style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.2)", border: "1.5px solid rgba(255,255,255,.3)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            className="w-8 h-8 rounded-full border border-white/30 bg-white/20 flex items-center justify-center text-white text-[12px] font-bold cursor-pointer"
           >
             {user.name[0].toUpperCase()}
           </button>
 
           {showMenu && (
-            <div className="menu-dropdown">
-              <button className="menu-item" onClick={onSync} disabled={syncing || !isOnline || pendingCount === 0}>
+            <div className="absolute right-0 mt-2 bg-white rounded shadow-md overflow-hidden z-50">
+              <button className="flex items-center gap-1 px-3 py-2 text-[13px] w-full hover:bg-gray-100 disabled:opacity-50"
+                onClick={onSync} disabled={syncing || !isOnline || pendingCount === 0}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
                   <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                 </svg>
                 Sync Now {pendingCount > 0 ? `(${pendingCount})` : ""}
               </button>
-              <button className="menu-item" onClick={onLogout}>
+              <button className="flex items-center gap-1 px-3 py-2 text-[13px] w-full hover:bg-gray-100" onClick={onLogout}>
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
