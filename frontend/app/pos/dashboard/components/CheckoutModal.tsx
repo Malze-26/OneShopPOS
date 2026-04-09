@@ -131,9 +131,9 @@ export default function CheckoutModal({
               <div className="text-[var(--color-secondary)] font-bold uppercase text-xs mb-2">Payment Method</div>
               <div className="flex gap-2">
                 {[
+                  
                   { id: "cash", label: "Cash", icon: "💵" },
-                  { id: "card", label: "Card", icon: "💳" },
-                  { id: "transfer", label: "Transfer", icon: "🏦" },
+                 
                 ].map((m) => (
                   <button
                     key={m.id}
