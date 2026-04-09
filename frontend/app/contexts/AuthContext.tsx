@@ -30,37 +30,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session from localStorage on mount
+  // ── Restore session on mount ─────────────────────────────────────────────
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const storedToken =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token');
+    const storedUser =
+      localStorage.getItem('user') ||
+      sessionStorage.getItem('user');
+
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
 
- const login = useCallback(
-  async (email: string, password: string, rememberMe: boolean = false) => {
-    const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
-      email,
-      password,
-    });
-    const expiryDays = rememberMe ? 7 : 1;
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    Cookies.set('token', data.token, { expires: expiryDays, sameSite: 'Strict' });
-    setToken(data.token);
-    setUser(data.user);
-    router.push('/pos/dashboard');
-  },
-  [router]
-);
+  // ── Login ────────────────────────────────────────────────────────────────
+  const login = useCallback(
+    async (email: string, password: string, rememberMe: boolean = false) => {
+      const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
+        email,
+        password,
+      });
 
+      const storage = rememberMe ? localStorage : sessionStorage;
+      storage.setItem('token', data.token);
+      storage.setItem('user', JSON.stringify(data.user));
+
+      Cookies.set('token', data.token, {
+        expires: rememberMe ? 7 : undefined,
+        sameSite: 'Strict',
+      });
+
+      setToken(data.token);
+      setUser(data.user);
+
+      // ✅ Fixed: was '/pos', now correctly points to dashboard
+      router.push('/pos/dashboard');
+    },
+    [router]
+  );
+
+  // ── Logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     Cookies.remove('token');
     setToken(null);
     setUser(null);

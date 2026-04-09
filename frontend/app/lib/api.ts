@@ -9,22 +9,29 @@ export const api = axios.create({
   },
 });
 
-// Attach JWT token to every request
+// ── Attach JWT to every request ───────────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    // localStorage = rememberMe on, sessionStorage = rememberMe off
+    const token =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
 
-// Handle 401 responses globally
+// ── Handle 401 globally ───────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       window.location.href = '/pos/login';
     }
     return Promise.reject(error);
