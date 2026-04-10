@@ -70,6 +70,7 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
   }
 }
 
+
 // GET /api/customers/stats
 export async function getCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -78,20 +79,64 @@ export async function getCustomerStats(req: AuthRequest, res: Response, next: Ne
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [totalCount, newThisMonth, avgLifetimeValue] = await Promise.all([
+    const [totalCount, newThisMonth, agg] = await Promise.all([
       Customer.countDocuments({ storeId }),
       Customer.countDocuments({ storeId, createdAt: { $gte: startOfMonth } }),
       Customer.aggregate([
         { $match: { storeId } },
-        { $group: { _id: null, avg: { $avg: '$totalSpent' } } },
-      ]),
+        { $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalSpent" },
+            avgSpend: { $avg: "$totalSpent" }
+          }
+        }
+      ])
     ]);
+
+    const totalRevenue = Math.round(agg[0]?.totalRevenue ?? 0);
+    const avgSpend = Math.round(agg[0]?.avgSpend ?? 0);
 
     res.json({
       totalCustomers: totalCount,
-      newThisMonth,
-      avgLifetimeValue: Math.round(avgLifetimeValue[0]?.avg ?? 0),
+      totalRevenue,
+      avgSpend,
+      newThisMonth
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/customers/:id
+export async function updateCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const { name, email, phone } = req.body;
+    const customer = await Customer.findOneAndUpdate(
+      { _id: req.params.id, storeId },
+      { name, email, phone },
+      { new: true }
+    );
+    if (!customer) {
+      res.status(404).json({ message: 'Customer not found' });
+      return;
+    }
+    res.json({ data: customer });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/customers/:id
+export async function deleteCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const customer = await Customer.findOneAndDelete({ _id: req.params.id, storeId });
+    if (!customer) {
+      res.status(404).json({ message: 'Customer not found' });
+      return;
+    }
+    res.json({ message: 'Customer deleted' });
   } catch (err) {
     next(err);
   }
