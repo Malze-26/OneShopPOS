@@ -11,12 +11,20 @@ function generateTxnId(): string {
 export async function getTransactions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const storeId = req.user?.storeId ?? 'STORE-2025-001';
-    const { payment, search, startDate, endDate, page = '1', limit = '20' } = req.query;
+    const { payment, search, startDate, endDate, page = '1', limit = '20', customer, customerId } = req.query;
 
     const filter: Record<string, unknown> = { storeId };
 
     if (payment && payment !== 'All') filter.paymentMethod = payment;
     if (search) filter.txnId = { $regex: search, $options: 'i' };
+
+    // ✅ Filter by customerId first (reliable), fall back to name string
+    if (customerId) {
+      filter.customerId = customerId;
+    } else if (customer) {
+      filter.customer = { $regex: customer, $options: 'i' };
+    }
+
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) (filter.createdAt as Record<string, Date>).$gte = new Date(startDate as string);
@@ -73,7 +81,6 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
   try {
     const storeId = req.user?.storeId ?? 'STORE-2025-001';
     const userId = req.user?.id;
-
     const txnId = generateTxnId();
 
     const transaction = await Transaction.create({
@@ -82,6 +89,15 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       storeId,
       createdBy: userId,
     });
+
+    // ✅ If customerId was sent, update that customer's totalOrders + totalSpent + lastPurchase
+    if (req.body.customerId && req.body.status === 'success') {
+      const { Customer } = await import('../models/Customer');
+      await Customer.findByIdAndUpdate(req.body.customerId, {
+        $inc: { totalOrders: 1, totalSpent: req.body.amount },
+        lastPurchase: new Date(),
+      });
+    }
 
     res.status(201).json({ data: transaction });
   } catch (err) {
@@ -106,37 +122,22 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
   }
 }
 
-// DELETE /api/transactions/:id/void — Void transaction
+// PATCH /api/transactions/:id/void
 export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
   const transaction = await Transaction.findById(req.params.id);
-  if (!transaction) {
-    res.status(404).json({ message: 'Transaction not found' });
-    return;
-  }
-  if (transaction.status === 'voided') {
-    res.status(400).json({ message: 'Transaction already voided' });
-    return;
-  }
+  if (!transaction) { res.status(404).json({ message: 'Transaction not found' }); return; }
+  if (transaction.status === 'voided') { res.status(400).json({ message: 'Transaction already voided' }); return; }
   transaction.status = 'voided';
   await transaction.save();
   res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
 }
 
-// PATCH /api/transactions/:id/refund — Refund transaction
+// PATCH /api/transactions/:id/refund
 export async function refundTransaction(req: AuthRequest, res: Response): Promise<void> {
   const transaction = await Transaction.findById(req.params.id);
-  if (!transaction) {
-    res.status(404).json({ message: 'Transaction not found' });
-    return;
-  }
-  if (transaction.status === 'refunded') {
-    res.status(400).json({ message: 'Transaction already refunded' });
-    return;
-  }
-  if (transaction.status === 'voided') {
-    res.status(400).json({ message: 'Cannot refund a voided transaction' });
-    return;
-  }
+  if (!transaction) { res.status(404).json({ message: 'Transaction not found' }); return; }
+  if (transaction.status === 'refunded') { res.status(400).json({ message: 'Transaction already refunded' }); return; }
+  if (transaction.status === 'voided') { res.status(400).json({ message: 'Cannot refund a voided transaction' }); return; }
   transaction.status = 'refunded';
   await transaction.save();
   res.status(200).json({ message: 'Transaction refunded successfully', data: transaction });

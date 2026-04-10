@@ -4,11 +4,11 @@ import {
   getCustomers,
   getCustomer,
   createCustomer,
+  updateCustomer,
+  deleteCustomer,
   getCustomerStats,
 } from '../controllers/customerController';
 import { AuthRequest } from '../types';
-import { updateCustomer, deleteCustomer } from '../controllers/customerController';
-
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.get('/stats', asyncHandler(getCustomerStats));
 router.get('/', asyncHandler(getCustomers));
 router.get('/:id', asyncHandler(getCustomer));
 router.post('/', asyncHandler(createCustomer));
-router.put('/:id', asyncHandler(updateCustomer));
-router.delete('/:id', asyncHandler(deleteCustomer));
+router.put('/:id', asyncHandler(updateCustomer));       // ✅ added
+router.delete('/:id', asyncHandler(deleteCustomer));    // ✅ added
 
 export default router;

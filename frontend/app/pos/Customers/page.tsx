@@ -14,7 +14,12 @@ export default function CustomersPage() {
   const { user, loading: authLoading } = useAuth();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [stats, setStats] = useState<CustomerStats>({ totalCustomers: 0, totalRevenue: 0, avgSpend: 0, newThisMonth: 0 });
+  const [stats, setStats] = useState<CustomerStats>({
+    totalCustomers: 0,
+    totalRevenue: 0,
+    avgSpend: 0,
+    newThisMonth: 0,
+  });
   const [loadingData, setLoadingData] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [search, setSearch] = useState("");
@@ -45,14 +50,20 @@ export default function CustomersPage() {
         api.get("/customers"),
         api.get("/customers/stats"),
       ]);
-      setCustomers(customersRes.data.data);
-const statsData = statsRes.data.data ?? statsRes.data ?? {};
-setStats({
-  totalCustomers: statsData.totalCustomers ?? 0,
-  totalRevenue:   statsData.totalRevenue   ?? 0,
-  avgSpend:       statsData.avgSpend       ?? 0,
-  newThisMonth:   statsData.newThisMonth   ?? 0,
-});
+
+      // customers returns { data: [...] }
+      setCustomers(customersRes.data.data ?? []);
+
+      // FIX: stats returns flat object { totalCustomers, totalRevenue, ... }
+      // NOT nested under .data.data
+      const s = statsRes.data;
+      setStats({
+        totalCustomers: s.totalCustomers ?? 0,
+        totalRevenue:   s.totalRevenue   ?? 0,
+        avgSpend:       s.avgSpend       ?? 0,
+        newThisMonth:   s.newThisMonth   ?? 0,
+      });
+
       setFetchError("");
     } catch (err) {
       console.error("Failed to fetch customers:", err);
@@ -68,15 +79,17 @@ setStats({
     setFormError("");
     try {
       if (editingCustomer) {
-        // Edit — PUT /customers/:id (add this route to backend)
         const { data } = await api.put(`/customers/${editingCustomer._id}`, form);
         setCustomers((prev) => prev.map((c) => c._id === editingCustomer._id ? data.data : c));
         setSelectedCustomer(data.data);
       } else {
-        // Add — POST /customers
         const { data } = await api.post("/customers", form);
         setCustomers((prev) => [data.data, ...prev]);
-        setStats((prev) => ({ ...prev, totalCustomers: prev.totalCustomers + 1, newThisMonth: prev.newThisMonth + 1 }));
+        setStats((prev) => ({
+          ...prev,
+          totalCustomers: prev.totalCustomers + 1,
+          newThisMonth: prev.newThisMonth + 1,
+        }));
       }
       setShowForm(false);
       setEditingCustomer(null);
@@ -91,10 +104,12 @@ setStats({
   const handleDelete = async (id: string) => {
     setDeleteLoading(true);
     try {
-      // DELETE /customers/:id (add this route to backend)
       await api.delete(`/customers/${id}`);
       setCustomers((prev) => prev.filter((c) => c._id !== id));
-      setStats((prev) => ({ ...prev, totalCustomers: Math.max(0, prev.totalCustomers - 1) }));
+      setStats((prev) => ({
+        ...prev,
+        totalCustomers: Math.max(0, prev.totalCustomers - 1),
+      }));
       setSelectedCustomer(null);
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to delete customer.");
@@ -117,7 +132,10 @@ setStats({
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-[13px] text-[#6B7280] mb-5">
-          <button onClick={() => router.push("/pos/dashboard")} className="bg-transparent border-none cursor-pointer text-[#6B7280] hover:text-[#1B1A55] transition-colors">
+          <button
+            onClick={() => router.push("/pos/dashboard")}
+            className="bg-transparent border-none cursor-pointer text-[#6B7280] hover:text-[#1B1A55] transition-colors"
+          >
             Home
           </button>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -136,10 +154,14 @@ setStats({
         {fetchError && (
           <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <p className="text-[13px] text-red-700 font-medium">{fetchError}</p>
-            <button onClick={fetchAll} className="ml-auto text-[12px] font-bold text-red-700 underline">Retry</button>
+            <button onClick={fetchAll} className="ml-auto text-[12px] font-bold text-red-700 underline">
+              Retry
+            </button>
           </div>
         )}
 
@@ -150,9 +172,12 @@ setStats({
           search={search}
           onSearch={setSearch}
           onSelect={setSelectedCustomer}
-          onAdd={() => { setEditingCustomer(null); setFormError(""); setShowForm(true); }}
+          onAdd={() => {
+            setEditingCustomer(null);
+            setFormError("");
+            setShowForm(true);
+          }}
         />
-
       </div>
 
       {/* Detail Modal */}
@@ -160,7 +185,11 @@ setStats({
         <CustomerDetailModal
           customer={selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
-          onEdit={(c) => { setEditingCustomer(c); setFormError(""); setShowForm(true); }}
+          onEdit={(c) => {
+            setEditingCustomer(c);
+            setFormError("");
+            setShowForm(true);
+          }}
           onDelete={handleDelete}
           deleteLoading={deleteLoading}
         />
@@ -170,7 +199,11 @@ setStats({
       {showForm && (
         <CustomerFormModal
           editingCustomer={editingCustomer}
-          onClose={() => { setShowForm(false); setEditingCustomer(null); setFormError(""); }}
+          onClose={() => {
+            setShowForm(false);
+            setEditingCustomer(null);
+            setFormError("");
+          }}
           onSubmit={handleFormSubmit}
           loading={formLoading}
           error={formError}

@@ -1,12 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type PaymentMethod = 'Cash' | 'Card' | 'Bank Transfer';
-export type TransactionStatus = 'success' | 'pending' | 'failed';
+export type TransactionStatus = 'success' | 'pending' | 'failed' | 'refunded' | 'voided';
 
 export interface ITransaction extends Document {
   txnId: string;
   orderId: string;
   customer: string;
+  customerId?: mongoose.Types.ObjectId; // ✅ added — links to Customer document
   paymentMethod: PaymentMethod;
   amount: number;
   status: TransactionStatus;
@@ -30,6 +31,12 @@ const transactionSchema = new Schema<ITransaction>(
       required: [true, 'Customer is required'],
       trim: true,
     },
+    // ✅ added — optional so existing transactions without it still work
+    customerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Customer',
+      required: false,
+    },
     paymentMethod: {
       type: String,
       enum: ['Cash', 'Card', 'Bank Transfer'],
@@ -40,11 +47,11 @@ const transactionSchema = new Schema<ITransaction>(
       required: [true, 'Amount is required'],
       min: [0, 'Amount must be non-negative'],
     },
-   status: {
-  type: String,
-  enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
-  default: 'success',
-},
+    status: {
+      type: String,
+      enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
+      default: 'success',
+    },
     storeId: {
       type: String,
       required: true,
@@ -63,5 +70,6 @@ const transactionSchema = new Schema<ITransaction>(
 
 transactionSchema.index({ storeId: 1, createdAt: -1 });
 transactionSchema.index({ storeId: 1, paymentMethod: 1 });
+transactionSchema.index({ customerId: 1 }); // ✅ added for fast customer order lookups
 
 export const Transaction = mongoose.model<ITransaction>('Transaction', transactionSchema);
