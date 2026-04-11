@@ -40,11 +40,11 @@ const transactionSchema = new Schema<ITransaction>(
       required: [true, 'Amount is required'],
       min: [0, 'Amount must be non-negative'],
     },
-    status: {
-      type: String,
-      enum: ['success', 'pending', 'failed'],
-      default: 'success',
-    },
+   status: {
+  type: String,
+  enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
+  default: 'success',
+},
     storeId: {
       type: String,
       required: true,
