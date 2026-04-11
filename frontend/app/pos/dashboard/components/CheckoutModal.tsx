@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import api from "@/app/lib/api";
 import { savePendingTransaction } from "@/app/lib/offlineDB";
 import { fmt, genId } from "../constants/pos";
 
 interface CheckoutState {
   items: { id: string; name: string; price: number; qty: number; unit: string }[];
-  // ✅ customer now includes _id for linking
   customer: { _id: string; name: string } | null;
   discount: number;
   discountCode: string;
@@ -37,18 +36,21 @@ export default function CheckoutModal({
   const [step, setStep] = useState<"pay" | "success">("pay");
   const [savedOffline, setSavedOffline] = useState(false);
   const [orderId] = useState(genId);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const cashAmt = parseFloat(cash) || 0;
   const change = Math.max(0, cashAmt - total);
   const canPay = method !== "cash" || cashAmt >= total;
 
+  const methodLabel =
+    method === "cash" ? "Cash" : method === "card" ? "Card" : "Bank Transfer";
+
   const handleConfirm = async () => {
     const transactionData = {
       orderId,
       customer: state.customer?.name || "Guest Customer",
-      // ✅ include customerId when a real customer is selected
       ...(state.customer?._id ? { customerId: state.customer._id } : {}),
-      paymentMethod: method === "cash" ? "Cash" : method === "card" ? "Card" : "Bank Transfer",
+      paymentMethod: methodLabel,
       amount: total,
       status: "success",
     };
@@ -71,7 +73,154 @@ export default function CheckoutModal({
   };
 
   const printReceipt = () => {
-    // keep your existing printReceipt logic here
+    const receiptContent = receiptRef.current;
+    if (!receiptContent) return;
+
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (!printWindow) return;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-LK", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+    const timeStr = now.toLocaleTimeString("en-LK", {
+      hour: "2-digit", minute: "2-digit",
+    });
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt - ${orderId}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            color: #111;
+            width: 300px;
+            margin: 0 auto;
+            padding: 16px 12px;
+          }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #999; margin: 8px 0; }
+          .divider-solid { border-top: 1px solid #111; margin: 8px 0; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+          .store-name { font-size: 18px; font-weight: bold; letter-spacing: -0.5px; }
+          .order-id { font-size: 11px; color: #555; margin-top: 2px; }
+          .item-name { flex: 1; padding-right: 8px; }
+          .item-price { text-align: right; white-space: nowrap; }
+          .total-row { font-size: 15px; font-weight: bold; }
+          .status-badge {
+            display: inline-block;
+            border: 1px solid #111;
+            border-radius: 4px;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-top: 6px;
+          }
+          .thank-you { font-size: 12px; color: #444; margin-top: 4px; }
+          .offline-note {
+            font-size: 10px;
+            color: #888;
+            margin-top: 4px;
+            font-style: italic;
+          }
+          @media print {
+            body { width: 100%; }
+            @page { margin: 0; size: 80mm auto; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="center" style="margin-bottom: 12px;">
+          <div class="store-name">OneShop POS</div>
+          <div class="order-id">${orderId}</div>
+          <div style="font-size: 11px; color: #555; margin-top: 2px;">${dateStr} · ${timeStr}</div>
+        </div>
+
+        <div class="divider-solid"></div>
+
+        <div style="margin-bottom: 4px;">
+          <div class="row">
+            <span style="color:#555;">Customer</span>
+            <span class="bold">${state.customer?.name || "Guest Customer"}</span>
+          </div>
+          <div class="row">
+            <span style="color:#555;">Payment</span>
+            <span class="bold">${methodLabel}</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="margin-bottom: 4px;">
+          ${state.items.map(item => `
+            <div class="row">
+              <span class="item-name">${item.name} × ${item.qty}</span>
+              <span class="item-price">${fmt(item.price * item.qty)}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="margin-bottom: 4px;">
+          <div class="row">
+            <span>Subtotal</span>
+            <span>${fmt(subtotal)}</span>
+          </div>
+          <div class="row">
+            <span>Tax (8%)</span>
+            <span>${fmt(tax)}</span>
+          </div>
+          ${state.discount > 0 ? `
+          <div class="row">
+            <span>Discount (${state.discountCode})</span>
+            <span>−${fmt(state.discount)}</span>
+          </div>` : ""}
+        </div>
+
+        <div class="divider-solid"></div>
+
+        <div class="row total-row" style="margin-bottom: 8px;">
+          <span>TOTAL</span>
+          <span>${fmt(total)}</span>
+        </div>
+
+        ${method === "cash" ? `
+        <div class="row" style="font-size: 12px;">
+          <span>Cash Tendered</span>
+          <span>${fmt(cashAmt)}</span>
+        </div>
+        <div class="row" style="font-size: 12px;">
+          <span>Change</span>
+          <span>${fmt(change)}</span>
+        </div>` : ""}
+
+        <div class="divider"></div>
+
+        <div class="center">
+          <div class="status-badge">${savedOffline ? "SAVED OFFLINE" : "PAID"}</div>
+          <div class="thank-you" style="margin-top: 8px;">Thank you for shopping with us!</div>
+          ${savedOffline ? `<div class="offline-note">* Syncs to server when online</div>` : ""}
+          <div style="font-size: 10px; color: #aaa; margin-top: 12px;">— OneShop POS v1.0 —</div>
+        </div>
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    // slight delay so styles load before printing
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 300);
   };
 
   return (
@@ -107,7 +256,7 @@ export default function CheckoutModal({
               </div>
             )}
 
-            {/* Customer badge — shows who this sale is linked to */}
+            {/* Customer badge */}
             {state.customer && (
               <div className="flex items-center gap-2 px-3 py-2 bg-[#F0F2F8] rounded-xl border border-[#E3E6F0]">
                 <div className="w-6 h-6 rounded-full bg-[#1B1A55] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
@@ -193,13 +342,14 @@ export default function CheckoutModal({
             </button>
           </div>
         ) : (
-          // Success step
+          // ── Success Step ───────────────────────────────────────────────────
           <div className="flex flex-col items-center gap-4 p-7">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center ${savedOffline ? "bg-yellow-100" : "bg-emerald-100"}`}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={savedOffline ? "#D97706" : "#10B981"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             </div>
+
             <div className="text-center">
               <div className="font-bold text-[17px] text-[#111827] mb-1">
                 {savedOffline ? "Saved Offline!" : "Payment Successful!"}
@@ -207,27 +357,68 @@ export default function CheckoutModal({
               <div className="text-[12px] text-[#6B7280]">
                 {savedOffline
                   ? "Will sync to database when back online"
-                  : <>Order <span className="font-mono font-semibold">{orderId}</span></>
+                  : <><span className="font-mono font-semibold">{orderId}</span> · {methodLabel}</>
                 }
               </div>
-              {/* ✅ Show which customer this was linked to */}
               {state.customer && (
                 <div className="mt-2 text-[12px] text-[#535C91] font-semibold">
                   Linked to {state.customer.name}
                 </div>
               )}
             </div>
+
             {savedOffline && (
               <div className="w-full p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-[12px] text-center">
-                📱 Transaction stored locally. It will automatically sync when your internet connection is restored.
+                📱 Transaction stored locally. Will auto-sync when online.
               </div>
             )}
+
+            {/* Receipt Preview (hidden, used for printing) */}
+            <div ref={receiptRef} style={{ display: "none" }} />
+
+            {/* Quick receipt summary (visible) */}
+            <div className="w-full bg-[#F7F8FC] rounded-xl border border-[#E3E6F0] p-4 text-[12px]">
+              <div className="text-center font-bold text-[#1B1A55] mb-3 text-[13px]">OneShop POS</div>
+              {state.items.map(item => (
+                <div key={item.id} className="flex justify-between text-[#6B7280] mb-1">
+                  <span>{item.name} × {item.qty}</span>
+                  <span>{fmt(item.price * item.qty)}</span>
+                </div>
+              ))}
+              <div className="border-t border-dashed border-[#E3E6F0] mt-2 pt-2">
+                <div className="flex justify-between text-[#6B7280] mb-1"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                <div className="flex justify-between text-[#6B7280] mb-1"><span>Tax (8%)</span><span>{fmt(tax)}</span></div>
+                {state.discount > 0 && (
+                  <div className="flex justify-between text-amber-600 mb-1 font-semibold">
+                    <span>Discount</span><span>−{fmt(state.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-[#1B1A55] text-[13px] mt-1 pt-1 border-t border-[#E3E6F0]">
+                  <span>TOTAL</span><span>{fmt(total)}</span>
+                </div>
+                {method === "cash" && cashAmt > 0 && (
+                  <>
+                    <div className="flex justify-between text-[#6B7280] mt-1"><span>Cash</span><span>{fmt(cashAmt)}</span></div>
+                    <div className="flex justify-between text-emerald-600 font-semibold"><span>Change</span><span>{fmt(change)}</span></div>
+                  </>
+                )}
+              </div>
+              <div className="text-center text-[10px] text-[#9CA3AF] mt-3">
+                {new Date().toLocaleDateString("en-LK", { day: "2-digit", month: "short", year: "numeric" })} · {methodLabel}
+              </div>
+            </div>
+
             <div className="flex gap-2 w-full">
               <button
                 className="flex-1 py-2.5 border border-[#E3E6F0] rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-semibold text-[#6B7280] hover:bg-gray-50 transition-colors"
                 onClick={printReceipt}
               >
-                Print
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Print Receipt
               </button>
               <button
                 className="flex-1 py-3 font-bold text-white rounded-xl bg-[#1B1A55] hover:bg-[#2D2B8F] transition-colors"
