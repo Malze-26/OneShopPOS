@@ -1,0 +1,24 @@
+{
+  "name": "oneshop_pos",
+  "version": "1.0.0",
+  "description": "**Project Status | License | Version**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Malze-26/Cipher5.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Malze-26/Cipher5/issues"
+  },
+  "homepage": "https://github.com/Malze-26/Cipher5#readme",
+  "dependencies": {
+    "mongodb": "^7.1.1"
+  }
+}
