@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ProductListHeader } from '@/app/components/ProductListHeader';
 import { ProductTable } from '@/app/components/ProductTable';
 import { SearchFilter } from '@/app/components/SearchFilter';
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState(
+    () => searchParams.get('category') ?? 'all'
+  );
 
   return (
     <div className="p-6 max-w-[1400px]">
