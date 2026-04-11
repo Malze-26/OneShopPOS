@@ -18,7 +18,6 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
 
   return (
     <div className="bg-white rounded-2xl border border-[#E3E6F0] overflow-hidden">
-
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-[#E3E6F0]">
         <div className="flex-1 relative">
@@ -42,14 +41,12 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
           Add Customer
         </button>
       </div>
-
       {/* Header */}
       <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_60px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
         {["Customer", "Contact", "Orders", "Total Spent", "Last Purchase", ""].map((h) => (
           <div key={h} className="text-[12px] font-bold text-[#535C91] tracking-[0.3px]">{h}</div>
         ))}
       </div>
-
       {/* Rows */}
       {filtered.length === 0 ? (
         <div className="py-12 text-center text-[#6B7280] text-[14px]">
@@ -57,44 +54,20 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
         </div>
       ) : (
         filtered.map((c, i) => (
-          <div
-            key={c._id}
-            onClick={() => onSelect(c)}
-            className={`grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_60px] py-3.5 px-6 items-center cursor-pointer hover:bg-[#F5F4FF] transition-colors ${
-              i < filtered.length - 1 ? "border-b border-[#E3E6F0]" : ""
-            }`}
-          >
-            {/* Avatar + Name */}
+          <div key={c._id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_60px] px-6 py-4 border-b border-[#E3E6F0] hover:bg-[#F7F8FC] cursor-pointer" onClick={() => onSelect(c)}>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#1B1A55] flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0">
-                {getInitials(c.name)}
-              </div>
+              <div className="w-9 h-9 rounded-full bg-[#E3E6F0] flex items-center justify-center font-bold text-[#1B1A55] text-[15px]">{getInitials(c.name)}</div>
               <div>
-                <p className="text-[13px] font-semibold text-[#111827]">{c.name}</p>
-                <p className="text-[11px] text-[#6B7280]">ID: {c._id.slice(-6).toUpperCase()}</p>
+                <div className="font-semibold text-[#111827] text-[14px]">{c.name}</div>
+                <div className="text-[#6B7280] text-[12px]">{formatDate(c.createdAt)}</div>
               </div>
             </div>
-
-            {/* Contact */}
-            <div>
-              <p className="text-[12px] text-[#111827]">{c.email || "—"}</p>
-              <p className="text-[11px] text-[#6B7280]">{c.phone || "—"}</p>
-            </div>
-
-            {/* Orders */}
-            <div className="text-[13px] font-semibold text-[#111827]">{c.totalOrders}</div>
-
-            {/* Spent */}
-            <div className="text-[13px] font-bold text-[#1B1A55]">Rs. {c.totalSpent.toLocaleString()}</div>
-
-            {/* Last Purchase */}
-            <div className="text-[12px] text-[#6B7280]">{formatDate(c.lastPurchase)}</div>
-
-            {/* Arrow */}
-            <div className="flex justify-end">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
+            <div className="text-[#374151] text-[13px]">{c.email || "—"}<br />{c.phone || "—"}</div>
+            <div className="text-[#374151] text-[13px]">{c.totalOrders}</div>
+            <div className="text-[#374151] text-[13px]">Rs. {c.totalSpent.toLocaleString()}</div>
+            <div className="text-[#374151] text-[13px]">{formatDate(c.lastPurchase)}</div>
+            <div className="flex items-center gap-2">
+              {/* Add action buttons here if needed */}
             </div>
           </div>
         ))

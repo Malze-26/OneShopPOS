@@ -18,11 +18,12 @@ export async function getTransactions(req: AuthRequest, res: Response, next: Nex
     if (payment && payment !== 'All') filter.paymentMethod = payment;
     if (search) filter.txnId = { $regex: search, $options: 'i' };
 
-    // ✅ Filter by customerId first (reliable), fall back to name string
-    if (customerId) {
-      filter.customerId = customerId;
-    } else if (customer) {
-      filter.customer = { $regex: customer, $options: 'i' };
+    // ✅ After — match either customerId OR customer name
+    if (customerId || customer) {
+      filter.$or = [
+    ...(customerId ? [{ customerId }] : []),
+    ...(customer ? [{ customer: { $regex: customer, $options: 'i' } }] : []),
+   ];
     }
 
     if (startDate || endDate) {

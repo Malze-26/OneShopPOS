@@ -1,15 +1,5 @@
-export interface Customer {
-  _id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  avatar: string;
-  totalOrders: number;
-  totalSpent: number;
-  lastPurchase?: string;
-  storeId: string;
-  createdAt: string;
-}
+// Customer type comes from the shared lib — do not redefine it here
+export type { ICustomer as Customer } from "@/app/lib/types";
 
 export interface CustomerStats {
   totalCustomers: number;
