@@ -1,0 +1,30 @@
+{
+  "name": "oneshoppos",
+  "version": "1.0.0",
+  "description": "OneShop POS System",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "start:backend": "npm run start -w backend",
+    "start:frontend": "npm run start -w frontend"
+  },
+  "dependencies": {
+    "@radix-ui/react-accordion": "^1.2.3",
+    "@radix-ui/react-alert-dialog": "^1.1.6",
+    "@radix-ui/react-aspect-ratio": "^1.1.2",
+    "class-variance-authority": "^0.7.1",
+    "dotenv": "^17.4.0",
+    "lucide-react": "^0.487.0",
+    "mongoose": "^9.3.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.2.2"
+  }
+}

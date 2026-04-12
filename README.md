@@ -20,9 +20,8 @@ Unlike traditional POS systems or standalone e-commerce platforms, OneShop ensur
 
 * Product Search & Selection: Fast item lookup optimized for in-store checkout
 * Shopping Cart Management: Add, update, remove items with real-time price calculation
-* Multiple Payment Methods: Cash, card, and bank transfer support
+* Multiple Payment Methods: Cash
 * Receipt Generation & Printing
-* Parked Sales: Save and resume incomplete transactions
 * Transaction History & Daily Sales Summary
 * Offline Transaction Handling with auto-sync
 

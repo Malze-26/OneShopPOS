@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Design Tokens - Strict Color Palette */
+@theme {
+  /* Primary Colors */
+  --color-primary: #155dfc;
+  --color-primary-dark: #0d4dd9;
+  --color-primary-light: #eff4ff;
+  
+  /* Grayscale */
+  --color-dark: #101828;
+  --color-secondary: #4a5565;
+  --color-border: #e4e7ec;
+  --color-surface: #f9fafb;
+  --color-white: #ffffff;
+  
+  /* Status Colors */
+  --color-success: #12b76a;
+  --color-warning: #f79009;
+  --color-danger: #f04438;
+  
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 0.75rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Base Styles */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--color-dark);
+    background-color: var(--color-surface);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography - Following Specifications */
+  h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.75rem;
+    color: var(--color-dark);
+  }
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+    color: var(--color-dark);
+  }
+
+  h3 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--color-dark);
+  }
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--color-dark);
+  }
+
+  p {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5rem;
+    color: var(--color-secondary);
+  }
+
+  button {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+  }
+
+  input, textarea, select {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+  }
+}
