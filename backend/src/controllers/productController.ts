@@ -1,4 +1,6 @@
 import { Response, NextFunction } from 'express';
+import path from 'path';
+import fs from 'fs';
 import { AuthRequest } from '../types';
 import { Product } from '../models/Product';
 import { StockHistory } from '../models/StockHistory';
@@ -239,6 +241,59 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
     }
 
     res.json({ message: 'Import complete', ...results });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/products/:id/images
+export async function uploadProductImages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    if (!files || files.length === 0) {
+      res.status(400).json({ message: 'No files uploaded' });
+      return;
+    }
+
+    const product = await Product.findOne({ _id: req.params.id, storeId });
+    if (!product) {
+      files.forEach((f) => { try { fs.unlinkSync(f.path); } catch { /* ignore */ } });
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    const newPaths = files.map((f) => `/uploads/products/${f.filename}`);
+    product.images = [...product.images, ...newPaths];
+    await product.save();
+
+    res.json({ data: product });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/products/:id/images/:filename
+export async function deleteProductImage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const { filename } = req.params;
+    const imagePath = `/uploads/products/${filename}`;
+
+    const product = await Product.findOne({ _id: req.params.id, storeId });
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    product.images = product.images.filter((img) => img !== imagePath);
+    await product.save();
+
+    const fullPath = path.join(process.cwd(), 'uploads', 'products', filename);
+    try { fs.unlinkSync(fullPath); } catch { /* file may not exist on disk */ }
+
+    res.json({ data: product });
   } catch (err) {
     next(err);
   }

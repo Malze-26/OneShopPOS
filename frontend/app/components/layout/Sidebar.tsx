@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   { label: 'Refunds', icon: RotateCcw, path: '/refunds' },
   { label: 'Transactions', icon: CreditCard, path: '/transactions' },
   { label: 'Products', icon: Package, path: '/products' },
-  { label: 'Inventory', icon: Warehouse, path: '/inventory' },
+  { label: 'Stocks', icon: Warehouse, path: '/stocks' },
   { label: 'Categories', icon: Tag, path: '/categories' },
   { label: 'Employees', icon: Users, path: '/employees' },
   { label: 'Customers', icon: UserIcon, path: '/customers' },
@@ -45,7 +45,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
 
   const initials = user?.name
     ? user.name

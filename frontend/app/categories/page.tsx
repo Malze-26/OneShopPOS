@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import api from '@/app/lib/api';
 
 interface Category {
@@ -20,6 +21,7 @@ const colorOptions = [
 const emptyForm = { name: '', icon: '', color: colorOptions[0] };
 
 export default function CategoriesPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +144,8 @@ export default function CategoriesPage() {
           {categories.map((category) => (
             <div
               key={category._id}
-              className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec] hover:shadow-md transition-shadow"
+              onClick={() => router.push(`/products?category=${encodeURIComponent(category.name)}`)}
+              className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec] hover:shadow-md hover:border-[#155dfc] transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -159,13 +162,13 @@ export default function CategoriesPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => openEdit(category)}
+                    onClick={(e) => { e.stopPropagation(); openEdit(category); }}
                     className="p-1.5 text-[#4a5565] hover:text-[#155dfc] hover:bg-[#eff4ff] rounded transition-colors"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(category)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(category); }}
                     className="p-1.5 text-[#4a5565] hover:text-[#f04438] hover:bg-[#fef3f2] rounded transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
