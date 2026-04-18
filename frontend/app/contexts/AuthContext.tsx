@@ -73,8 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       setUser(data.user);
 
-      // ✅ Fixed: was '/pos', now correctly points to dashboard
-      router.push('/pos/dashboard');
+      router.push('/dashboard');
     },
     [router]
   );
@@ -88,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     Cookies.remove('token');
     setToken(null);
     setUser(null);
-    router.push('/pos/login');
+    router.push('/login');
   }, [router]);
 
   return (

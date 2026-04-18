@@ -6,10 +6,9 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  RotateCcw,
-  CreditCard,
   Warehouse,
   Tag,
+  Truck,
   Users,
   User as UserIcon,
   BarChart3,
@@ -24,21 +23,31 @@ interface NavItem {
   icon: React.ElementType;
   path: string;
   badge?: number;
+  section?: string;
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { label: 'Orders', icon: ShoppingBag, path: '/orders' },
-  { label: 'Refunds', icon: RotateCcw, path: '/refunds' },
-  { label: 'Transactions', icon: CreditCard, path: '/transactions' },
-  { label: 'Products', icon: Package, path: '/products' },
-  { label: 'Stocks', icon: Warehouse, path: '/stocks' },
-  { label: 'Categories', icon: Tag, path: '/categories' },
-  { label: 'Employees', icon: Users, path: '/employees' },
-  { label: 'Customers', icon: UserIcon, path: '/customers' },
-  { label: 'Reports', icon: BarChart3, path: '/reports' },
-  { label: 'Alerts', icon: Bell, path: '/alerts', badge: 12 },
-  { label: 'Settings', icon: Settings, path: '/settings' },
+  { label: 'Dashboard',  icon: LayoutDashboard, path: '/dashboard' },
+
+  // Sales
+  { label: 'Orders',     icon: ShoppingBag,     path: '/orders',     section: 'Sales' },
+
+  // Inventory
+  { label: 'Products',   icon: Package,          path: '/products',   section: 'Inventory' },
+  { label: 'Categories', icon: Tag,              path: '/categories' },
+  { label: 'Stocks',     icon: Warehouse,        path: '/stocks' },
+  { label: 'Suppliers',  icon: Truck,            path: '/suppliers' },
+
+  // People
+  { label: 'Customers',  icon: UserIcon,         path: '/customers',  section: 'People' },
+  { label: 'Employees',  icon: Users,            path: '/employees' },
+
+  // Insights
+  { label: 'Reports',    icon: BarChart3,        path: '/reports',    section: 'Insights' },
+  { label: 'Alerts',     icon: Bell,             path: '/alerts',     badge: 12 },
+
+  // System
+  { label: 'Settings',   icon: Settings,         path: '/settings',   section: 'System' },
 ];
 
 export function Sidebar() {
@@ -74,13 +83,18 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 
             return (
               <li key={item.label}>
+                {item.section && (
+                  <p className="text-[10px] font-semibold text-[#98a2b3] uppercase tracking-wider px-3 pt-4 pb-1">
+                    {item.section}
+                  </p>
+                )}
                 <Link
                   href={item.path}
                   className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors relative ${

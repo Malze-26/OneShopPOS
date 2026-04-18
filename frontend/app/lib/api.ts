@@ -33,7 +33,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
-      window.location.href = '/pos/login';
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
