@@ -1,14 +1,18 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 export interface ICustomer extends Document {
   name: string;
   email?: string;
   phone?: string;
+  password?: string;
   avatar: string;
+  address?: string;
   totalOrders: number;
   totalSpent: number;
   lastPurchase?: Date;
   storeId: string;
+  comparePassword(candidate: string): Promise<boolean>;
 }
 
 const customerSchema = new Schema<ICustomer>(
@@ -27,8 +31,17 @@ const customerSchema = new Schema<ICustomer>(
       type: String,
       trim: true,
     },
+    password: {
+      type: String,
+      select: false,
+    },
     avatar: {
       type: String,
+      default: '',
+    },
+    address: {
+      type: String,
+      trim: true,
       default: '',
     },
     totalOrders: {
@@ -54,6 +67,17 @@ const customerSchema = new Schema<ICustomer>(
     timestamps: true,
   }
 );
+
+customerSchema.pre('save', async function (next) {
+  if (this.isModified('password') && this.password) {
+    this.password = await bcrypt.hash(this.password, 12);
+  }
+  next();
+});
+
+customerSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
+  return bcrypt.compare(candidate, this.password);
+};
 
 customerSchema.index({ storeId: 1 });
 customerSchema.index({ email: 1 });

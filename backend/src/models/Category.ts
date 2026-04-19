@@ -2,6 +2,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ICategory extends Document {
   name: string;
+  slug: string;
+  description?: string;
   icon: string;
   color: string;
   storeId: string;
@@ -14,6 +16,16 @@ const categorySchema = new Schema<ICategory>(
       type: String,
       required: [true, 'Category name is required'],
       trim: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: '',
     },
     icon: {
       type: String,
@@ -37,6 +49,13 @@ const categorySchema = new Schema<ICategory>(
     timestamps: true,
   }
 );
+
+categorySchema.pre('save', function (next) {
+  if (this.isModified('name') || !this.slug) {
+    this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+  next();
+});
 
 categorySchema.index({ storeId: 1, name: 1 }, { unique: true });
 

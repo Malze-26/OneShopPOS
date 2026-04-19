@@ -53,6 +53,5 @@ const grnSchema = new Schema<IGRN>(
 );
 
 grnSchema.index({ storeId: 1, createdAt: -1 });
-grnSchema.index({ grnNumber: 1 }, { unique: true });
 
 export const GRN = mongoose.model<IGRN>('GRN', grnSchema);

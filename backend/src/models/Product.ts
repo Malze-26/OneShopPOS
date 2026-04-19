@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IProduct extends Document {
   name: string;
+  slug: string;
   sku: string;
   description?: string;
   sellingPrice: number;
@@ -10,6 +11,11 @@ export interface IProduct extends Document {
   lowStockThreshold: number;
   category: string;
   images: string[];
+  brand?: string;
+  featured: boolean;
+  badge?: 'Best Seller' | 'New Arrival' | 'Sale' | '';
+  rating: number;
+  numReviews: number;
   storeId: string;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
   createdBy: mongoose.Types.ObjectId;
@@ -23,6 +29,11 @@ const productSchema = new Schema<IProduct>(
       type: String,
       required: [true, 'Product name is required'],
       trim: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
+      lowercase: true,
     },
     sku: {
       type: String,
@@ -64,6 +75,31 @@ const productSchema = new Schema<IProduct>(
       type: [String],
       default: [],
     },
+    brand: {
+      type: String,
+      trim: true,
+      default: 'OneShop',
+    },
+    featured: {
+      type: Boolean,
+      default: false,
+    },
+    badge: {
+      type: String,
+      enum: ['Best Seller', 'New Arrival', 'Sale', ''],
+      default: '',
+    },
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    numReviews: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     storeId: {
       type: String,
       required: true,
@@ -90,6 +126,14 @@ unit: {
     toObject: { virtuals: true },
   }
 );
+
+// Auto-generate slug from name
+productSchema.pre('save', function (next) {
+  if (this.isModified('name') || !this.slug) {
+    this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+  next();
+});
 
 // Virtual for status
 productSchema.virtual('status').get(function (this: IProduct) {
