@@ -16,6 +16,7 @@ import stockRoutes from './routes/stocks';
 import promoRoutes from './routes/promos';
 import orderRoutes from './routes/orders';
 import settingsRoutes from './routes/settings';
+import supplierRoutes from './routes/suppliers';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -46,6 +47,7 @@ app.use('/api/stocks', stockRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/suppliers', supplierRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {

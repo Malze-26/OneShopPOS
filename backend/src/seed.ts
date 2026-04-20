@@ -17,6 +17,7 @@ import { Product } from './models/Product';
 import { Customer } from './models/Customer';
 import { Order } from './models/Order';
 import { StoreSettings } from './models/StoreSettings';
+import { Supplier } from './models/Supplier';
 
 const STORE_ID = 'STORE-2025-001';
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'products');
@@ -1146,6 +1147,109 @@ async function seed() {
       { $set: { totalOrders, totalSpent, lastPurchase } }
     );
     console.log(`✓ Stats synced: ${c.name} → ${totalOrders} orders, LKR ${totalSpent.toLocaleString()}`);
+  }
+
+  // ── 9. Suppliers ──────────────────────────────────────────────────────────
+  console.log('\n── Step 9: Suppliers ──');
+  const supplierDocs = [
+    {
+      name: 'Ceylon Beverages Ltd',
+      contactPerson: 'Nimal Perera',
+      email: 'nimal@ceylonbev.lk',
+      phone: '+94 11 234 5678',
+      address: 'No. 45, Galle Road, Colombo 03',
+      categories: ['Beverages', 'Juices & Cordials'],
+      status: 'active',
+      notes: 'Primary beverage supplier. Delivers every Monday.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'Anchor Foods Lanka',
+      contactPerson: 'Priya Jayawardena',
+      email: 'priya@anchorfoods.lk',
+      phone: '+94 11 456 7890',
+      address: 'No. 12, Hospital Road, Colombo 07',
+      categories: ['Dairy & Eggs', 'Chilled Food'],
+      status: 'active',
+      notes: 'Dairy products supplier. Cold chain maintained.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'Nestlé Lanka PLC',
+      contactPerson: 'Sunil Fernando',
+      email: 'sunil.f@nestle.lk',
+      phone: '+94 11 789 0123',
+      address: 'No. 25, Nawam Mawatha, Colombo 02',
+      categories: ['Malt & Milk Drinks', 'Tea & Coffee', 'Chilled Food'],
+      status: 'active',
+      notes: 'Key account. Monthly settlement agreed.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'Fresh Harvest Suppliers',
+      contactPerson: 'Kumari Silva',
+      email: 'kumari@freshharvest.lk',
+      phone: '+94 77 234 5678',
+      address: 'No. 8, Manning Market, Colombo 10',
+      categories: ['Vegetables', 'Fruits'],
+      status: 'active',
+      notes: 'Fresh produce. Deliveries Tuesday and Friday mornings.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'Island Frozen Foods',
+      contactPerson: 'Roshan Bandara',
+      email: 'roshan@islandfrozen.lk',
+      phone: '+94 11 345 6789',
+      address: 'No. 67, New Kelani Bridge Road, Peliyagoda',
+      categories: ['Frozen Food'],
+      status: 'active',
+      notes: 'Frozen goods. Temperature-controlled delivery only.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'Keells Food Products',
+      contactPerson: 'Amali Wijesinghe',
+      email: 'amali@keellsfood.lk',
+      phone: '+94 11 567 8901',
+      address: 'No. 117, Sir Chittampalam A Gardiner Mawatha, Colombo 02',
+      categories: ['Processed Meats', 'Chilled Food'],
+      status: 'active',
+      notes: 'Processed meats and chilled products. Weekly delivery.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'Prima Ceylon Ltd',
+      contactPerson: 'Thilak Ranasinghe',
+      email: 'thilak@primasl.com',
+      phone: '+94 11 678 9012',
+      address: 'No. 01, Latimer Road, Colombo 15',
+      categories: ['Processed Meats', 'Bakery & Bread'],
+      status: 'active',
+      notes: 'Processed meats and bakery items. COD terms.',
+      storeId: STORE_ID,
+    },
+    {
+      name: 'HiLine Foods Lanka',
+      contactPerson: 'Dinesh Mendis',
+      email: 'dinesh@hilinefoods.lk',
+      phone: '+94 11 890 1234',
+      address: 'No. 33, Mattakkuliya Road, Colombo 15',
+      categories: ['Tea & Coffee', 'Malt & Milk Drinks'],
+      status: 'inactive',
+      notes: 'On hold — contract renewal pending.',
+      storeId: STORE_ID,
+    },
+  ];
+
+  for (const s of supplierDocs) {
+    const exists = await Supplier.findOne({ name: s.name, storeId: STORE_ID });
+    if (!exists) {
+      await Supplier.create(s);
+      console.log(`✓ Supplier created: ${s.name}`);
+    } else {
+      console.log(`  Supplier "${s.name}" already exists – skipping`);
+    }
   }
 
   console.log('\nSeeding complete.');
