@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, Package as PackageIcon, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import api from '@/app/lib/api';
+import { useStore } from '@/app/contexts/StoreContext';
 
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
@@ -35,6 +36,7 @@ const statusStyles: Record<string, { bg: string; text: string; label: string }> 
 
 export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps) {
   const router = useRouter();
+  const { currency, currencyLocale } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -161,7 +163,7 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                     <span className="text-gray-600">{product.category}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-gray-900">Rs {product.sellingPrice.toLocaleString('en-LK')}</span>
+                    <span className="text-gray-900">{currency} {product.sellingPrice.toLocaleString(currencyLocale)}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`${isLow ? 'text-amber-700' : 'text-gray-900'}`}>

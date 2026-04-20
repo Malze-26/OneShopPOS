@@ -77,7 +77,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     email,
     password,
     role: role ?? 'Cashier',
-    storeId: storeId ?? 'STORE-2025-001',
+    storeId: storeId ?? (req as AuthRequest).user?.storeId ?? process.env.DEFAULT_STORE_ID ?? 'STORE-2025-001',
   });
 
   const token = signToken(user.id as string, user.email, user.role, user.storeId);

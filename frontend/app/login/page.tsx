@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { useStore } from '@/app/contexts/StoreContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { storeName } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -36,7 +38,7 @@ export default function LoginPage() {
               <rect x="14" y="14" width="7" height="7" rx="1" fill="#155dfc" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-[#101828]">OneShop</h1>
+          <h1 className="text-xl font-bold text-[#101828]">{storeName}</h1>
           <p className="text-sm text-[#4a5565]">Store Management</p>
         </div>
 

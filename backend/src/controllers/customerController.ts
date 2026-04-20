@@ -1,11 +1,12 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { Customer } from '../models/Customer';
+import { Order } from '../models/Order';
 
 // GET /api/customers
 export async function getCustomers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { search, sort } = req.query;
 
     const filter: Record<string, unknown> = { storeId };
@@ -35,7 +36,7 @@ export async function getCustomers(req: AuthRequest, res: Response, next: NextFu
 // GET /api/customers/:id
 export async function getCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const customer = await Customer.findOne({ _id: req.params.id, storeId });
 
     if (!customer) {
@@ -52,7 +53,7 @@ export async function getCustomer(req: AuthRequest, res: Response, next: NextFun
 // POST /api/customers
 export async function createCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { name, email, phone } = req.body;
 
     if (!name?.trim()) {
@@ -70,10 +71,36 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
   }
 }
 
+// GET /api/customers/:id/orders
+export async function getCustomerOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user!.storeId;
+    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+
+    if (!customer) {
+      res.status(404).json({ message: 'Customer not found' });
+      return;
+    }
+
+    // Match orders by email (preferred) or name
+    const filter: Record<string, unknown> = { storeId };
+    if (customer.email) {
+      filter.customerEmail = customer.email;
+    } else {
+      filter.customerName = customer.name;
+    }
+
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(50);
+    res.json({ data: orders });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/customers/stats
 export async function getCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

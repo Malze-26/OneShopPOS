@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/app/contexts/AuthContext';
+import { StoreProvider } from '@/app/contexts/StoreContext';
 
 export const metadata: Metadata = {
-  title: 'OneShop POS',
+  title: process.env.NEXT_PUBLIC_STORE_NAME ?? 'OneShop POS',
   description: 'Inventory Management System',
 };
 
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <StoreProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </StoreProvider>
       </body>
     </html>
   );

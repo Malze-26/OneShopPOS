@@ -6,7 +6,7 @@ import { Product } from '../models/Product';
 // GET /api/categories
 export async function getCategories(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const categories = await Category.find({ storeId }).sort({ name: 1 });
 
     // Compute live productCount from the products collection (avoids stale stored counts)
@@ -30,7 +30,7 @@ export async function getCategories(req: AuthRequest, res: Response, next: NextF
 // GET /api/categories/:id
 export async function getCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const category = await Category.findOne({ _id: req.params.id, storeId });
 
     if (!category) {
@@ -47,7 +47,7 @@ export async function getCategory(req: AuthRequest, res: Response, next: NextFun
 // POST /api/categories
 export async function createCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { name, icon, color } = req.body;
 
     if (!name?.trim()) {
@@ -75,7 +75,7 @@ export async function createCategory(req: AuthRequest, res: Response, next: Next
 // PUT /api/categories/:id
 export async function updateCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { name, icon, color } = req.body;
 
     const category = await Category.findOneAndUpdate(
@@ -98,7 +98,7 @@ export async function updateCategory(req: AuthRequest, res: Response, next: Next
 // DELETE /api/categories/:id
 export async function deleteCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const category = await Category.findOneAndDelete({ _id: req.params.id, storeId });
 
     if (!category) {

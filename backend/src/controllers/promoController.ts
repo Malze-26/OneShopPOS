@@ -24,7 +24,7 @@ export async function createPromo(req: AuthRequest, res: Response): Promise<void
     minOrderAmount: minOrderAmount ?? 0,
     maxUses: maxUses ?? 0,
     expiresAt,
-    storeId: req.user?.storeId ?? 'STORE-2025-001',
+    storeId: req.user!.storeId,
     createdBy: req.user?.id,
   });
 

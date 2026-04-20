@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Edit, ArrowLeftRight, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import api from '@/app/lib/api';
+import { useStore } from '@/app/contexts/StoreContext';
 
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
@@ -40,6 +41,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
 const ITEMS_PER_PAGE = 10;
 
 export default function ProductDetailPage() {
+  const { currency } = useStore();
   const params = useParams();
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
@@ -190,11 +192,11 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-[#4a5565] mb-1">Selling Price</p>
-                <p className="text-2xl font-bold text-[#101828]">LKR {product.sellingPrice.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-[#101828]">{currency} {product.sellingPrice.toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-xs text-[#4a5565] mb-1">Cost Price</p>
-                <p className="text-lg font-semibold text-[#4a5565]">LKR {product.costPrice.toLocaleString()}</p>
+                <p className="text-lg font-semibold text-[#4a5565]">{currency} {product.costPrice.toLocaleString()}</p>
               </div>
             </div>
           </div>

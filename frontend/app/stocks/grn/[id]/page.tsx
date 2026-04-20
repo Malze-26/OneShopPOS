@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft, Printer } from 'lucide-react';
 import api from '@/app/lib/api';
+import { useStore } from '@/app/contexts/StoreContext';
 
 interface GRNItem {
   productName: string;
@@ -28,6 +29,7 @@ interface GRNData {
 }
 
 export default function GRNDetailPage() {
+  const { storeName, currency } = useStore();
   const params = useParams();
   const [grn, setGrn] = useState<GRNData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,7 @@ export default function GRNDetailPage() {
                     <span className="text-white text-xs font-bold">OS</span>
                   </div>
                   <div>
-                    <div className="font-bold text-[#101828] text-lg">OneShop POS</div>
+                    <div className="font-bold text-[#101828] text-lg">{storeName}</div>
                     <div className="text-xs text-[#4a5565]">Goods Received Note</div>
                   </div>
                 </div>
@@ -159,8 +161,8 @@ export default function GRNDetailPage() {
                     <td className="px-6 py-4 text-sm font-medium text-[#101828]">{item.productName}</td>
                     <td className="px-6 py-4 text-sm text-[#4a5565] font-mono">{item.sku}</td>
                     <td className="px-6 py-4 text-sm text-[#101828] text-right">{item.quantityReceived}</td>
-                    <td className="px-6 py-4 text-sm text-[#101828] text-right">LKR {item.costPrice.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-[#101828] text-right">LKR {item.subtotal.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-[#101828] text-right">{currency} {item.costPrice.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-[#101828] text-right">{currency} {item.subtotal.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -176,7 +178,7 @@ export default function GRNDetailPage() {
               </div>
               <div className="flex items-center gap-12 text-sm border-t border-[#e4e7ec] pt-2 mt-1">
                 <span className="text-[#4a5565] font-medium">Total Cost</span>
-                <span className="font-bold text-[#101828] text-lg min-w-[120px] text-right">LKR {grn.totalCost.toLocaleString()}</span>
+                <span className="font-bold text-[#101828] text-lg min-w-[120px] text-right">{currency} {grn.totalCost.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -194,7 +196,7 @@ export default function GRNDetailPage() {
           {/* Footer */}
           <div className="px-8 py-4 border-t border-[#e4e7ec] text-center">
             <p className="text-[11px] text-[#4a5565]">
-              This is a system-generated document from OneShop POS &nbsp;·&nbsp; {grn.grnNumber} &nbsp;·&nbsp; Generated on {dateStr}
+              This is a system-generated document from {storeName} &nbsp;·&nbsp; {grn.grnNumber} &nbsp;·&nbsp; Generated on {dateStr}
             </p>
           </div>
         </div>

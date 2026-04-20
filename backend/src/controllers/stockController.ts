@@ -21,7 +21,7 @@ async function generateGRNNumber(storeId: string): Promise<string> {
 // ── GET /api/stocks/grns ───────────────────────────────────────────────────
 export async function getGRNs(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { search, from, to, page = '1', limit = '10' } = req.query;
 
     const filter: Record<string, unknown> = { storeId };
@@ -62,7 +62,7 @@ export async function getGRNs(req: AuthRequest, res: Response, next: NextFunctio
 // ── POST /api/stocks/grns ──────────────────────────────────────────────────
 export async function createGRN(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const receivedBy = req.user?.email ?? 'System';
 
     const { supplier, referenceNumber, notes, items } = req.body as {
@@ -149,7 +149,7 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
 // ── GET /api/stocks/grns/:id ───────────────────────────────────────────────
 export async function getGRN(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const grn = await GRN.findOne({ _id: req.params.id, storeId }).lean();
 
     if (!grn) {
@@ -166,7 +166,7 @@ export async function getGRN(req: AuthRequest, res: Response, next: NextFunction
 // ── GET /api/stocks/history ────────────────────────────────────────────────
 export async function getStockHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { type, productId, from, to, page = '1', limit = '10' } = req.query;
 
     const filter: Record<string, unknown> = { storeId };

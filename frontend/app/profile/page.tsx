@@ -81,7 +81,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="text-xs text-[#4a5565] mb-1">Store ID</p>
-              <p className="text-sm font-medium text-[#101828]">{user?.storeId ?? 'STORE-2025-001'}</p>
+              <p className="text-sm font-medium text-[#101828]">{user?.storeId}</p>
             </div>
             <div>
               <p className="text-xs text-[#4a5565] mb-1">Last Login</p>

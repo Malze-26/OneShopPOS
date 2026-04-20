@@ -10,7 +10,7 @@ function generateTxnId(): string {
 // GET /api/transactions
 export async function getTransactions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { payment, search, startDate, endDate, page = '1', limit = '20' } = req.query;
 
     const filter: Record<string, unknown> = { storeId };
@@ -39,7 +39,7 @@ export async function getTransactions(req: AuthRequest, res: Response, next: Nex
 // GET /api/transactions/stats
 export async function getTransactionStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
 
     const stats = await Transaction.aggregate([
       { $match: { storeId, status: 'success' } },
@@ -71,7 +71,7 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
     const txnId = generateTxnId();
@@ -92,7 +92,7 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 // GET /api/transactions/:id
 export async function getTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const transaction = await Transaction.findOne({ _id: req.params.id, storeId });
 
     if (!transaction) {

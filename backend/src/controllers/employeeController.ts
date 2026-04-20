@@ -6,7 +6,7 @@ import { Transaction } from '../models/Transaction';
 // GET /api/employees
 export async function getEmployees(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { search, role, status } = req.query;
 
     const filter: Record<string, unknown> = { storeId };
@@ -71,7 +71,7 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
 // PUT /api/employees/:id/deactivate
 export async function deactivateEmployee(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const user = await User.findOneAndUpdate(
       { _id: req.params.id, storeId },
       { isActive: false },

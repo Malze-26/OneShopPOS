@@ -5,6 +5,7 @@ import {
   getCustomer,
   createCustomer,
   getCustomerStats,
+  getCustomerOrders,
 } from '../controllers/customerController';
 import { AuthRequest } from '../types';
 
@@ -18,6 +19,7 @@ router.use(protect);
 
 router.get('/stats', asyncHandler(getCustomerStats));
 router.get('/', asyncHandler(getCustomers));
+router.get('/:id/orders', asyncHandler(getCustomerOrders));
 router.get('/:id', asyncHandler(getCustomer));
 router.post('/', asyncHandler(createCustomer));
 

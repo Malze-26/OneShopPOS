@@ -10,7 +10,7 @@ import { Category } from '../models/Category';
 export async function getProducts(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { search, category, status } = req.query;
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
 
     const filter: Record<string, unknown> = { storeId };
 
@@ -38,7 +38,7 @@ export async function getProducts(req: AuthRequest, res: Response, next: NextFun
 // GET /api/products/:id
 export async function getProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const product = await Product.findOne({ _id: req.params.id, storeId });
 
     if (!product) {
@@ -57,7 +57,7 @@ export async function getProduct(req: AuthRequest, res: Response, next: NextFunc
 // POST /api/products
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
     const product = await Product.create({
@@ -93,7 +93,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 // PUT /api/products/:id
 export async function updateProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
 
     const product = await Product.findOneAndUpdate(
       { _id: req.params.id, storeId },
@@ -115,7 +115,7 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
 // DELETE /api/products/:id
 export async function deleteProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
 
     const product = await Product.findOneAndDelete({ _id: req.params.id, storeId });
 
@@ -142,7 +142,7 @@ export async function deleteProduct(req: AuthRequest, res: Response, next: NextF
 // POST /api/products/:id/adjust-stock
 export async function adjustStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { type, quantity, reason } = req.body as { type: 'add' | 'remove'; quantity: number; reason: string };
 
     if (!['add', 'remove'].includes(type)) {
@@ -188,7 +188,7 @@ export async function adjustStock(req: AuthRequest, res: Response, next: NextFun
 // POST /api/products/import-csv
 export async function importCSV(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const userId = req.user?.id;
     const rows: Array<{
       name: string;
@@ -249,7 +249,7 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
 // POST /api/products/:id/images
 export async function uploadProductImages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const files = req.files as Express.Multer.File[] | undefined;
 
     if (!files || files.length === 0) {
@@ -277,7 +277,7 @@ export async function uploadProductImages(req: AuthRequest, res: Response, next:
 // DELETE /api/products/:id/images/:filename
 export async function deleteProductImage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user?.storeId ?? 'STORE-2025-001';
+    const storeId = req.user!.storeId;
     const { filename } = req.params;
     const imagePath = `/uploads/products/${filename}`;
 

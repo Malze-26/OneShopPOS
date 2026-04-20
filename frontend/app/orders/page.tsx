@@ -7,6 +7,7 @@ import {
   Eye, X, MapPin, Phone, Mail, Calendar,
 } from 'lucide-react';
 import api from '@/app/lib/api';
+import { useFmt, useStore } from '@/app/contexts/StoreContext';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,12 +71,8 @@ const PAYMENT_STATUS_COLOR: Record<PaymentStatus, string> = {
 
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
 
-function fmt(n: number) {
-  return `LKR ${n.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
-}
-
 function fmtDate(d: string) {
-  return new Date(d).toLocaleString('en-LK', { dateStyle: 'medium', timeStyle: 'short' });
+  return new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -105,6 +102,7 @@ function OrderModal({ order, onClose, onStatusChange }: {
   onClose: () => void;
   onStatusChange: (id: string, status: OrderStatus) => void;
 }) {
+  const fmt = useFmt();
   const cfg = STATUS_CONFIG[order.status];
   const StatusIcon = cfg.icon;
 
@@ -231,6 +229,8 @@ function OrderModal({ order, onClose, onStatusChange }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
+  const fmt = useFmt();
+  const { currencyLocale } = useStore();
   const [orders, setOrders]       = useState<Order[]>([]);
   const [stats, setStats]         = useState<Stats | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -396,7 +396,7 @@ export default function OrdersPage() {
                     <td className="px-4 py-3 text-[#4a5565] whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(order.createdAt).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(order.createdAt).toLocaleDateString(currencyLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     </td>
                     <td className="px-4 py-3">

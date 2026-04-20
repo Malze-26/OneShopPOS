@@ -15,6 +15,8 @@ import { User } from './models/User';
 import { Category } from './models/Category';
 import { Product } from './models/Product';
 import { Customer } from './models/Customer';
+import { Order } from './models/Order';
+import { StoreSettings } from './models/StoreSettings';
 
 const STORE_ID = 'STORE-2025-001';
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'products');
@@ -506,6 +508,644 @@ async function seed() {
     } else {
       console.log(`  Customer "${c.name}" already exists – skipping`);
     }
+  }
+
+  // ── 6. Seed StoreSettings ──────────────────────────────────────────────────
+  const existingSettings = await StoreSettings.findOne({ storeId: STORE_ID });
+  if (!existingSettings) {
+    await StoreSettings.create({
+      storeId:        STORE_ID,
+      storeName:      'OneShop',
+      currency:       'LKR',
+      currencyLocale: 'en-LK',
+      address:        'No. 1, Main Street, Colombo 01',
+      phone:          '+94 11 234 5678',
+      email:          'info@oneshop.lk',
+    });
+    console.log('\n✓ StoreSettings created');
+  } else {
+    console.log('\n  StoreSettings already exists – skipping');
+  }
+
+  // ── 7. Seed Orders ─────────────────────────────────────────────────────────
+  console.log('');
+  const orderDocs = [
+    // ── Amal Perera ──────────────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-001', source: 'physical',
+      customerName: 'Amal Perera', customerEmail: 'amal.perera@gmail.com', customerPhone: '+94 71 234 5678',
+      items: [
+        { productName: 'Nestlé Milo 400g',   sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Coca-Cola 500ml',    sku: 'BEV-001', quantity: 2, unitPrice: 180, subtotal: 360 },
+        { productName: 'Anchor Butter 200g', sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+      ],
+      subtotal: 1500, discount: 0, total: 1500, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2025-12-10'), updatedAt: new Date('2025-12-10'),
+    },
+    {
+      orderId: 'ORD-SEED-002', source: 'physical',
+      customerName: 'Amal Perera', customerEmail: 'amal.perera@gmail.com', customerPhone: '+94 71 234 5678',
+      items: [
+        { productName: 'Dilmah Tea Bags 50s',      sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Full Cream Milk 1L', sku: 'DAI-004', quantity: 1, unitPrice: 350, subtotal: 350 },
+      ],
+      subtotal: 1120, discount: 0, total: 1120, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-01-05'), updatedAt: new Date('2026-01-05'),
+    },
+    {
+      orderId: 'ORD-SEED-003', source: 'online',
+      customerName: 'Amal Perera', customerEmail: 'amal.perera@gmail.com', customerPhone: '+94 71 234 5678',
+      items: [
+        { productName: 'Nestlé Milo 1kg',        sku: 'MLT-004', quantity: 1, unitPrice: 1350, subtotal: 1350 },
+        { productName: 'Horlicks Original 500g', sku: 'MLT-001', quantity: 1, unitPrice: 850,  subtotal: 850  },
+        { productName: 'Nescafé Classic 50g',    sku: 'TEA-003', quantity: 1, unitPrice: 480,  subtotal: 480  },
+      ],
+      subtotal: 2680, discount: 0, total: 2680, status: 'delivered',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 45, Galle Road, Colombo 03', storeId: STORE_ID,
+      createdAt: new Date('2026-01-28'), updatedAt: new Date('2026-01-28'),
+    },
+    {
+      orderId: 'ORD-SEED-004', source: 'physical',
+      customerName: 'Amal Perera', customerEmail: 'amal.perera@gmail.com', customerPhone: '+94 71 234 5678',
+      items: [
+        { productName: 'Carrot 1kg',           sku: 'VEG-001', quantity: 2, unitPrice: 180, subtotal: 360 },
+        { productName: 'Potato 1kg',           sku: 'VEG-003', quantity: 1, unitPrice: 200, subtotal: 200 },
+        { productName: 'Banana bunch ~1kg',    sku: 'FRT-001', quantity: 1, unitPrice: 150, subtotal: 150 },
+        { productName: 'Apple Imported 1kg',   sku: 'FRT-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+      ],
+      subtotal: 1190, discount: 0, total: 1190, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-20'), updatedAt: new Date('2026-02-20'),
+    },
+    {
+      orderId: 'ORD-SEED-005', source: 'online',
+      customerName: 'Amal Perera', customerEmail: 'amal.perera@gmail.com', customerPhone: '+94 71 234 5678',
+      items: [
+        { productName: 'Kist Mango Juice 200ml',  sku: 'JUS-001', quantity: 4, unitPrice: 85,  subtotal: 340 },
+        { productName: 'Kist Guava Juice 200ml',  sku: 'JUS-004', quantity: 4, unitPrice: 85,  subtotal: 340 },
+        { productName: 'EH Cream Soda 400ml',     sku: 'SDW-002', quantity: 2, unitPrice: 120, subtotal: 240 },
+      ],
+      subtotal: 920, discount: 0, total: 920, status: 'shipped',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 45, Galle Road, Colombo 03', storeId: STORE_ID,
+      createdAt: new Date('2026-03-15'), updatedAt: new Date('2026-03-15'),
+    },
+    // ── Nimali Fernando ──────────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-006', source: 'online',
+      customerName: 'Nimali Fernando', customerEmail: 'nimali.f@yahoo.com', customerPhone: '+94 76 345 6789',
+      items: [
+        { productName: 'Anchor Cheese Slices 200g',  sku: 'CHF-001', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'Anchor Cooking Cream 200ml', sku: 'CHF-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Nestlé Yoghurt 100g',        sku: 'CHF-002', quantity: 2, unitPrice: 120, subtotal: 240 },
+      ],
+      subtotal: 1200, discount: 0, total: 1200, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 12, Temple Road, Kandy', storeId: STORE_ID,
+      createdAt: new Date('2025-12-15'), updatedAt: new Date('2025-12-15'),
+    },
+    {
+      orderId: 'ORD-SEED-007', source: 'physical',
+      customerName: 'Nimali Fernando', customerEmail: 'nimali.f@yahoo.com', customerPhone: '+94 76 345 6789',
+      items: [
+        { productName: 'Anchor Butter 200g',       sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Full Cream Milk 1L', sku: 'DAI-004', quantity: 1, unitPrice: 350, subtotal: 350 },
+      ],
+      subtotal: 1220, discount: 0, total: 1220, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-01-10'), updatedAt: new Date('2026-01-10'),
+    },
+    {
+      orderId: 'ORD-SEED-008', source: 'online',
+      customerName: 'Nimali Fernando', customerEmail: 'nimali.f@yahoo.com', customerPhone: '+94 76 345 6789',
+      items: [
+        { productName: 'EH Vanilla Ice Cream 500ml',   sku: 'DAI-002', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'McCain French Fries 750g',     sku: 'FRZ-002', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Frozen Chicken Nuggets 300g',  sku: 'FRZ-004', quantity: 1, unitPrice: 580, subtotal: 580 },
+      ],
+      subtotal: 1810, discount: 0, total: 1810, status: 'delivered',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 12, Temple Road, Kandy', storeId: STORE_ID,
+      createdAt: new Date('2026-02-05'), updatedAt: new Date('2026-02-05'),
+    },
+    {
+      orderId: 'ORD-SEED-009', source: 'physical',
+      customerName: 'Nimali Fernando', customerEmail: 'nimali.f@yahoo.com', customerPhone: '+94 76 345 6789',
+      items: [
+        { productName: 'Dilmah Tea Bags 50s', sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Nescafé Classic 50g', sku: 'TEA-003', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Nestlé Milo 400g',    sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+      ],
+      subtotal: 1520, discount: 0, total: 1520, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-03-01'), updatedAt: new Date('2026-03-01'),
+    },
+    {
+      orderId: 'ORD-SEED-010', source: 'online',
+      customerName: 'Nimali Fernando', customerEmail: 'nimali.f@yahoo.com', customerPhone: '+94 76 345 6789',
+      items: [
+        { productName: 'Apple Imported 1kg', sku: 'FRT-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Banana bunch ~1kg',  sku: 'FRT-001', quantity: 2, unitPrice: 150, subtotal: 300 },
+        { productName: 'Papaya 1kg',         sku: 'FRT-003', quantity: 1, unitPrice: 120, subtotal: 120 },
+      ],
+      subtotal: 900, discount: 0, total: 900, status: 'processing',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 12, Temple Road, Kandy', storeId: STORE_ID,
+      createdAt: new Date('2026-04-05'), updatedAt: new Date('2026-04-05'),
+    },
+    // ── Kasun Rajapaksa ──────────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-011', source: 'physical',
+      customerName: 'Kasun Rajapaksa', customerEmail: 'kasun.r@gmail.com', customerPhone: '+94 77 456 7890',
+      items: [
+        { productName: 'Nestlé Milo 1kg',         sku: 'MLT-004', quantity: 1, unitPrice: 1350, subtotal: 1350 },
+        { productName: 'Horlicks Original 500g',  sku: 'MLT-001', quantity: 1, unitPrice: 850,  subtotal: 850  },
+        { productName: 'Anchor Milk Powder 400g', sku: 'MLT-006', quantity: 1, unitPrice: 820,  subtotal: 820  },
+      ],
+      subtotal: 3020, discount: 0, total: 3020, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2025-12-05'), updatedAt: new Date('2025-12-05'),
+    },
+    {
+      orderId: 'ORD-SEED-012', source: 'online',
+      customerName: 'Kasun Rajapaksa', customerEmail: 'kasun.r@gmail.com', customerPhone: '+94 77 456 7890',
+      items: [
+        { productName: 'Frozen Prawns 250g',          sku: 'FRZ-006', quantity: 1, unitPrice: 680, subtotal: 680 },
+        { productName: 'Frozen Fish Fingers 300g',    sku: 'FRZ-001', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Frozen Chicken Nuggets 300g', sku: 'FRZ-004', quantity: 1, unitPrice: 580, subtotal: 580 },
+      ],
+      subtotal: 1740, discount: 0, total: 1740, status: 'delivered',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 78, Peradeniya Road, Kandy', storeId: STORE_ID,
+      createdAt: new Date('2025-12-28'), updatedAt: new Date('2025-12-28'),
+    },
+    {
+      orderId: 'ORD-SEED-013', source: 'physical',
+      customerName: 'Kasun Rajapaksa', customerEmail: 'kasun.r@gmail.com', customerPhone: '+94 77 456 7890',
+      items: [
+        { productName: 'Carrot 1kg',               sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Tomato 1kg',               sku: 'VEG-002', quantity: 1, unitPrice: 150, subtotal: 150 },
+        { productName: 'Potato 1kg',               sku: 'VEG-003', quantity: 1, unitPrice: 200, subtotal: 200 },
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Full Cream Milk 1L', sku: 'DAI-004', quantity: 1, unitPrice: 350, subtotal: 350 },
+      ],
+      subtotal: 1260, discount: 0, total: 1260, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-01-20'), updatedAt: new Date('2026-01-20'),
+    },
+    {
+      orderId: 'ORD-SEED-014', source: 'online',
+      customerName: 'Kasun Rajapaksa', customerEmail: 'kasun.r@gmail.com', customerPhone: '+94 77 456 7890',
+      items: [
+        { productName: 'Anchor Mozzarella Block 250g',   sku: 'CHF-007', quantity: 1, unitPrice: 950, subtotal: 950 },
+        { productName: 'Elle & Vire Whipping Cream 200ml', sku: 'CHF-006', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Kotmale Greek Yoghurt 150g',     sku: 'CHF-005', quantity: 2, unitPrice: 180, subtotal: 360 },
+      ],
+      subtotal: 1790, discount: 0, total: 1790, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 78, Peradeniya Road, Kandy', storeId: STORE_ID,
+      createdAt: new Date('2026-02-14'), updatedAt: new Date('2026-02-14'),
+    },
+    {
+      orderId: 'ORD-SEED-015', source: 'physical',
+      customerName: 'Kasun Rajapaksa', customerEmail: 'kasun.r@gmail.com', customerPhone: '+94 77 456 7890',
+      items: [
+        { productName: 'Nestlé Milo 400g',       sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Dilmah Tea Bags 50s',    sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Nescafé Classic 50g',    sku: 'TEA-003', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Cowhead Orange Juice 1L',sku: 'JUS-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+      ],
+      subtotal: 2000, discount: 0, total: 2000, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-03-22'), updatedAt: new Date('2026-03-22'),
+    },
+    // ── Dilani Wickramasinghe ────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-016', source: 'online',
+      customerName: 'Dilani Wickramasinghe', customerEmail: 'dilani.w@hotmail.com', customerPhone: '+94 78 567 8901',
+      items: [
+        { productName: 'Anchor Butter 200g',         sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Anchor Cheese Slices 200g',  sku: 'CHF-001', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'Anchor Cooking Cream 200ml', sku: 'CHF-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+      ],
+      subtotal: 1450, discount: 0, total: 1450, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 23, Baseline Road, Dematagoda', storeId: STORE_ID,
+      createdAt: new Date('2026-01-15'), updatedAt: new Date('2026-01-15'),
+    },
+    {
+      orderId: 'ORD-SEED-017', source: 'physical',
+      customerName: 'Dilani Wickramasinghe', customerEmail: 'dilani.w@hotmail.com', customerPhone: '+94 78 567 8901',
+      items: [
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Full Cream Milk 1L', sku: 'DAI-004', quantity: 1, unitPrice: 350, subtotal: 350 },
+        { productName: 'Nestlé Yoghurt 100g',       sku: 'CHF-002', quantity: 1, unitPrice: 120, subtotal: 120 },
+      ],
+      subtotal: 850, discount: 0, total: 850, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-03'), updatedAt: new Date('2026-02-03'),
+    },
+    {
+      orderId: 'ORD-SEED-018', source: 'online',
+      customerName: 'Dilani Wickramasinghe', customerEmail: 'dilani.w@hotmail.com', customerPhone: '+94 78 567 8901',
+      items: [
+        { productName: 'Nestlé Milo 400g',       sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Horlicks Original 500g', sku: 'MLT-001', quantity: 1, unitPrice: 850, subtotal: 850 },
+      ],
+      subtotal: 1500, discount: 0, total: 1500, status: 'shipped',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 23, Baseline Road, Dematagoda', storeId: STORE_ID,
+      createdAt: new Date('2026-03-10'), updatedAt: new Date('2026-03-10'),
+    },
+    {
+      orderId: 'ORD-SEED-019', source: 'physical',
+      customerName: 'Dilani Wickramasinghe', customerEmail: 'dilani.w@hotmail.com', customerPhone: '+94 78 567 8901',
+      items: [
+        { productName: 'Apple Imported 1kg', sku: 'FRT-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Banana bunch ~1kg',  sku: 'FRT-001', quantity: 1, unitPrice: 150, subtotal: 150 },
+        { productName: 'Papaya 1kg',         sku: 'FRT-003', quantity: 1, unitPrice: 120, subtotal: 120 },
+      ],
+      subtotal: 750, discount: 0, total: 750, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-04-08'), updatedAt: new Date('2026-04-08'),
+    },
+    // ── Ruwan Silva ──────────────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-020', source: 'physical',
+      customerName: 'Ruwan Silva', customerEmail: 'ruwan.silva@gmail.com', customerPhone: '+94 71 678 9012',
+      items: [
+        { productName: 'Nestlé Milo 1kg',         sku: 'MLT-004', quantity: 1, unitPrice: 1350, subtotal: 1350 },
+        { productName: 'Anchor Milk Powder 400g', sku: 'MLT-006', quantity: 1, unitPrice: 820,  subtotal: 820  },
+        { productName: 'Horlicks Original 500g',  sku: 'MLT-001', quantity: 1, unitPrice: 850,  subtotal: 850  },
+      ],
+      subtotal: 3020, discount: 0, total: 3020, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2025-12-20'), updatedAt: new Date('2025-12-20'),
+    },
+    {
+      orderId: 'ORD-SEED-021', source: 'online',
+      customerName: 'Ruwan Silva', customerEmail: 'ruwan.silva@gmail.com', customerPhone: '+94 71 678 9012',
+      items: [
+        { productName: 'McCain French Fries 750g',    sku: 'FRZ-002', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'EH Vanilla Ice Cream 500ml',  sku: 'DAI-002', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'EH Chocolate Ice Cream 500ml',sku: 'FRZ-003', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'Frozen Prawns 250g',           sku: 'FRZ-006', quantity: 1, unitPrice: 680, subtotal: 680 },
+      ],
+      subtotal: 2490, discount: 0, total: 2490, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 56, Havelock Road, Colombo 05', storeId: STORE_ID,
+      createdAt: new Date('2026-01-12'), updatedAt: new Date('2026-01-12'),
+    },
+    {
+      orderId: 'ORD-SEED-022', source: 'physical',
+      customerName: 'Ruwan Silva', customerEmail: 'ruwan.silva@gmail.com', customerPhone: '+94 71 678 9012',
+      items: [
+        { productName: 'Carrot 1kg',           sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Potato 1kg',           sku: 'VEG-003', quantity: 1, unitPrice: 200, subtotal: 200 },
+        { productName: 'Banana bunch ~1kg',    sku: 'FRT-001', quantity: 1, unitPrice: 150, subtotal: 150 },
+        { productName: 'Eggs Tray of 12',       sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Butter 200g',   sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+      ],
+      subtotal: 1400, discount: 0, total: 1400, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-01'), updatedAt: new Date('2026-02-01'),
+    },
+    {
+      orderId: 'ORD-SEED-023', source: 'online',
+      customerName: 'Ruwan Silva', customerEmail: 'ruwan.silva@gmail.com', customerPhone: '+94 71 678 9012',
+      items: [
+        { productName: 'Cowhead Orange Juice 1L', sku: 'JUS-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Dilmah Tea Bags 50s',     sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Nescafé Classic 50g',     sku: 'TEA-003', quantity: 1, unitPrice: 480, subtotal: 480 },
+      ],
+      subtotal: 1350, discount: 0, total: 1350, status: 'delivered',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 56, Havelock Road, Colombo 05', storeId: STORE_ID,
+      createdAt: new Date('2026-03-05'), updatedAt: new Date('2026-03-05'),
+    },
+    {
+      orderId: 'ORD-SEED-024', source: 'physical',
+      customerName: 'Ruwan Silva', customerEmail: 'ruwan.silva@gmail.com', customerPhone: '+94 71 678 9012',
+      items: [
+        { productName: 'Coca-Cola 500ml',  sku: 'BEV-001', quantity: 3, unitPrice: 180, subtotal: 540 },
+        { productName: 'Nestlé Milo 400g', sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+      ],
+      subtotal: 1190, discount: 0, total: 1190, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-04-12'), updatedAt: new Date('2026-04-12'),
+    },
+    // ── Chamari Bandara ──────────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-025', source: 'physical',
+      customerName: 'Chamari Bandara', customerEmail: 'chamari.b@gmail.com', customerPhone: '+94 76 789 0123',
+      items: [
+        { productName: 'Eggs Tray of 12',   sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Butter 200g',sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Cow Milk 1L Pack',  sku: 'DAI-009', quantity: 1, unitPrice: 280, subtotal: 280 },
+      ],
+      subtotal: 1150, discount: 0, total: 1150, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2025-12-22'), updatedAt: new Date('2025-12-22'),
+    },
+    {
+      orderId: 'ORD-SEED-026', source: 'online',
+      customerName: 'Chamari Bandara', customerEmail: 'chamari.b@gmail.com', customerPhone: '+94 76 789 0123',
+      items: [
+        { productName: 'Dilmah Tea Bags 50s', sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Nescafé Classic 50g', sku: 'TEA-003', quantity: 1, unitPrice: 480, subtotal: 480 },
+      ],
+      subtotal: 870, discount: 0, total: 870, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 34, Station Road, Nugegoda', storeId: STORE_ID,
+      createdAt: new Date('2026-01-18'), updatedAt: new Date('2026-01-18'),
+    },
+    {
+      orderId: 'ORD-SEED-027', source: 'physical',
+      customerName: 'Chamari Bandara', customerEmail: 'chamari.b@gmail.com', customerPhone: '+94 76 789 0123',
+      items: [
+        { productName: 'Carrot 1kg',  sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Tomato 1kg',  sku: 'VEG-002', quantity: 1, unitPrice: 150, subtotal: 150 },
+        { productName: 'Potato 1kg',  sku: 'VEG-003', quantity: 1, unitPrice: 200, subtotal: 200 },
+        { productName: 'Cabbage 1kg', sku: 'VEG-005', quantity: 1, unitPrice: 100, subtotal: 100 },
+      ],
+      subtotal: 630, discount: 0, total: 630, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-12'), updatedAt: new Date('2026-02-12'),
+    },
+    {
+      orderId: 'ORD-SEED-028', source: 'online',
+      customerName: 'Chamari Bandara', customerEmail: 'chamari.b@gmail.com', customerPhone: '+94 76 789 0123',
+      items: [
+        { productName: 'Nestlé Milo 400g',  sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Nestlé Yoghurt 100g',sku: 'CHF-002', quantity: 3, unitPrice: 120, subtotal: 360 },
+      ],
+      subtotal: 1010, discount: 0, total: 1010, status: 'delivered',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 34, Station Road, Nugegoda', storeId: STORE_ID,
+      createdAt: new Date('2026-03-08'), updatedAt: new Date('2026-03-08'),
+    },
+    {
+      orderId: 'ORD-SEED-029', source: 'physical',
+      customerName: 'Chamari Bandara', customerEmail: 'chamari.b@gmail.com', customerPhone: '+94 76 789 0123',
+      items: [
+        { productName: 'Anchor Butter 200g',       sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Cheese Slices 200g', sku: 'CHF-001', quantity: 1, unitPrice: 580, subtotal: 580 },
+      ],
+      subtotal: 1450, discount: 0, total: 1450, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-04-03'), updatedAt: new Date('2026-04-03'),
+    },
+    // ── Pradeep Jayawardena ──────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-030', source: 'physical',
+      customerName: 'Pradeep Jayawardena', customerEmail: 'pradeep.j@yahoo.com', customerPhone: '+94 77 890 1234',
+      items: [
+        { productName: 'Nestlé Milo 400g',   sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Anchor Butter 200g', sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Eggs Tray of 12',    sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Dilmah Tea Bags 50s',sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+      ],
+      subtotal: 1910, discount: 0, total: 1910, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-01-08'), updatedAt: new Date('2026-01-08'),
+    },
+    {
+      orderId: 'ORD-SEED-031', source: 'online',
+      customerName: 'Pradeep Jayawardena', customerEmail: 'pradeep.j@yahoo.com', customerPhone: '+94 77 890 1234',
+      items: [
+        { productName: 'EH Vanilla Ice Cream 500ml',  sku: 'DAI-002', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'McCain French Fries 750g',    sku: 'FRZ-002', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Frozen Chicken Nuggets 300g', sku: 'FRZ-004', quantity: 1, unitPrice: 580, subtotal: 580 },
+      ],
+      subtotal: 1810, discount: 0, total: 1810, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 89, Nawala Road, Rajagiriya', storeId: STORE_ID,
+      createdAt: new Date('2026-01-28'), updatedAt: new Date('2026-01-28'),
+    },
+    {
+      orderId: 'ORD-SEED-032', source: 'physical',
+      customerName: 'Pradeep Jayawardena', customerEmail: 'pradeep.j@yahoo.com', customerPhone: '+94 77 890 1234',
+      items: [
+        { productName: 'Carrot 1kg',         sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Potato 1kg',         sku: 'VEG-003', quantity: 1, unitPrice: 200, subtotal: 200 },
+        { productName: 'Apple Imported 1kg', sku: 'FRT-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Banana bunch ~1kg',  sku: 'FRT-001', quantity: 1, unitPrice: 150, subtotal: 150 },
+      ],
+      subtotal: 1010, discount: 0, total: 1010, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-20'), updatedAt: new Date('2026-02-20'),
+    },
+    {
+      orderId: 'ORD-SEED-033', source: 'online',
+      customerName: 'Pradeep Jayawardena', customerEmail: 'pradeep.j@yahoo.com', customerPhone: '+94 77 890 1234',
+      items: [
+        { productName: 'Horlicks Original 500g', sku: 'MLT-001', quantity: 1, unitPrice: 850, subtotal: 850 },
+        { productName: 'Nestomalt 400g',          sku: 'MLT-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Ovaltine 400g',            sku: 'MLT-003', quantity: 1, unitPrice: 720, subtotal: 720 },
+      ],
+      subtotal: 2050, discount: 0, total: 2050, status: 'shipped',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 89, Nawala Road, Rajagiriya', storeId: STORE_ID,
+      createdAt: new Date('2026-03-18'), updatedAt: new Date('2026-03-18'),
+    },
+    {
+      orderId: 'ORD-SEED-034', source: 'physical',
+      customerName: 'Pradeep Jayawardena', customerEmail: 'pradeep.j@yahoo.com', customerPhone: '+94 77 890 1234',
+      items: [
+        { productName: 'Nestlé Milo 400g',        sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Dilmah Tea Bags 50s',     sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Cowhead Orange Juice 1L', sku: 'JUS-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+      ],
+      subtotal: 1520, discount: 0, total: 1520, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-04-10'), updatedAt: new Date('2026-04-10'),
+    },
+    // ── Shalini Dissanayake ──────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-035', source: 'physical',
+      customerName: 'Shalini Dissanayake', customerEmail: 'shalini.d@gmail.com', customerPhone: '+94 78 901 2345',
+      items: [
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Full Cream Milk 1L', sku: 'DAI-004', quantity: 1, unitPrice: 350, subtotal: 350 },
+      ],
+      subtotal: 730, discount: 0, total: 730, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-01-25'), updatedAt: new Date('2026-01-25'),
+    },
+    {
+      orderId: 'ORD-SEED-036', source: 'online',
+      customerName: 'Shalini Dissanayake', customerEmail: 'shalini.d@gmail.com', customerPhone: '+94 78 901 2345',
+      items: [
+        { productName: 'Dilmah Tea Bags 50s', sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+        { productName: 'Nestlé Milo 400g',    sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+      ],
+      subtotal: 1040, discount: 0, total: 1040, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 67, High Level Road, Maharagama', storeId: STORE_ID,
+      createdAt: new Date('2026-02-28'), updatedAt: new Date('2026-02-28'),
+    },
+    {
+      orderId: 'ORD-SEED-037', source: 'physical',
+      customerName: 'Shalini Dissanayake', customerEmail: 'shalini.d@gmail.com', customerPhone: '+94 78 901 2345',
+      items: [
+        { productName: 'Carrot 1kg',  sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Tomato 1kg',  sku: 'VEG-002', quantity: 1, unitPrice: 150, subtotal: 150 },
+        { productName: 'Cabbage 1kg', sku: 'VEG-005', quantity: 1, unitPrice: 100, subtotal: 100 },
+      ],
+      subtotal: 430, discount: 0, total: 430, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-03-25'), updatedAt: new Date('2026-03-25'),
+    },
+    {
+      orderId: 'ORD-SEED-038', source: 'physical',
+      customerName: 'Shalini Dissanayake', customerEmail: 'shalini.d@gmail.com', customerPhone: '+94 78 901 2345',
+      items: [
+        { productName: 'Anchor Butter 200g',  sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Nestlé Yoghurt 100g', sku: 'CHF-002', quantity: 1, unitPrice: 120, subtotal: 120 },
+      ],
+      subtotal: 610, discount: 0, total: 610, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-04-15'), updatedAt: new Date('2026-04-15'),
+    },
+    // ── Tharaka Kumara ───────────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-039', source: 'physical',
+      customerName: 'Tharaka Kumara', customerEmail: 'tharaka.k@gmail.com', customerPhone: '+94 71 012 3456',
+      items: [
+        { productName: 'Nestlé Milo 1kg',         sku: 'MLT-004', quantity: 1, unitPrice: 1350, subtotal: 1350 },
+        { productName: 'Horlicks Original 500g',  sku: 'MLT-001', quantity: 1, unitPrice: 850,  subtotal: 850  },
+        { productName: 'Anchor Milk Powder 400g', sku: 'MLT-006', quantity: 1, unitPrice: 820,  subtotal: 820  },
+        { productName: 'Nescafé Classic 50g',     sku: 'TEA-003', quantity: 1, unitPrice: 480,  subtotal: 480  },
+      ],
+      subtotal: 3500, discount: 0, total: 3500, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2025-12-08'), updatedAt: new Date('2025-12-08'),
+    },
+    {
+      orderId: 'ORD-SEED-040', source: 'online',
+      customerName: 'Tharaka Kumara', customerEmail: 'tharaka.k@gmail.com', customerPhone: '+94 71 012 3456',
+      items: [
+        { productName: 'McCain French Fries 750g',    sku: 'FRZ-002', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Frozen Prawns 250g',           sku: 'FRZ-006', quantity: 1, unitPrice: 680, subtotal: 680 },
+        { productName: 'Frozen Chicken Nuggets 300g', sku: 'FRZ-004', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'EH Vanilla Ice Cream 500ml',  sku: 'DAI-002', quantity: 1, unitPrice: 580, subtotal: 580 },
+        { productName: 'EH Chocolate Ice Cream 500ml',sku: 'FRZ-003', quantity: 1, unitPrice: 580, subtotal: 580 },
+      ],
+      subtotal: 3070, discount: 0, total: 3070, status: 'delivered',
+      paymentMethod: 'Bank Transfer', paymentStatus: 'paid',
+      deliveryAddress: 'No. 15, Rajapaksha Mawatha, Gampaha', storeId: STORE_ID,
+      createdAt: new Date('2026-01-05'), updatedAt: new Date('2026-01-05'),
+    },
+    {
+      orderId: 'ORD-SEED-041', source: 'physical',
+      customerName: 'Tharaka Kumara', customerEmail: 'tharaka.k@gmail.com', customerPhone: '+94 71 012 3456',
+      items: [
+        { productName: 'Anchor Butter 200g',       sku: 'DAI-001', quantity: 1, unitPrice: 490, subtotal: 490 },
+        { productName: 'Eggs Tray of 12',           sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Anchor Full Cream Milk 1L', sku: 'DAI-004', quantity: 1, unitPrice: 350, subtotal: 350 },
+        { productName: 'Carrot 1kg',               sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Potato 1kg',               sku: 'VEG-003', quantity: 1, unitPrice: 200, subtotal: 200 },
+      ],
+      subtotal: 1600, discount: 0, total: 1600, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-10'), updatedAt: new Date('2026-02-10'),
+    },
+    {
+      orderId: 'ORD-SEED-042', source: 'online',
+      customerName: 'Tharaka Kumara', customerEmail: 'tharaka.k@gmail.com', customerPhone: '+94 71 012 3456',
+      items: [
+        { productName: 'Nestlé Milo 400g',        sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Dilmah Tea Bags 50s',     sku: 'TEA-001', quantity: 2, unitPrice: 390, subtotal: 780 },
+        { productName: 'Nescafé Classic 50g',     sku: 'TEA-003', quantity: 1, unitPrice: 480, subtotal: 480 },
+        { productName: 'Cowhead Orange Juice 1L', sku: 'JUS-002', quantity: 1, unitPrice: 480, subtotal: 480 },
+      ],
+      subtotal: 2390, discount: 0, total: 2390, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 15, Rajapaksha Mawatha, Gampaha', storeId: STORE_ID,
+      createdAt: new Date('2026-03-12'), updatedAt: new Date('2026-03-12'),
+    },
+    {
+      orderId: 'ORD-SEED-043', source: 'physical',
+      customerName: 'Tharaka Kumara', customerEmail: 'tharaka.k@gmail.com', customerPhone: '+94 71 012 3456',
+      items: [
+        { productName: 'Apple Imported 1kg', sku: 'FRT-002', quantity: 2, unitPrice: 480, subtotal: 960 },
+        { productName: 'Banana bunch ~1kg',  sku: 'FRT-001', quantity: 2, unitPrice: 150, subtotal: 300 },
+        { productName: 'Papaya 1kg',         sku: 'FRT-003', quantity: 1, unitPrice: 120, subtotal: 120 },
+      ],
+      subtotal: 1380, discount: 0, total: 1380, status: 'delivered',
+      paymentMethod: 'Card', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-04-05'), updatedAt: new Date('2026-04-05'),
+    },
+    // ── Sanduni Rathnayake ───────────────────────────────────────────────────
+    {
+      orderId: 'ORD-SEED-044', source: 'physical',
+      customerName: 'Sanduni Rathnayake', customerEmail: 'sanduni.r@outlook.com', customerPhone: '+94 76 123 4567',
+      items: [
+        { productName: 'Eggs Tray of 12',       sku: 'DAI-003', quantity: 1, unitPrice: 380, subtotal: 380 },
+        { productName: 'Nestlé Fresh Milk 500ml',sku: 'DAI-007', quantity: 1, unitPrice: 195, subtotal: 195 },
+      ],
+      subtotal: 575, discount: 0, total: 575, status: 'delivered',
+      paymentMethod: 'Cash', paymentStatus: 'paid', storeId: STORE_ID,
+      createdAt: new Date('2026-02-15'), updatedAt: new Date('2026-02-15'),
+    },
+    {
+      orderId: 'ORD-SEED-045', source: 'online',
+      customerName: 'Sanduni Rathnayake', customerEmail: 'sanduni.r@outlook.com', customerPhone: '+94 76 123 4567',
+      items: [
+        { productName: 'Nestlé Milo 400g',   sku: 'BEV-004', quantity: 1, unitPrice: 650, subtotal: 650 },
+        { productName: 'Dilmah Tea Bags 50s',sku: 'TEA-001', quantity: 1, unitPrice: 390, subtotal: 390 },
+      ],
+      subtotal: 1040, discount: 0, total: 1040, status: 'delivered',
+      paymentMethod: 'Online', paymentStatus: 'paid',
+      deliveryAddress: 'No. 102, Dutugemunu Street, Kesbewa', storeId: STORE_ID,
+      createdAt: new Date('2026-03-20'), updatedAt: new Date('2026-03-20'),
+    },
+    {
+      orderId: 'ORD-SEED-046', source: 'physical',
+      customerName: 'Sanduni Rathnayake', customerEmail: 'sanduni.r@outlook.com', customerPhone: '+94 76 123 4567',
+      items: [
+        { productName: 'Carrot 1kg', sku: 'VEG-001', quantity: 1, unitPrice: 180, subtotal: 180 },
+        { productName: 'Tomato 1kg', sku: 'VEG-002', quantity: 1, unitPrice: 150, subtotal: 150 },
+      ],
+      subtotal: 330, discount: 0, total: 330, status: 'pending',
+      paymentMethod: 'Cash', paymentStatus: 'pending', storeId: STORE_ID,
+      createdAt: new Date('2026-04-14'), updatedAt: new Date('2026-04-14'),
+    },
+  ];
+
+  for (const o of orderDocs) {
+    const exists = await Order.findOne({ orderId: o.orderId });
+    if (!exists) {
+      await Order.collection.insertOne(o); // bypass Mongoose auto-timestamp to preserve createdAt
+      console.log(`✓ Order created: ${o.orderId} – ${o.customerName}`);
+    } else {
+      console.log(`  Order ${o.orderId} already exists – skipping`);
+    }
+  }
+
+  // ── 8. Sync Customer stats from real Order data ────────────────────────────
+  console.log('');
+  for (const c of customers) {
+    const orders = await Order.find({ customerEmail: c.email, storeId: STORE_ID });
+    if (orders.length === 0) continue;
+    const totalOrders  = orders.length;
+    const totalSpent   = orders.reduce((sum, o) => sum + o.total, 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastPurchase = orders.reduce((latest, o) => {
+      const d = (o as any).createdAt as Date;
+      return d > latest ? d : latest;
+    }, new Date(0));
+    await Customer.findOneAndUpdate(
+      { email: c.email, storeId: STORE_ID },
+      { $set: { totalOrders, totalSpent, lastPurchase } }
+    );
+    console.log(`✓ Stats synced: ${c.name} → ${totalOrders} orders, LKR ${totalSpent.toLocaleString()}`);
   }
 
   console.log('\nSeeding complete.');

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Upload, X, Sparkles } from 'lucide-react';
 import api from '@/app/lib/api';
+import { useStore } from '@/app/contexts/StoreContext';
 
 interface Category {
   _id: string;
@@ -19,6 +20,7 @@ interface ImagePreview {
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
 export default function EditProductPage() {
+  const { currency } = useStore();
   const params = useParams();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -225,7 +227,7 @@ export default function EditProductPage() {
               <h2 className="text-base font-semibold text-[#101828] mb-4">Pricing</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="sellingPrice" className="block text-sm font-medium text-[#101828] mb-2">Selling Price (LKR)</label>
+                  <label htmlFor="sellingPrice" className="block text-sm font-medium text-[#101828] mb-2">Selling Price ({currency})</label>
                   <input
                     id="sellingPrice"
                     type="number"
@@ -237,7 +239,7 @@ export default function EditProductPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="costPrice" className="block text-sm font-medium text-[#101828] mb-2">Cost Price (LKR)</label>
+                  <label htmlFor="costPrice" className="block text-sm font-medium text-[#101828] mb-2">Cost Price ({currency})</label>
                   <input
                     id="costPrice"
                     type="number"

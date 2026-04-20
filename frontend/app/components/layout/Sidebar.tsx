@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useStore } from '@/app/contexts/StoreContext';
 import {
   LayoutDashboard,
   Package,
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { storeName } = useStore();
 
   const isActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
 
@@ -73,7 +75,7 @@ export function Sidebar() {
             <Package className="w-6 h-6 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-bold text-[#101828]">OneShop POS</span>
+            <span className="text-base font-bold text-[#101828]">{storeName}</span>
             <span className="text-[10px] px-2 py-0.5 bg-[#eff4ff] text-[#155dfc] rounded-full font-medium w-fit">
               {user?.role ?? 'Manager'}
             </span>

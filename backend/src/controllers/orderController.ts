@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { Order } from '../models/Order';
+import { Customer } from '../models/Customer';
 
 // GET /api/orders
 export async function getOrders(req: AuthRequest, res: Response): Promise<void> {
@@ -75,6 +76,14 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
     deliveryAddress, notes,
     storeId, createdBy: userId,
   });
+
+  // Keep Customer stats in sync
+  if (customerEmail) {
+    await Customer.findOneAndUpdate(
+      { email: customerEmail, storeId },
+      { $inc: { totalOrders: 1, totalSpent: total }, $set: { lastPurchase: new Date() } }
+    );
+  }
 
   res.status(201).json({ data: order });
 }
