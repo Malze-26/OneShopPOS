@@ -9,6 +9,7 @@ interface StockAdjustmentDrawerProps {
     name: string;
     sku: string;
     currentStock: number;
+    isWeightBased?: boolean;
   };
 }
 
@@ -17,6 +18,10 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
+
+  const isWB = product?.isWeightBased ?? false;
+  const unit = isWB ? 'kg' : 'unit';
+  const units = isWB ? 'kg' : 'units';
 
   if (!isOpen || !product) return null;
 
@@ -67,7 +72,7 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
               SKU: {product.sku}
             </div>
             <div className="text-sm text-[#4a5565]">
-              Current Stock: <span className="font-semibold text-[#101828]">{product.currentStock} units</span>
+              Current Stock: <span className="font-semibold text-[#101828]">{product.currentStock} {units}</span>
             </div>
           </div>
 
@@ -105,7 +110,7 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
           {/* Quantity Input */}
           <div>
             <label className="block text-sm font-medium text-[#101828] mb-3">
-              Quantity
+              Quantity {isWB && <span className="text-xs font-normal text-[#4a5565]">(kg)</span>}
             </label>
             <div className="flex items-center justify-center gap-4 p-4 bg-[#f9fafb] rounded-lg">
               <button
@@ -128,13 +133,13 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
               </button>
             </div>
             <div className="mt-2 text-center text-xs text-[#4a5565]">
-              {adjustmentType === 'add' ? 'Adding' : 'Removing'} {quantity} unit{quantity !== 1 ? 's' : ''} •{' '}
+              {adjustmentType === 'add' ? 'Adding' : 'Removing'} {quantity} {unit}{!isWB && quantity !== 1 ? 's' : ''} •{' '}
               New total:{' '}
               <span className="font-semibold text-[#101828]">
                 {adjustmentType === 'add'
                   ? product.currentStock + quantity
                   : Math.max(0, product.currentStock - quantity)}{' '}
-                units
+                {units}
               </span>
             </div>
           </div>
