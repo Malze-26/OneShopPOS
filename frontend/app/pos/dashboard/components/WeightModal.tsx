@@ -15,7 +15,6 @@ interface WeightModalProps {
   onAdd: () => void;
 }
 
-const STEP = 0.1; // 100g
 const MIN = 0.1;
 
 export default function WeightModal({
@@ -31,14 +30,19 @@ export default function WeightModal({
   const currentKg = parseFloat(weightInput) || 0;
   const grams = Math.round(currentKg * 1000);
 
-  const increment = () => {
-    const next = Math.round((currentKg + STEP) * 10) / 10;
-    onWeightChange(next.toFixed(1));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    // Allow empty, digits, and a single decimal point
+    if (val === "" || /^\d*\.?\d*$/.test(val)) {
+      onWeightChange(val);
+    }
   };
 
-  const decrement = () => {
-    const next = Math.round((currentKg - STEP) * 10) / 10;
-    if (next >= MIN) onWeightChange(next.toFixed(1));
+  const handleBlur = () => {
+    // On blur, normalise to 1 decimal place if there's a valid number
+    if (currentKg > 0) {
+      onWeightChange(currentKg.toFixed(1));
+    }
   };
 
   return (
@@ -71,42 +75,30 @@ export default function WeightModal({
           </div>
         </div>
 
-        {/* Numeric stepper */}
+        {/* Typed weight input */}
         <div className="mb-4">
           <label className="text-[12px] font-bold uppercase tracking-[1px] block mb-3" style={{ color: C.muted }}>
-            Weight (100g steps)
+            Weight (kg)
           </label>
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={decrement}
-              disabled={currentKg <= MIN}
-              className="w-14 h-14 rounded-xl text-[22px] font-bold flex items-center justify-center transition-all"
-              style={{
-                background: currentKg <= MIN ? "#F3F4F6" : "#F0F2F8",
-                color: currentKg <= MIN ? "#D1D5DB" : C.text,
-                border: `1.5px solid ${currentKg <= MIN ? "#E5E7EB" : C.border}`,
-              }}
-            >
-              −
-            </button>
-
-            <div className="flex-1 text-center py-3 rounded-xl" style={{ border: `1.5px solid ${weightError ? "#FECACA" : C.border}` }}>
-              <div className="text-[28px] font-extrabold font-mono leading-tight" style={{ color: C.text }}>
-                {grams > 0 ? `${grams} g` : "—"}
-              </div>
-              {currentKg > 0 && (
-                <div className="text-[12px]" style={{ color: C.muted }}>{currentKg.toFixed(1)} kg</div>
-              )}
-            </div>
-
-            <button
-              onClick={increment}
-              className="w-14 h-14 rounded-xl text-[22px] font-bold flex items-center justify-center transition-all"
-              style={{ background: "#F0F2F8", color: C.text, border: `1.5px solid ${C.border}` }}
-            >
-              +
-            </button>
+          <div
+            className="flex items-center rounded-xl px-4 py-3"
+            style={{ border: `1.5px solid ${weightError ? "#FECACA" : C.border}` }}
+          >
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0.0"
+              value={weightInput}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className="flex-1 text-[28px] font-extrabold font-mono text-center bg-transparent outline-none leading-tight"
+              style={{ color: C.text }}
+            />
+            <span className="text-[16px] font-bold ml-2" style={{ color: C.muted }}>kg</span>
           </div>
+          {grams > 0 && !weightError && (
+            <p className="text-[12px] mt-2 text-center" style={{ color: C.muted }}>{grams} g</p>
+          )}
           {weightError && <p className="text-[12px] mt-2" style={{ color: "#EF4444" }}>{weightError}</p>}
         </div>
 
