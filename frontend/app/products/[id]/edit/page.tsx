@@ -34,6 +34,8 @@ export default function EditProductPage() {
     initialStock: '',
     lowStockThreshold: '',
     category: '',
+    isWeightBased: false,
+    unit: 'item' as 'kg' | 'item',
   });
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<ImagePreview[]>([]);
@@ -57,6 +59,8 @@ export default function EditProductPage() {
           initialStock: String(p.stock),
           lowStockThreshold: String(p.lowStockThreshold),
           category: p.category,
+          isWeightBased: p.isWeightBased ?? false,
+          unit: p.unit ?? 'item',
         });
         setExistingImages(p.images ?? []);
         setCategories(catRes.data.data);
@@ -125,6 +129,8 @@ export default function EditProductPage() {
         stock: Number(formData.initialStock),
         lowStockThreshold: Number(formData.lowStockThreshold),
         category: formData.category,
+        isWeightBased: formData.isWeightBased,
+        unit: formData.unit,
       });
 
       if (newImages.length > 0) {
@@ -393,6 +399,26 @@ export default function EditProductPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Selling Type */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e4e7ec]">
+              <h2 className="text-base font-semibold text-[#101828] mb-1">Selling Type</h2>
+              <p className="text-xs text-[#4a5565] mb-4">Weight-based products let cashiers enter exact quantity (e.g. 0.5 kg of rice)</p>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => setFormData(f => ({ ...f, isWeightBased: !f.isWeightBased, unit: !f.isWeightBased ? 'kg' : 'item' }))}
+                  className={`w-11 h-6 rounded-full transition-colors ${formData.isWeightBased ? 'bg-[#155dfc]' : 'bg-[#d0d5dd]'} relative`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.isWeightBased ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm font-medium text-[#101828]">Sold by weight (kg)</span>
+              </label>
+              {formData.isWeightBased && (
+                <p className="mt-3 text-xs text-[#155dfc] bg-[#eff4ff] rounded-lg px-3 py-2">
+                  Price will be per kg. Cashier enters exact weight at checkout.
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -91,7 +91,11 @@ export default function ProductCard({
         <div className="flex justify-between items-center mb-2">
           <div className="font-extrabold text-[15px] text-[var(--color-primary)] font-mono">
             Rs. {product.sellingPrice.toLocaleString()}
+            {product.isWeightBased && <span className="text-[11px] font-normal text-[var(--color-secondary)]"> / kg</span>}
           </div>
+          {product.isWeightBased && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#eff4ff] text-[#155dfc] rounded-full">BY WEIGHT</span>
+          )}
         </div>
 
         {/* Stock Bar */}

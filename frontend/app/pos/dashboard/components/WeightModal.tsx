@@ -1,4 +1,5 @@
 import { C } from "../constants/tokens";
+import { useStore } from "@/app/contexts/StoreContext";
 
 interface WeightModalProps {
   product: {
@@ -22,6 +23,7 @@ export default function WeightModal({
   onClose,
   onAdd,
 }: WeightModalProps) {
+  const { currency } = useStore();
   return (
     <div
       className="fixed inset-0 flex items-center justify-center p-4"
@@ -48,7 +50,7 @@ export default function WeightModal({
         <div className="bg-gray-100 rounded-xl p-4 mb-5">
           <div className="text-[14px] font-bold mb-1" style={{ color: C.text }}>{product.name}</div>
           <div className="text-[13px]" style={{ color: C.muted }}>
-            Price: <span className="font-bold" style={{ color: C.brand }}>Rs. {product.sellingPrice.toLocaleString()} / kg</span>
+            Price: <span className="font-bold" style={{ color: C.brand }}>{currency} {product.sellingPrice.toLocaleString()} / kg</span>
           </div>
         </div>
 
@@ -75,8 +77,8 @@ export default function WeightModal({
         {weightInput && parseFloat(weightInput) > 0 && (
           <div className="bg-green-100 border border-green-300 rounded-lg p-3 mb-4 text-center">
             <span className="text-[13px] font-semibold text-green-800">
-              {weightInput} kg × Rs. {product.sellingPrice.toLocaleString()} ={" "}
-              <span className="text-[16px] font-extrabold">Rs. {(parseFloat(weightInput) * product.sellingPrice).toFixed(2)}</span>
+              {weightInput} kg × {currency} {product.sellingPrice.toLocaleString()} ={" "}
+              <span className="text-[16px] font-extrabold">{currency} {(parseFloat(weightInput) * product.sellingPrice).toFixed(2)}</span>
             </span>
           </div>
         )}
