@@ -9,7 +9,9 @@ type Role = 'Manager' | 'Cashier' | null;
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const { storeName } = useStore();
+  const { storeName, logoUrl } = useStore();
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
+  const logoSrc = logoUrl ? `${apiBase}${logoUrl}` : null;
 
   const [selectedRole, setSelectedRole] = useState<Role>(null);
   const [email, setEmail] = useState('');
@@ -46,13 +48,19 @@ export default function LoginPage() {
 
         {/* Logo + Store name */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-[#eff4ff] rounded-2xl flex items-center justify-center mb-3">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="7" height="7" rx="1" fill="var(--color-primary)" />
-              <rect x="14" y="3" width="7" height="7" rx="1" fill="var(--color-primary)" />
-              <rect x="3" y="14" width="7" height="7" rx="1" fill="var(--color-primary)" />
-              <rect x="14" y="14" width="7" height="7" rx="1" fill="var(--color-primary)" />
-            </svg>
+          <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center mb-3"
+            style={{ background: logoSrc ? 'white' : '#eff4ff', border: logoSrc ? '1px solid #e4e7ec' : 'none' }}>
+            {logoSrc
+              ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" />
+              : (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="7" height="7" rx="1" fill="var(--color-primary)" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" fill="var(--color-primary)" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" fill="var(--color-primary)" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" fill="var(--color-primary)" />
+                </svg>
+              )
+            }
           </div>
           <h1 className="text-xl font-bold text-[#101828]">{storeName}</h1>
           <p className="text-sm text-[#4a5565]">Store Management</p>
