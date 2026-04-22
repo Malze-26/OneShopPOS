@@ -55,7 +55,6 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
     const result: Record<string, { total: number; count: number }> = {
       Cash: { total: 0, count: 0 },
       Card: { total: 0, count: 0 },
-      'Bank Transfer': { total: 0, count: 0 },
     };
 
     stats.forEach((s) => {

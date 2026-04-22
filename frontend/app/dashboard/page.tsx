@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useStore } from '@/app/contexts/StoreContext';
 import { DollarSign, ShoppingBag, Users, AlertTriangle } from 'lucide-react';
 import {
   LineChart,
@@ -14,6 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import api from '@/app/lib/api';
 
 const stats = [
   {
@@ -63,11 +66,10 @@ const salesTrendData = [
   { date: 'Feb 20', sales: 245000 },
 ];
 
-const paymentMethodData = [
-  { name: 'Cash', value: 45, amount: 110250, color: '#12b76a' },
-  { name: 'Card', value: 40, amount: 98000, color: 'var(--color-primary)' },
-  { name: 'Online', value: 15, amount: 36750, color: '#7f56d9' },
-];
+const PAYMENT_COLORS: Record<string, string> = {
+  Cash: '#12b76a',
+  Card: 'var(--color-primary)',
+};
 
 const topProducts = [
   { rank: 1, name: 'Product 001', image: '📦', units: 145, revenue: 87000 },
@@ -98,7 +100,30 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   refunded: { bg: '#fef3f2', text: '#f04438' },
 };
 
+type PaymentEntry = { name: string; value: number; amount: number; color: string };
+
 export default function DashboardPage() {
+  const { currency } = useStore();
+  const [paymentMethodData, setPaymentMethodData] = useState<PaymentEntry[]>([]);
+
+  useEffect(() => {
+    api.get('/transactions/stats')
+      .then(res => {
+        const raw: Record<string, { total: number; count: number }> = res.data.data;
+        const totalAmount = Object.values(raw).reduce((s, v) => s + v.total, 0);
+        const entries = Object.entries(raw)
+          .filter(([name]) => name === 'Cash' || name === 'Card')
+          .map(([name, v]) => ({
+            name,
+            amount: v.total,
+            value: totalAmount > 0 ? Math.round((v.total / totalAmount) * 100) : 0,
+            color: PAYMENT_COLORS[name] ?? '#ccc',
+          }));
+        setPaymentMethodData(entries);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="p-6 max-w-[1400px]">
       {/* Summary Cards */}
@@ -192,7 +217,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <div className="font-medium text-[#101828]">{method.value}%</div>
-                  <div className="text-xs text-[#4a5565]">LKR {method.amount.toLocaleString()}</div>
+                  <div className="text-xs text-[#4a5565]">{currency} {method.amount.toLocaleString()}</div>
                 </div>
               </div>
             ))}
