@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Store, Palette, KeyRound, Upload, Check, Eye, EyeOff, Loader2 } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
@@ -30,9 +31,11 @@ type Tab = 'store' | 'appearance' | 'account';
 
 export default function SettingsPage() {
   const store = useStore();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [tab, setTab] = useState<Tab>('store');
+  const initialTab = (searchParams.get('tab') as Tab) ?? 'store';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 

@@ -112,7 +112,7 @@ async function seed() {
   let admin = await User.findOne({ email: 'mng01@opendoor.lk' });
   if (!admin) {
     admin = await User.create({
-      name: 'Chamara Silva',
+      name: 'Chamara Gamage',
       email: 'mng01@opendoor.lk',
       password: 'Admin@1234',
       role: 'Manager',
