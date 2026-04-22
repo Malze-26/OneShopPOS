@@ -43,6 +43,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
+
+        // Fetch fresh user data so name/role changes are reflected immediately
+        api.get<User>('/auth/me').then(({ data }) => {
+          setUser(data);
+          const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+          storage.setItem('user', JSON.stringify(data));
+        }).catch(() => {
+          // Token expired or invalid — clear session
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          setToken(null);
+          setUser(null);
+        });
       } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
