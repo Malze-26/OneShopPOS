@@ -77,9 +77,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Enforce role match — reject if the user logged in under the wrong role button
-      if (expectedRole && data.user.role !== expectedRole) {
-        const roleDestination = data.user.role === 'Manager' ? 'Manager login' : 'Cashier login';
-        throw { response: { data: { message: `This account is a ${data.user.role}. Please use ${roleDestination}.` } } };
+      if (expectedRole) {
+        const isPosRole = data.user.role === 'Cashier' || data.user.role === 'Sales Representative';
+        const mismatch =
+          (expectedRole === 'Manager' && data.user.role !== 'Manager') ||
+          (expectedRole === 'Cashier' && !isPosRole);
+        if (mismatch) {
+          const dest = data.user.role === 'Manager' ? 'Manager login' : 'Cashier login';
+          throw { response: { data: { message: `This account is a ${data.user.role}. Please use ${dest}.` } } };
+        }
       }
 
       const storage = rememberMe ? localStorage : sessionStorage;
@@ -95,7 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user);
 
       // Redirect based on role
-      router.push(data.user.role === 'Cashier' ? '/pos/dashboard' : '/dashboard');
+      const isPosUser = data.user.role === 'Cashier' || data.user.role === 'Sales Representative';
+      router.push(isPosUser ? '/pos/dashboard' : '/dashboard');
     },
     [router]
   );

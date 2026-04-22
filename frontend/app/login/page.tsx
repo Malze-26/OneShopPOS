@@ -111,7 +111,7 @@ export default function LoginPage() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold text-[#101828]">Cashier</p>
-                  <p className="text-xs text-[#4a5565] mt-0.5">Point of Sale</p>
+                  <p className="text-xs text-[#4a5565] mt-0.5">POS &amp; Sales Staff</p>
                 </div>
               </button>
             </div>

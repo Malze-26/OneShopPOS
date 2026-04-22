@@ -19,7 +19,8 @@ import { Order } from './models/Order';
 import { StoreSettings } from './models/StoreSettings';
 import { Supplier } from './models/Supplier';
 
-const STORE_ID = 'STORE-2025-001';
+const STORE_ID_FALLBACK = 'STORE-2025-001';
+let STORE_ID = STORE_ID_FALLBACK;
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads', 'products');
 
 // ── Image downloader ──────────────────────────────────────────────────────────
@@ -105,6 +106,13 @@ async function seed() {
   await mongoose.connect(mongoUri);
   console.log('Connected to MongoDB');
 
+  // ── Resolve real storeId from DB ──────────────────────────────────────────
+  const storeDoc = await mongoose.connection.db!.collection('storesettings').findOne({});
+  if (storeDoc) {
+    STORE_ID = storeDoc._id.toString();
+    console.log(`Using store: ${storeDoc.storeName} (${STORE_ID})`);
+  }
+
   // ── 0. Download seed images ─────────────────────────────────────────────────
   await downloadSeedImages();
 
@@ -126,11 +134,11 @@ async function seed() {
 
   // ── 2. Seed Cashiers ───────────────────────────────────────────────────────
   const cashiers = [
-    { name: 'Nimal Silva',          email: 'nimal@store.com',   phone: '+94 77 234 5678', isActive: true  },
-    { name: 'Saman Fernando',       email: 'saman@store.com',   phone: '+94 77 345 6789', isActive: true  },
-    { name: 'Dilani Rajapaksa',     email: 'dilani@store.com',  phone: '+94 77 456 7890', isActive: false },
-    { name: 'Priya Wickramasinghe', email: 'priya@store.com',   phone: '+94 77 567 8901', isActive: true  },
-    { name: 'Ravi Jayawardena',     email: 'ravi@store.com',    phone: '+94 77 678 9012', isActive: false },
+    { name: 'Nimal Silva',          email: 'nimal@opendoor.lk',   phone: '+94 77 234 5678', isActive: true  },
+    { name: 'Saman Fernando',       email: 'saman@opendoor.lk',   phone: '+94 77 345 6789', isActive: true  },
+    { name: 'Dilani Rajapaksa',     email: 'dilani@opendoor.lk',  phone: '+94 77 456 7890', isActive: false },
+    { name: 'Priya Wickramasinghe', email: 'priya@opendoor.lk',   phone: '+94 77 567 8901', isActive: true  },
+    { name: 'Ravi Jayawardena',     email: 'ravi@opendoor.lk',    phone: '+94 77 678 9012', isActive: false },
   ];
 
   for (const c of cashiers) {
@@ -140,6 +148,23 @@ async function seed() {
       console.log(`✓ Cashier created: ${c.email}`);
     } else {
       console.log(`  Cashier ${c.email} already exists – skipping`);
+    }
+  }
+
+  // ── 3. Seed Sales Representatives ─────────────────────────────────────────
+  const salesReps = [
+    { name: 'Kasun Perera',        email: 'kasun@opendoor.lk',   phone: '+94 76 112 3456', isActive: true  },
+    { name: 'Sanduni Aluthge',     email: 'sanduni@opendoor.lk', phone: '+94 76 223 4567', isActive: true  },
+    { name: 'Lahiru Bandara',      email: 'lahiru@opendoor.lk',  phone: '+94 76 334 5678', isActive: false },
+  ];
+
+  for (const s of salesReps) {
+    const exists = await User.findOne({ email: s.email });
+    if (!exists) {
+      await User.create({ ...s, password: 'Sales@1234', role: 'Sales Representative', storeId: STORE_ID });
+      console.log(`✓ Sales Rep created: ${s.email}`);
+    } else {
+      console.log(`  Sales Rep ${s.email} already exists – skipping`);
     }
   }
 

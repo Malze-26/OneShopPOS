@@ -96,7 +96,7 @@ export default function POSDashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-    if (user.role !== 'Cashier') router.replace('/dashboard');
+    if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
   }, [user, authLoading, router]);
 
   useEffect(() => {
