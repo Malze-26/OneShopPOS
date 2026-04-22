@@ -54,7 +54,9 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { storeName } = useStore();
+  const { storeName, logoUrl } = useStore();
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
+  const logoSrc = logoUrl ? `${apiBase}${logoUrl}` : null;
 
   const isActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
 
@@ -71,8 +73,11 @@ export function Sidebar() {
       {/* Logo & Store Name */}
       <div className="h-16 flex items-center px-6 border-b border-[#e4e7ec]">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[var(--color-primary)] rounded-lg flex items-center justify-center">
-            <Package className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-[var(--color-primary)]">
+            {logoSrc
+              ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" />
+              : <Package className="w-6 h-6 text-white" />
+            }
           </div>
           <div className="flex flex-col">
             <span className="text-base font-bold text-[#101828]">{storeName}</span>
