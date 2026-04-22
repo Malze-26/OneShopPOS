@@ -9,8 +9,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'Manager' | 'Cashier';
+  role: 'Manager' | 'Cashier' | 'Sales Representative';
   storeId: string;
+  phone?: string;
+  avatar?: string;
 }
 
 interface AuthContextValue {
@@ -19,6 +21,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string, rememberMe?: boolean, expectedRole?: 'Manager' | 'Cashier') => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -107,6 +110,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router]
   );
 
+  // ── Refresh user profile ─────────────────────────────────────────────────
+  const refreshUser = useCallback(async () => {
+    const { data } = await api.get<User>('/auth/me');
+    setUser(data);
+    const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+    storage.setItem('user', JSON.stringify(data));
+  }, []);
+
   // ── Logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -127,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         logout,
+        refreshUser,
         isAuthenticated: !!token && !!user,
       }}
     >

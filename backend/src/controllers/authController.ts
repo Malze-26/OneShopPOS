@@ -139,6 +139,58 @@ export async function getMe(req: AuthRequest, res: Response): Promise<void> {
     email: user.email,
     role: user.role,
     storeId: user.storeId,
+    phone: user.phone ?? '',
+    avatar: user.avatar ?? '',
     lastLogin: user.lastLogin,
   });
+}
+
+// PATCH /api/auth/profile  (protected)
+export async function updateProfile(req: AuthRequest, res: Response): Promise<void> {
+  const { name, phone } = req.body as { name?: string; phone?: string };
+
+  if (!name?.trim()) {
+    res.status(400).json({ message: 'Name is required' });
+    return;
+  }
+
+  const user = await User.findById(req.user?.id);
+  if (!user) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  user.name = name.trim();
+  if (phone !== undefined) user.phone = phone.trim();
+
+  await user.save({ validateBeforeSave: true });
+
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    storeId: user.storeId,
+    phone: user.phone ?? '',
+    avatar: user.avatar ?? '',
+  });
+}
+
+// POST /api/auth/profile/avatar  (protected)
+export async function uploadAvatar(req: AuthRequest, res: Response): Promise<void> {
+  if (!req.file) {
+    res.status(400).json({ message: 'No file uploaded' });
+    return;
+  }
+
+  const user = await User.findById(req.user?.id);
+  if (!user) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  user.avatar = `/uploads/avatars/${req.file.filename}`;
+  await user.save({ validateBeforeSave: false });
+
+  res.json({ avatar: user.avatar });
 }
