@@ -109,17 +109,17 @@ async function seed() {
   await downloadSeedImages();
 
   // ── 1. Seed Manager ────────────────────────────────────────────────────────
-  let admin = await User.findOne({ email: 'admin@oneshop.lk' });
+  let admin = await User.findOne({ email: 'mng01@opendoor.lk' });
   if (!admin) {
     admin = await User.create({
       name: 'Chamara Silva',
-      email: 'admin@oneshop.lk',
+      email: 'mng01@opendoor.lk',
       password: 'Admin@1234',
       role: 'Manager',
       storeId: STORE_ID,
       isActive: true,
     });
-    console.log('\n✓ Manager created: admin@oneshop.lk / Admin@1234');
+    console.log('\n✓ Manager created: mng01@opendoor.lk / Admin@1234');
   } else {
     console.log('\n  Manager already exists – skipping');
   }
@@ -454,7 +454,7 @@ async function seed() {
   // Get admin _id via raw DB query to avoid any Mongoose type issues
   const adminRaw = await mongoose.connection.db!
     .collection('users')
-    .findOne({ email: 'admin@oneshop.lk' }, { projection: { _id: 1 } });
+    .findOne({ email: 'mng01@opendoor.lk' }, { projection: { _id: 1 } });
   if (!adminRaw) throw new Error('Admin user not found – cannot seed products');
   const adminId = new mongoose.Types.ObjectId(adminRaw._id.toString());
 
