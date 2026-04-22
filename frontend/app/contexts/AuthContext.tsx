@@ -17,7 +17,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean, expectedRole?: 'Manager' | 'Cashier') => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -55,11 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Login ────────────────────────────────────────────────────────────────
   const login = useCallback(
-    async (email: string, password: string, rememberMe: boolean = false) => {
+    async (email: string, password: string, rememberMe: boolean = false, expectedRole?: 'Manager' | 'Cashier') => {
       const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
         email,
         password,
       });
+
+      // Enforce role match — reject if the user logged in under the wrong role button
+      if (expectedRole && data.user.role !== expectedRole) {
+        const roleDestination = data.user.role === 'Manager' ? 'Manager login' : 'Cashier login';
+        throw { response: { data: { message: `This account is a ${data.user.role}. Please use ${roleDestination}.` } } };
+      }
 
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('token', data.token);
@@ -73,7 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       setUser(data.user);
 
-      router.push('/dashboard');
+      // Redirect based on role
+      router.push(data.user.role === 'Cashier' ? '/pos/dashboard' : '/dashboard');
     },
     [router]
   );

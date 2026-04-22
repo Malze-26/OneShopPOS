@@ -1,17 +1,20 @@
 import { AuthProvider } from '@/app/contexts/AuthContext';
 import { Sidebar } from '@/app/components/layout/Sidebar';
 import { TopHeader } from '@/app/components/layout/TopHeader';
+import ManagerGuard from '@/app/components/ManagerGuard';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex h-screen bg-[#f9fafb]">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <TopHeader />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+      <ManagerGuard>
+        <div className="flex h-screen bg-[#f9fafb]">
+          <Sidebar />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <TopHeader />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </div>
         </div>
-      </div>
+      </ManagerGuard>
     </AuthProvider>
   );
 }
