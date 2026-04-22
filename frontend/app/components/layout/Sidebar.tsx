@@ -71,12 +71,12 @@ export function Sidebar() {
       {/* Logo & Store Name */}
       <div className="h-16 flex items-center px-6 border-b border-[#e4e7ec]">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#155dfc] rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-[var(--color-primary)] rounded-lg flex items-center justify-center">
             <Package className="w-6 h-6 text-white" />
           </div>
           <div className="flex flex-col">
             <span className="text-base font-bold text-[#101828]">{storeName}</span>
-            <span className="text-[10px] px-2 py-0.5 bg-[#eff4ff] text-[#155dfc] rounded-full font-medium w-fit">
+            <span className="text-[10px] px-2 py-0.5 bg-[#eff4ff] text-[var(--color-primary)] rounded-full font-medium w-fit">
               {user?.role ?? 'Manager'}
             </span>
           </div>
@@ -101,7 +101,7 @@ export function Sidebar() {
                   href={item.path}
                   className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors relative ${
                     active
-                      ? 'text-[#155dfc] bg-[#eff4ff] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#155dfc] before:rounded-r'
+                      ? 'text-[var(--color-primary)] bg-[#eff4ff] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[var(--color-primary)] before:rounded-r'
                       : 'text-[#4a5565] hover:bg-[#f9fafb]'
                   }`}
                 >
@@ -124,7 +124,7 @@ export function Sidebar() {
       {/* Bottom Section - User & Logout */}
       <div className="border-t border-[#e4e7ec] p-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-[#155dfc] rounded-full flex items-center justify-center">
+          <div className="w-9 h-9 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
             <span className="text-white text-xs font-medium">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">

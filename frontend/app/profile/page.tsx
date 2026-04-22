@@ -16,7 +16,7 @@ export default function ProfilePage() {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e4e7ec] mb-6">
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-[#155dfc] rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
               <span className="text-white text-2xl font-bold">{initials}</span>
             </div>
             <div>
@@ -27,7 +27,7 @@ export default function ProfilePage() {
               </span>
             </div>
           </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
+          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
             <Edit className="w-4 h-4" />
             Edit Profile
           </button>
@@ -88,7 +88,7 @@ export default function ProfilePage() {
               <p className="text-sm font-medium text-[#101828]">February 21, 2026 at 9:30 AM</p>
             </div>
             <div className="pt-4 border-t border-[#e4e7ec]">
-              <button className="text-sm text-[#155dfc] hover:underline font-medium">
+              <button className="text-sm text-[var(--color-primary)] hover:underline font-medium">
                 Change Password
               </button>
             </div>

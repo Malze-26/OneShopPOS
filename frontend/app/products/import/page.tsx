@@ -165,7 +165,7 @@ export default function CSVImportPage() {
                 <div className="flex flex-col items-center flex-1">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold mb-2 ${
-                      active ? 'bg-[#155dfc] text-white' : 'bg-[#f9fafb] text-[#4a5565] border-2 border-[#e4e7ec]'
+                      active ? 'bg-[var(--color-primary)] text-white' : 'bg-[#f9fafb] text-[#4a5565] border-2 border-[#e4e7ec]'
                     }`}
                   >
                     {num}
@@ -175,7 +175,7 @@ export default function CSVImportPage() {
                   </span>
                 </div>
                 {idx < STEPS.length - 1 && (
-                  <div className={`h-0.5 flex-1 -mt-6 ${connected ? 'bg-[#155dfc]' : 'bg-[#e4e7ec]'}`} />
+                  <div className={`h-0.5 flex-1 -mt-6 ${connected ? 'bg-[var(--color-primary)]' : 'bg-[#e4e7ec]'}`} />
                 )}
               </div>
             );
@@ -197,7 +197,7 @@ export default function CSVImportPage() {
           </div>
           <button
             onClick={handleDownloadTemplate}
-            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors"
           >
             <Download className="w-4 h-4" />
             Download Template
@@ -221,16 +221,16 @@ export default function CSVImportPage() {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
               isDragging
-                ? 'border-[#155dfc] bg-[#eff4ff]'
-                : 'border-[#e4e7ec] hover:border-[#155dfc] hover:bg-[#eff4ff]/30'
+                ? 'border-[var(--color-primary)] bg-[#eff4ff]'
+                : 'border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#eff4ff]/30'
             }`}
           >
-            <CloudUpload className="w-14 h-14 text-[#155dfc] mx-auto mb-4" />
+            <CloudUpload className="w-14 h-14 text-[var(--color-primary)] mx-auto mb-4" />
             <h3 className="text-base font-semibold text-[#101828] mb-2">
               {phase === 'preview' ? 'Drop another file to replace' : 'Drag & drop your CSV file here'}
             </h3>
             <p className="text-sm text-[#4a5565] mb-4">or</p>
-            <span className="px-6 py-2.5 bg-[#155dfc] text-white rounded-lg text-sm font-medium">
+            <span className="px-6 py-2.5 bg-[var(--color-primary)] text-white rounded-lg text-sm font-medium">
               Browse Files
             </span>
             <p className="text-xs text-[#4a5565] mt-4">CSV files only · Max 10 MB</p>
@@ -397,7 +397,7 @@ export default function CSVImportPage() {
             <button
               onClick={handleImport}
               disabled={validCount === 0}
-              className="px-6 py-2.5 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Import {validCount} Valid Product{validCount !== 1 ? 's' : ''}
             </button>
@@ -408,7 +408,7 @@ export default function CSVImportPage() {
       {/* Importing spinner */}
       {phase === 'importing' && (
         <div className="bg-white rounded-xl p-16 shadow-sm border border-[#e4e7ec] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#155dfc] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
           <span className="ml-3 text-[#4a5565]">Importing products…</span>
         </div>
       )}
@@ -454,7 +454,7 @@ export default function CSVImportPage() {
 
           <button
             onClick={() => router.push('/products')}
-            className="w-full px-6 py-2.5 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+            className="w-full px-6 py-2.5 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
           >
             Go to Products
           </button>

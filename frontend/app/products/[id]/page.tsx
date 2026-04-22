@@ -112,12 +112,12 @@ export default function ProductDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href={`/products/${params.id}/edit`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
           >
             <Edit className="w-4 h-4" />
             Edit Product
           </Link>
-          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
+          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
             <ArrowLeftRight className="w-4 h-4" />
             Adjust Stock
           </button>
@@ -152,7 +152,7 @@ export default function ProductDetailPage() {
                       type="button"
                       onClick={() => setActiveImage(idx)}
                       className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
-                        idx === activeImage ? 'border-[#155dfc]' : 'border-transparent hover:border-[#155dfc]'
+                        idx === activeImage ? 'border-[var(--color-primary)]' : 'border-transparent hover:border-[var(--color-primary)]'
                       }`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}

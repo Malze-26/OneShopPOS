@@ -14,7 +14,7 @@ interface Category {
 }
 
 const colorOptions = [
-  '#155dfc', '#7f56d9', '#f79009', '#12b76a',
+  'var(--color-primary)', '#7f56d9', '#f79009', '#12b76a',
   '#ee46bc', '#3b82f6', '#f59e0b', '#6366f1',
 ];
 
@@ -116,7 +116,7 @@ export default function CategoriesPage() {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Category
@@ -126,7 +126,7 @@ export default function CategoriesPage() {
       {/* Body */}
       {loading ? (
         <div className="flex items-center justify-center p-20">
-          <Loader2 className="w-8 h-8 text-[#155dfc] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
           <span className="ml-3 text-[#4a5565]">Loading categories…</span>
         </div>
       ) : error ? (
@@ -134,7 +134,7 @@ export default function CategoriesPage() {
           <p className="text-red-500 mb-4">{error}</p>
           <button
             onClick={fetchCategories}
-            className="px-4 py-2 bg-[#155dfc] text-white rounded-lg text-sm hover:bg-[#0d4dd9] transition-colors"
+            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm hover:bg-[#0d4dd9] transition-colors"
           >
             Retry
           </button>
@@ -145,7 +145,7 @@ export default function CategoriesPage() {
             <div
               key={category._id}
               onClick={() => router.push(`/products?category=${encodeURIComponent(category.name)}`)}
-              className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec] hover:shadow-md hover:border-[#155dfc] transition-all cursor-pointer"
+              className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec] hover:shadow-md hover:border-[var(--color-primary)] transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -163,7 +163,7 @@ export default function CategoriesPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); openEdit(category); }}
-                    className="p-1.5 text-[#4a5565] hover:text-[#155dfc] hover:bg-[#eff4ff] rounded transition-colors"
+                    className="p-1.5 text-[#4a5565] hover:text-[var(--color-primary)] hover:bg-[#eff4ff] rounded transition-colors"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
@@ -191,10 +191,10 @@ export default function CategoriesPage() {
           {/* Add New Category Card */}
           <button
             onClick={openAdd}
-            className="bg-white rounded-xl p-5 shadow-sm border-2 border-dashed border-[#e4e7ec] hover:border-[#155dfc] hover:bg-[#eff4ff] transition-all flex flex-col items-center justify-center min-h-[140px] group"
+            className="bg-white rounded-xl p-5 shadow-sm border-2 border-dashed border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#eff4ff] transition-all flex flex-col items-center justify-center min-h-[140px] group"
           >
-            <Plus className="w-8 h-8 text-[#4a5565] group-hover:text-[#155dfc] mb-2" />
-            <span className="text-sm font-medium text-[#4a5565] group-hover:text-[#155dfc]">
+            <Plus className="w-8 h-8 text-[#4a5565] group-hover:text-[var(--color-primary)] mb-2" />
+            <span className="text-sm font-medium text-[#4a5565] group-hover:text-[var(--color-primary)]">
               Add New Category
             </span>
           </button>
@@ -230,7 +230,7 @@ export default function CategoriesPage() {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g., Beverages"
-                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 />
               </div>
               <div>
@@ -240,7 +240,7 @@ export default function CategoriesPage() {
                   value={form.icon}
                   onChange={(e) => setForm({ ...form, icon: e.target.value })}
                   placeholder="e.g., 🥤"
-                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 />
               </div>
               <div>
@@ -273,7 +273,7 @@ export default function CategoriesPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {editTarget ? 'Save Changes' : 'Save Category'}

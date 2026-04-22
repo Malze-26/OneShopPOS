@@ -55,7 +55,7 @@ export function TopHeader() {
             <input
               type="text"
               placeholder="Search anything..."
-              className="w-[280px] pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent transition-all bg-white"
+              className="w-[280px] pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all bg-white"
             />
           </div>
 
@@ -71,7 +71,7 @@ export function TopHeader() {
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-2 px-3 py-2 hover:bg-[#f9fafb] rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-[#155dfc] rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-medium">{initials}</span>
               </div>
               <span className="text-sm font-medium text-[#101828]">{user?.name ?? 'User'}</span>

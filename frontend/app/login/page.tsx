@@ -32,10 +32,10 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-6">
           <div className="w-12 h-12 bg-[#eff4ff] rounded-xl flex items-center justify-center mb-3">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="7" height="7" rx="1" fill="#155dfc" />
-              <rect x="14" y="3" width="7" height="7" rx="1" fill="#155dfc" />
-              <rect x="3" y="14" width="7" height="7" rx="1" fill="#155dfc" />
-              <rect x="14" y="14" width="7" height="7" rx="1" fill="#155dfc" />
+              <rect x="3" y="3" width="7" height="7" rx="1" fill="var(--color-primary)" />
+              <rect x="14" y="3" width="7" height="7" rx="1" fill="var(--color-primary)" />
+              <rect x="3" y="14" width="7" height="7" rx="1" fill="var(--color-primary)" />
+              <rect x="14" y="14" width="7" height="7" rx="1" fill="var(--color-primary)" />
             </svg>
           </div>
           <h1 className="text-xl font-bold text-[#101828]">{storeName}</h1>
@@ -59,7 +59,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               placeholder="admin@oneshop.lk"
             />
           </div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               placeholder="••••••••"
             />
           </div>
@@ -87,7 +87,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#155dfc] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[#1249d6] transition-colors disabled:opacity-60"
+            className="w-full bg-[var(--color-primary)] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[#1249d6] transition-colors disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>

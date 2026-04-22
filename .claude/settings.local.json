@@ -8,7 +8,12 @@
       "Bash(npm run seed:*)",
       "Bash(nslookup cluster-oneshop.497kaq6.mongodb.net)",
       "Bash(nslookup _mongodb._tcp.cluster-oneshop.497kaq6.mongodb.net)",
-      "Bash(git ls-tree *)"
+      "Bash(git ls-tree *)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/next build *)",
+      "Bash(timeout 8 node -e \"require\\('ts-node'\\).register\\({transpileOnly:true}\\); require\\('./src/index.ts'\\)\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@oneshop.lk\",\"password\":\"admin123\"}')",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@oneshop.lk\",\"password\":\"Admin@1234\"}')"
     ]
   }
 }

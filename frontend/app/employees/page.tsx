@@ -18,7 +18,7 @@ interface Employee {
 }
 
 const roleConfig: Record<string, { bg: string; text: string }> = {
-  Manager: { bg: '#eff4ff', text: '#155dfc' },
+  Manager: { bg: '#eff4ff', text: 'var(--color-primary)' },
   Cashier: { bg: '#ecfdf3', text: '#12b76a' },
 };
 
@@ -68,7 +68,7 @@ export default function EmployeesPage() {
           <h1 className="text-xl font-bold text-[#101828] mb-1">Employees</h1>
           <p className="text-sm text-[#4a5565]">Manage store staff and cashiers</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors">
           <Plus className="w-4 h-4" />
           Add Employee
         </button>
@@ -97,13 +97,13 @@ export default function EmployeesPage() {
               placeholder="Search by name, email, or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+            className="px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >
             <option>All Roles</option>
             <option>Manager</option>
@@ -112,7 +112,7 @@ export default function EmployeesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+            className="px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >
             <option>All Status</option>
             <option>Active</option>
@@ -132,7 +132,7 @@ export default function EmployeesPage() {
 
         {loading ? (
           <div className="p-16 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-[#155dfc] animate-spin" />
+            <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
             <span className="ml-3 text-[#4a5565]">Loading employees…</span>
           </div>
         ) : error ? (
@@ -140,7 +140,7 @@ export default function EmployeesPage() {
             <p className="text-red-500 mb-4">{error}</p>
             <button
               onClick={fetchEmployees}
-              className="px-4 py-2 bg-[#155dfc] text-white rounded-lg text-sm hover:bg-[#0d4dd9] transition-colors"
+              className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm hover:bg-[#0d4dd9] transition-colors"
             >
               Retry
             </button>
@@ -169,7 +169,7 @@ export default function EmployeesPage() {
                   <tr key={String(employee.id)} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#155dfc] rounded-full flex items-center justify-center">
+                        <div className="w-10 h-10 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
                           <span className="text-white text-sm font-medium">{employee.avatar}</span>
                         </div>
                         <div className="text-sm font-medium text-[#101828]">{employee.name}</div>
@@ -214,7 +214,7 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        <button className="p-1.5 text-[#4a5565] hover:text-[#155dfc] hover:bg-[#eff4ff] rounded transition-colors">
+                        <button className="p-1.5 text-[#4a5565] hover:text-[var(--color-primary)] hover:bg-[#eff4ff] rounded transition-colors">
                           <Edit className="w-4 h-4" />
                         </button>
                         <button className="p-1.5 text-[#4a5565] hover:text-[#f04438] hover:bg-[#fef3f2] rounded transition-colors">

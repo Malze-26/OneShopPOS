@@ -189,7 +189,7 @@ export default function SettingsPage() {
               value={storeName}
               onChange={e => setStoreName(e.target.value)}
               required
-              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
 
@@ -198,7 +198,7 @@ export default function SettingsPage() {
             <select
               value={currency}
               onChange={e => setCurrency(e.target.value)}
-              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               {CURRENCIES.map(c => (
                 <option key={c.code} value={c.code}>{c.label}</option>
@@ -213,7 +213,7 @@ export default function SettingsPage() {
               onChange={e => setAddress(e.target.value)}
               rows={2}
               placeholder="123 Main Street, Colombo"
-              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc] resize-none"
+              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
             />
           </div>
 
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 placeholder="+94 77 123 4567"
-                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
             </div>
             <div>
@@ -235,7 +235,7 @@ export default function SettingsPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="store@example.com"
-                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
             </div>
           </div>
@@ -272,7 +272,7 @@ export default function SettingsPage() {
               </div>
               {/* Drop zone */}
               <div
-                className="flex-1 border-2 border-dashed border-[#e4e7ec] rounded-xl p-5 text-center cursor-pointer hover:border-[#155dfc] hover:bg-[#f5f8ff] transition-colors"
+                className="flex-1 border-2 border-dashed border-[#e4e7ec] rounded-xl p-5 text-center cursor-pointer hover:border-[var(--color-primary)] hover:bg-[#f5f8ff] transition-colors"
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={e => e.preventDefault()}
                 onDrop={onFileDrop}
@@ -330,7 +330,7 @@ export default function SettingsPage() {
                 type="text"
                 value={primaryColor}
                 onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setPrimaryColor(e.target.value); }}
-                className="w-28 px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+                className="w-28 px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
               <span className="text-xs text-[#4a5565]">Custom hex</span>
             </div>
@@ -381,7 +381,7 @@ export default function SettingsPage() {
                   value={field.value}
                   onChange={e => field.onChange(e.target.value)}
                   required
-                  className="w-full px-4 py-2.5 pr-10 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+                  className="w-full px-4 py-2.5 pr-10 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 />
                 <button
                   type="button"

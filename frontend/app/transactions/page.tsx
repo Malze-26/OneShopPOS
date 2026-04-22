@@ -16,7 +16,7 @@ const transactionsData = [
 
 const paymentConfig: Record<string, { bg: string; text: string }> = {
   Cash: { bg: '#ecfdf3', text: '#12b76a' },
-  Card: { bg: '#eff4ff', text: '#155dfc' },
+  Card: { bg: '#eff4ff', text: 'var(--color-primary)' },
   'Bank Transfer': { bg: '#fffaeb', text: '#f79009' },
 };
 
@@ -54,7 +54,7 @@ export default function TransactionsPage() {
           <p className="text-xs text-[#4a5565] mb-1">Cash Transactions</p>
           <h3 className="text-2xl font-bold text-[#101828]">LKR {totalCash.toLocaleString()}</h3>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec] border-l-4 border-l-[#155dfc]">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec] border-l-4 border-l-[var(--color-primary)]">
           <p className="text-xs text-[#4a5565] mb-1">Card Transactions</p>
           <h3 className="text-2xl font-bold text-[#101828]">LKR {totalCard.toLocaleString()}</h3>
         </div>
@@ -74,7 +74,7 @@ export default function TransactionsPage() {
                 onClick={() => setFilter(f)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filter === f
-                    ? 'bg-[#155dfc] text-white'
+                    ? 'bg-[var(--color-primary)] text-white'
                     : 'border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb]'
                 }`}
               >
@@ -89,14 +89,14 @@ export default function TransactionsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by transaction ID..."
-              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
           <button className="flex items-center gap-2 px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white hover:bg-[#f9fafb] transition-colors">
             <Calendar className="w-4 h-4" />
             Date Range
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
             <Download className="w-4 h-4" />
             Export
           </button>
@@ -124,7 +124,7 @@ export default function TransactionsPage() {
               {filtered.map((t) => (
                 <tr key={t.id} className="hover:bg-[#f9fafb] transition-colors">
                   <td className="px-5 py-4">
-                    <div className="text-sm font-medium text-[#155dfc]">{t.id}</div>
+                    <div className="text-sm font-medium text-[var(--color-primary)]">{t.id}</div>
                   </td>
                   <td className="px-5 py-4">
                     <div className="text-sm font-medium text-[#101828]">{t.orderId}</div>
@@ -165,7 +165,7 @@ export default function TransactionsPage() {
             <button className="px-3 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm font-medium transition-colors">
               Previous
             </button>
-            <button className="px-3 py-1.5 bg-[#155dfc] text-white hover:bg-[#0d4dd9] rounded-lg text-sm font-medium transition-colors">
+            <button className="px-3 py-1.5 bg-[var(--color-primary)] text-white hover:bg-[#0d4dd9] rounded-lg text-sm font-medium transition-colors">
               Next
             </button>
           </div>

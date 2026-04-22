@@ -32,7 +32,7 @@ const stats = [
     subtext: '8 pending',
     icon: ShoppingBag,
     iconBg: '#eff4ff',
-    iconColor: '#155dfc',
+    iconColor: 'var(--color-primary)',
   },
   {
     title: 'Total Customers',
@@ -65,7 +65,7 @@ const salesTrendData = [
 
 const paymentMethodData = [
   { name: 'Cash', value: 45, amount: 110250, color: '#12b76a' },
-  { name: 'Card', value: 40, amount: 98000, color: '#155dfc' },
+  { name: 'Card', value: 40, amount: 98000, color: 'var(--color-primary)' },
   { name: 'Online', value: 15, amount: 36750, color: '#7f56d9' },
 ];
 
@@ -124,7 +124,7 @@ export default function DashboardPage() {
               </div>
             </div>
             {stat.linkTo && (
-              <Link href={stat.linkTo} className="text-sm text-[#155dfc] hover:underline font-medium">
+              <Link href={stat.linkTo} className="text-sm text-[var(--color-primary)] hover:underline font-medium">
                 View Details →
               </Link>
             )}
@@ -156,7 +156,7 @@ export default function DashboardPage() {
                 contentStyle={{ backgroundColor: '#fff', border: '1px solid #e4e7ec', borderRadius: '8px' }}
                 labelStyle={{ color: '#101828', fontWeight: 600 }}
               />
-              <Line type="monotone" dataKey="sales" stroke="#155dfc" strokeWidth={2} />
+              <Line type="monotone" dataKey="sales" stroke="var(--color-primary)" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
               <h2 className="text-base font-semibold text-[#101828]">Top Selling Products</h2>
               <p className="text-xs text-[#4a5565] mt-1">This week&apos;s best performers</p>
             </div>
-            <Link href="/dashboard/products" className="text-sm text-[#155dfc] hover:underline font-medium">
+            <Link href="/dashboard/products" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
               View All
             </Link>
           </div>
@@ -244,7 +244,7 @@ export default function DashboardPage() {
             {employeePerformance.map((employee) => (
               <div key={employee.name} className="relative">
                 <div className="flex items-center gap-3 relative z-10">
-                  <div className="w-8 h-8 bg-[#155dfc] rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
                     <span className="text-white text-xs font-medium">{employee.avatar}</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -271,7 +271,7 @@ export default function DashboardPage() {
               <h2 className="text-base font-semibold text-[#101828]">Recent Orders</h2>
               <p className="text-xs text-[#4a5565] mt-1">Latest transactions</p>
             </div>
-            <Link href="/dashboard/orders" className="text-sm text-[#155dfc] hover:underline font-medium">
+            <Link href="/dashboard/orders" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
               View All
             </Link>
           </div>

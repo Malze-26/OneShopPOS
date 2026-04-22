@@ -139,7 +139,7 @@ export default function ReceiveGoodsPage() {
   return (
     <div className="p-6 max-w-[1000px]">
       {/* Back */}
-      <Link href="/stocks" className="inline-flex items-center gap-1.5 text-sm text-[#4a5565] hover:text-[#155dfc] mb-6 transition-colors">
+      <Link href="/stocks" className="inline-flex items-center gap-1.5 text-sm text-[#4a5565] hover:text-[var(--color-primary)] mb-6 transition-colors">
         <ChevronLeft className="w-4 h-4" /> Back to Stocks
       </Link>
 
@@ -160,7 +160,7 @@ export default function ReceiveGoodsPage() {
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
                 placeholder="e.g. ABC Distributors"
-                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc]"
+                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
             <div>
@@ -170,7 +170,7 @@ export default function ReceiveGoodsPage() {
                 value={referenceNumber}
                 onChange={(e) => setReferenceNumber(e.target.value)}
                 placeholder="e.g. PO-2025-0042"
-                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc]"
+                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
             <div>
@@ -180,7 +180,7 @@ export default function ReceiveGoodsPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional notes"
-                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc]"
+                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
           </div>
@@ -193,7 +193,7 @@ export default function ReceiveGoodsPage() {
             <button
               type="button"
               onClick={addLine}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-xs font-medium transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Add Row
             </button>
@@ -225,7 +225,7 @@ export default function ReceiveGoodsPage() {
                           onFocus={() => updateLine(idx, { showDropdown: true })}
                           onBlur={() => setTimeout(() => updateLine(idx, { showDropdown: false }), 150)}
                           placeholder="Search product..."
-                          className="w-full pl-8 pr-3 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc]"
+                          className="w-full pl-8 pr-3 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
                         />
                         {line.showDropdown && line.searchResults.length > 0 && (
                           <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#e4e7ec] rounded-lg shadow-lg z-20 overflow-hidden">
@@ -255,7 +255,7 @@ export default function ReceiveGoodsPage() {
                         min={1}
                         value={line.quantityReceived}
                         onChange={(e) => updateLine(idx, { quantityReceived: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="w-20 px-2 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc] text-center"
+                        className="w-20 px-2 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] text-center"
                       />
                     </td>
 
@@ -267,7 +267,7 @@ export default function ReceiveGoodsPage() {
                         step={0.01}
                         value={line.costPrice}
                         onChange={(e) => updateLine(idx, { costPrice: Math.max(0, parseFloat(e.target.value) || 0) })}
-                        className="w-28 px-2 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc]"
+                        className="w-28 px-2 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
                       />
                     </td>
 
@@ -317,7 +317,7 @@ export default function ReceiveGoodsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+            className="px-6 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
           >
             {saving ? 'Saving...' : 'Save GRN'}
           </button>

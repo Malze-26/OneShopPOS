@@ -92,7 +92,7 @@ export default function StocksPage() {
         </div>
         <Link
           href="/stocks/receive"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           Receive Goods
@@ -107,7 +107,7 @@ export default function StocksPage() {
             onClick={() => setTab(t)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
               tab === t
-                ? 'border-[#155dfc] text-[#155dfc]'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
                 : 'border-transparent text-[#4a5565] hover:text-[#101828]'
             }`}
           >
@@ -128,7 +128,7 @@ export default function StocksPage() {
                 placeholder="Search GRN, supplier..."
                 value={grnSearch}
                 onChange={(e) => { setGrnSearch(e.target.value); setGrnPage(1); }}
-                className="w-full pl-9 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc]"
+                className="w-full pl-9 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
             <span className="text-sm text-[#4a5565] ml-auto">{grnTotal} record{grnTotal !== 1 ? 's' : ''}</span>
@@ -151,7 +151,7 @@ export default function StocksPage() {
                 ) : (
                   grns.map((grn) => (
                     <tr key={grn._id} className="hover:bg-[#f9fafb] transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-[#155dfc]">{grn.grnNumber}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-[var(--color-primary)]">{grn.grnNumber}</td>
                       <td className="px-6 py-4 text-sm text-[#101828] whitespace-nowrap">
                         {new Date(grn.createdAt).toLocaleDateString('en-CA')}
                       </td>
@@ -163,7 +163,7 @@ export default function StocksPage() {
                       <td className="px-6 py-4">
                         <Link
                           href={`/stocks/grn/${grn._id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] hover:text-[#155dfc] rounded-lg text-xs font-medium transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] hover:text-[var(--color-primary)] rounded-lg text-xs font-medium transition-colors"
                         >
                           View &amp; Print
                         </Link>
@@ -208,7 +208,7 @@ export default function StocksPage() {
             <select
               value={movTypeFilter}
               onChange={(e) => { setMovTypeFilter(e.target.value); setMovPage(1); }}
-              className="px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[#155dfc] text-[#101828]"
+              className="px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] text-[#101828]"
             >
               <option value="all">All Types</option>
               <option value="add">Stock In</option>
@@ -239,7 +239,7 @@ export default function StocksPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-[#101828]">
                         {mov.product ? (
-                          <Link href={`/products/${mov.product._id}`} className="hover:text-[#155dfc] transition-colors">
+                          <Link href={`/products/${mov.product._id}`} className="hover:text-[var(--color-primary)] transition-colors">
                             {mov.product.name}
                           </Link>
                         ) : <span className="text-[#4a5565]">Deleted product</span>}
