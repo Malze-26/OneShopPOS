@@ -28,7 +28,6 @@ interface CartSidebarProps {
   customerSearch: string;
   showCustomerDropdown: boolean;
   subtotal: number;
-  tax: number;
   total: number;
   discount: number;
   promoCode: string;
@@ -50,7 +49,6 @@ export default function CartSidebar({
   customerSearch,
   showCustomerDropdown,
   subtotal,
-  tax,
   total,
   discount,
   promoCode,
@@ -205,10 +203,7 @@ export default function CartSidebar({
           <span className="text-[12px] text-gray-500">Subtotal</span>
           <span className="text-[12px] font-semibold text-gray-800">Rs. {subtotal.toLocaleString()}</span>
         </div>
-        <div className="flex justify-between mb-1">
-          <span className="text-[12px] text-gray-500">Tax (8%)</span>
-          <span className="text-[12px] font-semibold text-gray-800">Rs. {tax.toFixed(2)}</span>
-        </div>
+        
         {discount > 0 && (
           <div className="flex justify-between mb-1">
             <span className="text-[12px] font-semibold text-green-600">Discount ({promoCode})</span>

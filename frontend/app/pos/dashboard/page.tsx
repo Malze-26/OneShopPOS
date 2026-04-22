@@ -6,7 +6,6 @@ import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
 import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
-import { TAX_RATE, fmt, genId } from "./constants/pos";
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
 import PromoModal from "./components/PromoModal";
@@ -155,8 +154,7 @@ export default function POSDashboard() {
     if (item.unit === "kg") return acc + item.price;
     return acc + item.price * item.qty;
   }, 0);
-  const tax = parseFloat((subtotal * TAX_RATE).toFixed(2));
-  const total = parseFloat((subtotal + tax - discount).toFixed(2));
+  const total = parseFloat((subtotal  - discount).toFixed(2));
 
   const filteredProducts = products.filter((p) => {
     const matchCat = activeCategory === "All" || p.category === activeCategory;
@@ -321,7 +319,6 @@ export default function POSDashboard() {
           customerSearch={customerSearch}
           showCustomerDropdown={showCustomerDropdown}
           subtotal={subtotal}
-          tax={tax}
           total={total}
           discount={discount}
           promoCode={promoCode}
@@ -346,7 +343,6 @@ export default function POSDashboard() {
         <CheckoutModal
           state={checkoutState}
           subtotal={subtotal}
-          tax={tax}
           total={total}
           isOnline={isOnline}
           onClose={() => setShowCheckout(false)}
