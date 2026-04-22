@@ -15,12 +15,46 @@ export async function getSettings(req: Request, res: Response): Promise<void> {
 // PATCH /api/settings — Manager only
 export async function updateSettings(req: AuthRequest, res: Response): Promise<void> {
   const { storeId } = req.user!;
-  const { storeName, currency, currencyLocale, address, phone, email } = req.body;
+  const { storeName, currency, currencyLocale, address, phone, email, primaryColor } = req.body;
+
+  const update: Record<string, string> = {};
+  if (storeName)              update.storeName      = storeName;
+  if (currency)               update.currency       = currency;
+  if (currencyLocale)         update.currencyLocale = currencyLocale;
+  if (address !== undefined)  update.address        = address;
+  if (phone !== undefined)    update.phone          = phone;
+  if (email !== undefined)    update.email          = email;
+  if (primaryColor)           update.primaryColor   = primaryColor;
 
   const settings = await StoreSettings.findOneAndUpdate(
     { storeId },
-    { ...(storeName && { storeName }), ...(currency && { currency }), ...(currencyLocale && { currencyLocale }), ...(address !== undefined && { address }), ...(phone !== undefined && { phone }), ...(email !== undefined && { email }) },
+    update,
     { new: true, runValidators: true }
+  );
+
+  if (!settings) {
+    res.status(404).json({ message: 'Store settings not found' });
+    return;
+  }
+
+  res.json({ data: settings });
+}
+
+// POST /api/settings/logo — Manager only
+export async function uploadLogo(req: AuthRequest, res: Response): Promise<void> {
+  const { storeId } = req.user!;
+
+  if (!req.file) {
+    res.status(400).json({ message: 'No file uploaded' });
+    return;
+  }
+
+  const logoUrl = `/uploads/logo/${req.file.filename}`;
+
+  const settings = await StoreSettings.findOneAndUpdate(
+    { storeId },
+    { logoUrl },
+    { new: true }
   );
 
   if (!settings) {

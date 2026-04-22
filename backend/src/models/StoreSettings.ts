@@ -8,6 +8,8 @@ export interface IStoreSettings extends Document {
   address: string;
   phone: string;
   email: string;
+  logoUrl: string;
+  primaryColor: string;
 }
 
 const storeSettingsSchema = new Schema<IStoreSettings>(
@@ -19,6 +21,8 @@ const storeSettingsSchema = new Schema<IStoreSettings>(
     address:        { type: String, default: '' },
     phone:          { type: String, default: '' },
     email:          { type: String, default: '' },
+    logoUrl:        { type: String, default: '' },
+    primaryColor:   { type: String, default: '#155dfc' },
   },
   { timestamps: true }
 );

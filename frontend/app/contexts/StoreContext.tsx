@@ -10,6 +10,8 @@ interface StoreSettings {
   phone: string;
   email: string;
   storeId: string;
+  logoUrl: string;
+  primaryColor: string;
 }
 
 const defaults: StoreSettings = {
@@ -20,22 +22,42 @@ const defaults: StoreSettings = {
   phone: '',
   email: '',
   storeId: '',
+  logoUrl: '',
+  primaryColor: '#155dfc',
 };
 
-const StoreContext = createContext<StoreSettings>(defaults);
+interface StoreContextValue extends StoreSettings {
+  refresh: () => void;
+}
+
+const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: () => {} });
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaults);
 
-  useEffect(() => {
+  const fetchSettings = () => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     fetch(`${apiBase}/settings`)
       .then(r => r.json())
       .then(json => { if (json.data) setSettings(json.data); })
       .catch(() => { /* keep defaults */ });
+  };
+
+  useEffect(() => {
+    fetchSettings();
   }, []);
 
-  return <StoreContext.Provider value={settings}>{children}</StoreContext.Provider>;
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--color-primary', settings.primaryColor);
+    }
+  }, [settings.primaryColor]);
+
+  return (
+    <StoreContext.Provider value={{ ...settings, refresh: fetchSettings }}>
+      {children}
+    </StoreContext.Provider>
+  );
 }
 
 export function useStore() {

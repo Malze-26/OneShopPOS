@@ -94,6 +94,38 @@ export async function register(req: Request, res: Response): Promise<void> {
   });
 }
 
+// POST /api/auth/change-password  (protected)
+export async function changePassword(req: AuthRequest, res: Response): Promise<void> {
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ message: 'Current password and new password are required' });
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    res.status(400).json({ message: 'New password must be at least 8 characters' });
+    return;
+  }
+
+  const user = await User.findById(req.user?.id).select('+password');
+  if (!user) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) {
+    res.status(401).json({ message: 'Current password is incorrect' });
+    return;
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ message: 'Password changed successfully' });
+}
+
 // GET /api/auth/me  (protected)
 export async function getMe(req: AuthRequest, res: Response): Promise<void> {
   const user = await User.findById(req.user?.id);

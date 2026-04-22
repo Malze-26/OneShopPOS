@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { login, register, getMe } from '../controllers/authController';
+import { login, register, getMe, changePassword } from '../controllers/authController';
 import { protect, requireRole } from '../middleware/authMiddleware';
 import { AuthRequest } from '../types';
 
@@ -19,6 +19,7 @@ router.post('/login', asyncHandler(login));
 
 // Protected routes
 router.post('/register', protect, requireRole('Manager'), asyncHandler(register));
-router.get('/me', protect, asyncHandler((req, res, next) => getMe(req as AuthRequest, res, next)));
+router.post('/change-password', protect, asyncHandler((req, res) => changePassword(req as AuthRequest, res)));
+router.get('/me', protect, asyncHandler((req, res) => getMe(req as AuthRequest, res)));
 
 export default router;
