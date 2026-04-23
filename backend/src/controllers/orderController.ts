@@ -1,104 +1,126 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
-import { Order } from '../models/Order';
-import { Customer } from '../models/Customer';
+import { Transaction, TransactionStatus } from '../models/Transaction';
+
+type OrderStatus   = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
+/** Maps a Transaction status to the order-level status pair used by the frontend. */
+function mapTxnStatus(s: TransactionStatus): { status: OrderStatus; paymentStatus: PaymentStatus } {
+  switch (s) {
+    case 'success':  return { status: 'delivered', paymentStatus: 'paid' };
+    case 'pending':  return { status: 'pending',   paymentStatus: 'pending' };
+    case 'failed':   return { status: 'cancelled', paymentStatus: 'failed' };
+    case 'refunded': return { status: 'refunded',  paymentStatus: 'refunded' };
+    case 'voided':   return { status: 'cancelled', paymentStatus: 'paid' };
+    default:         return { status: 'pending',   paymentStatus: 'pending' };
+  }
+}
+
+function txnToOrder(txn: InstanceType<typeof Transaction>) {
+  const { status, paymentStatus } = mapTxnStatus(txn.status as TransactionStatus);
+  return {
+    _id:           txn._id,
+    orderId:       txn.txnId,
+    source:        'physical',
+    customerName:  txn.customer,
+    items:         [],
+    subtotal:      txn.amount,
+    discount:      0,
+    total:         txn.amount,
+    status,
+    paymentMethod: txn.paymentMethod,
+    paymentStatus,
+    createdAt:     txn.createdAt,
+    createdBy:     txn.createdBy,
+  };
+}
 
 // GET /api/orders
 export async function getOrders(req: AuthRequest, res: Response): Promise<void> {
   const { storeId } = req.user!;
-  const { source, status, paymentStatus, search, page = '1', limit = '20' } = req.query as Record<string, string>;
+  const { status, search, page = '1', limit = '20' } = req.query as Record<string, string>;
 
   const filter: Record<string, unknown> = { storeId };
-  if (source)        filter.source        = source;
-  if (status)        filter.status        = status;
-  if (paymentStatus) filter.paymentStatus = paymentStatus;
-  if (search)        filter.customerName  = { $regex: search, $options: 'i' };
+
+  if (status) {
+    const txnStatusMap: Record<string, string | string[]> = {
+      delivered:  'success',
+      pending:    'pending',
+      cancelled:  ['voided', 'failed'],
+      refunded:   'refunded',
+    };
+    const mapped = txnStatusMap[status];
+    if (mapped) filter.status = Array.isArray(mapped) ? { $in: mapped } : mapped;
+  }
+
+  if (search) filter.customer = { $regex: search, $options: 'i' };
 
   const skip  = (parseInt(page) - 1) * parseInt(limit);
-  const total = await Order.countDocuments(filter);
-  const orders = await Order.find(filter)
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(parseInt(limit))
-    .populate('createdBy', 'name');
+  const [txns, total] = await Promise.all([
+    Transaction.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).populate('createdBy', 'name'),
+    Transaction.countDocuments(filter),
+  ]);
 
-  res.json({ data: orders, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+  res.json({ data: txns.map(txnToOrder), total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
 }
 
 // GET /api/orders/stats
 export async function getOrderStats(req: AuthRequest, res: Response): Promise<void> {
   const { storeId } = req.user!;
 
-  const [totals] = await Order.aggregate([
+  const [totals] = await Transaction.aggregate([
     { $match: { storeId } },
     {
       $group: {
-        _id: null,
-        total:    { $sum: 1 },
-        physical: { $sum: { $cond: [{ $eq: ['$source', 'physical'] }, 1, 0] } },
-        online:   { $sum: { $cond: [{ $eq: ['$source', 'online']   }, 1, 0] } },
-        pending:  { $sum: { $cond: [{ $eq: ['$status', 'pending']  }, 1, 0] } },
-        revenue:  { $sum: { $cond: [{ $eq: ['$paymentStatus', 'paid'] }, '$total', 0] } },
+        _id:     null,
+        total:   { $sum: 1 },
+        pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+        revenue: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
       },
     },
   ]);
 
-  res.json({ data: totals ?? { total: 0, physical: 0, online: 0, pending: 0, revenue: 0 } });
+  res.json({
+    data: totals
+      ? { total: totals.total, physical: totals.total, online: 0, pending: totals.pending, revenue: totals.revenue }
+      : { total: 0, physical: 0, online: 0, pending: 0, revenue: 0 },
+  });
 }
 
 // GET /api/orders/:id
 export async function getOrder(req: AuthRequest, res: Response): Promise<void> {
   const { storeId } = req.user!;
-  const order = await Order.findOne({ _id: req.params.id, storeId }).populate('createdBy', 'name');
-  if (!order) { res.status(404).json({ message: 'Order not found' }); return; }
-  res.json({ data: order });
+  const txn = await Transaction.findOne({ _id: req.params.id, storeId }).populate('createdBy', 'name');
+  if (!txn) { res.status(404).json({ message: 'Order not found' }); return; }
+  res.json({ data: txnToOrder(txn) });
 }
 
-// POST /api/orders
+// POST /api/orders — not used; POS writes via POST /api/transactions
 export async function createOrder(req: AuthRequest, res: Response): Promise<void> {
-  const { storeId, id: userId } = req.user!;
-
-  const { source, customerName, customerEmail, customerPhone, items, discount = 0, paymentMethod, deliveryAddress, notes } = req.body;
-
-  if (!items?.length) { res.status(400).json({ message: 'At least one item is required' }); return; }
-
-  const subtotal = items.reduce((sum: number, i: { subtotal: number }) => sum + i.subtotal, 0);
-  const total    = subtotal - discount;
-
-  const orderId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-
-  const order = await Order.create({
-    orderId, source, customerName, customerEmail, customerPhone,
-    items, subtotal, discount, total,
-    paymentMethod,
-    paymentStatus: paymentMethod === 'Cash' || paymentMethod === 'Card' ? 'paid' : 'pending',
-    status: source === 'physical' ? 'delivered' : 'pending',
-    deliveryAddress, notes,
-    storeId, createdBy: userId,
-  });
-
-  // Keep Customer stats in sync
-  if (customerEmail) {
-    await Customer.findOneAndUpdate(
-      { email: customerEmail, storeId },
-      { $inc: { totalOrders: 1, totalSpent: total }, $set: { lastPurchase: new Date() } }
-    );
-  }
-
-  res.status(201).json({ data: order });
+  res.status(501).json({ message: 'Create orders via POST /api/transactions' });
 }
 
 // PATCH /api/orders/:id/status
 export async function updateOrderStatus(req: AuthRequest, res: Response): Promise<void> {
   const { storeId } = req.user!;
-  const { status, paymentStatus } = req.body;
+  const { status } = req.body as { status: string };
 
-  const order = await Order.findOne({ _id: req.params.id, storeId });
-  if (!order) { res.status(404).json({ message: 'Order not found' }); return; }
+  const txn = await Transaction.findOne({ _id: req.params.id, storeId });
+  if (!txn) { res.status(404).json({ message: 'Order not found' }); return; }
 
-  if (status)        order.status        = status;
-  if (paymentStatus) order.paymentStatus = paymentStatus;
-  await order.save();
+  const statusMap: Record<string, TransactionStatus> = {
+    refunded:  'refunded',
+    cancelled: 'voided',
+    delivered: 'success',
+    pending:   'pending',
+  };
 
-  res.json({ data: order });
+  const txnStatus = statusMap[status];
+  if (!txnStatus) { res.status(400).json({ message: `Status '${status}' is not supported` }); return; }
+
+  txn.status = txnStatus;
+  await txn.save();
+
+  res.json({ data: txnToOrder(txn) });
 }

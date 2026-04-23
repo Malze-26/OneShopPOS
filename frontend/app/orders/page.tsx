@@ -165,20 +165,24 @@ function OrderModal({ order, onClose, onStatusChange }: {
           {/* Items */}
           <div>
             <h3 className="text-sm font-semibold text-[#101828] mb-3">Items</h3>
-            <div className="space-y-2">
-              {order.items.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-[#f2f4f7] last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-[#101828]">{item.productName}</p>
-                    <p className="text-xs text-[#4a5565]">{item.sku} · {fmt(item.unitPrice)} each</p>
+            {order.items.length === 0 ? (
+              <p className="text-sm text-[#4a5565]">Item details are not stored for POS transactions.</p>
+            ) : (
+              <div className="space-y-2">
+                {order.items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-[#f2f4f7] last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-[#101828]">{item.productName}</p>
+                      <p className="text-xs text-[#4a5565]">{item.sku} · {fmt(item.unitPrice)} each</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-[#101828]">{fmt(item.subtotal)}</p>
+                      <p className="text-xs text-[#4a5565]">x{item.quantity}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-[#101828]">{fmt(item.subtotal)}</p>
-                    <p className="text-xs text-[#4a5565]">x{item.quantity}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Totals */}
@@ -348,7 +352,7 @@ export default function OrdersPage() {
           <table className="w-full text-sm">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['Order ID', 'Source', 'Customer', 'Items', 'Total', 'Payment', 'Status', 'Date', ''].map(h => (
+                {['Order ID', 'Source', 'Customer', 'Payment Method', 'Total', 'Payment', 'Status', 'Date', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider whitespace-nowrap">
                     {h}
                   </th>
@@ -380,7 +384,7 @@ export default function OrdersPage() {
                       <p className="font-medium text-[#101828]">{order.customerName}</p>
                       {order.customerEmail && <p className="text-xs text-[#4a5565]">{order.customerEmail}</p>}
                     </td>
-                    <td className="px-4 py-3 text-[#4a5565]">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</td>
+                    <td className="px-4 py-3 text-[#4a5565]">{order.paymentMethod}</td>
                     <td className="px-4 py-3 font-semibold text-[#101828] whitespace-nowrap">{fmt(order.total)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PAYMENT_STATUS_COLOR[order.paymentStatus]}`}>

@@ -13,6 +13,8 @@ export interface ITransaction extends Document {
   status: TransactionStatus;
   storeId: string;
   createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const transactionSchema = new Schema<ITransaction>(
