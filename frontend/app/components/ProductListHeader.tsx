@@ -13,7 +13,7 @@ export function ProductListHeader() {
         <div className="flex items-center gap-3">
           <Link
             href="/products/import"
-            className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-700 hover:border-[var(--color-primary)] hover:bg-[#eff4ff] transition-all"
+            className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-700 hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all"
           >
             <Upload className="w-4 h-4" />
             <span>Import CSV</span>

@@ -156,7 +156,7 @@ export default function SuppliersPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={<Building2 className="w-5 h-5 text-[var(--color-primary)]" />} label="Total Suppliers" value={stats.total} bg="#eff4ff" />
+        <StatCard icon={<Building2 className="w-5 h-5 text-[var(--color-primary)]" />} label="Total Suppliers" value={stats.total} bg="var(--color-primary-light)" />
         <StatCard icon={<CheckCircle className="w-5 h-5 text-[#12b76a]" />} label="Active" value={stats.active} bg="#ecfdf3" />
         <StatCard icon={<XCircle className="w-5 h-5 text-[#f04438]" />} label="Inactive" value={stats.inactive} bg="#fef3f2" />
         <StatCard icon={<Tag className="w-5 h-5 text-[#f79009]" />} label="Categories Supplied" value={stats.categoriesSupplied} bg="#fffaeb" />
@@ -219,7 +219,7 @@ export default function SuppliersPage() {
                       {s.categories.length === 0
                         ? <span className="text-sm text-[#4a5565]">—</span>
                         : s.categories.slice(0, 2).map((c) => (
-                          <span key={c} className="px-2 py-0.5 bg-[#eff4ff] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
+                          <span key={c} className="px-2 py-0.5 bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
                         ))}
                       {s.categories.length > 2 && (
                         <span className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] text-xs rounded-full">+{s.categories.length - 2}</span>
@@ -402,7 +402,7 @@ export default function SuppliersPage() {
                   <p className="text-xs text-[#4a5565] mb-1.5">Categories</p>
                   <div className="flex flex-wrap gap-2">
                     {slideOver.categories.map((c) => (
-                      <span key={c} className="px-2.5 py-1 bg-[#eff4ff] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
+                      <span key={c} className="px-2.5 py-1 bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
                     ))}
                   </div>
                 </div>

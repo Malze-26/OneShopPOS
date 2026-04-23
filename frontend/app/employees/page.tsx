@@ -18,7 +18,7 @@ interface Employee {
 }
 
 const roleConfig: Record<string, { bg: string; text: string }> = {
-  Manager:               { bg: '#eff4ff', text: 'var(--color-primary)' },
+  Manager:               { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
   Cashier:               { bg: '#ecfdf3', text: '#12b76a' },
   'Sales Representative':{ bg: '#fff7ed', text: '#ea580c' },
 };

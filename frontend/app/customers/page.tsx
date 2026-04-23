@@ -68,7 +68,7 @@ function fmtDate(iso?: string) {
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
   pending:    { label: 'Pending',    color: 'bg-[#fff8e1] text-[#f59e0b]', icon: Clock },
   confirmed:  { label: 'Confirmed',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
-  processing: { label: 'Processing', color: 'bg-[#eff4ff] text-[var(--color-primary)]', icon: Package },
+  processing: { label: 'Processing', color: 'bg-[var(--color-primary-light)] text-[var(--color-primary)]', icon: Package },
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
@@ -107,7 +107,7 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e4e7ec]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-[#eff4ff] rounded-full flex items-center justify-center">
+            <div className="w-11 h-11 bg-[var(--color-primary-light)] rounded-full flex items-center justify-center">
               <span className="text-base font-semibold text-[var(--color-primary)]">{customer.avatar}</span>
             </div>
             <div>
@@ -146,7 +146,7 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
 
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-[#eff4ff] rounded-xl p-3 text-center">
+            <div className="bg-[var(--color-primary-light)] rounded-xl p-3 text-center">
               <ShoppingBag className="w-4 h-4 text-[var(--color-primary)] mx-auto mb-1" />
               <p className="text-lg font-bold text-[#101828]">{customer.totalOrders}</p>
               <p className="text-xs text-[#4a5565]">Orders</p>
@@ -189,7 +189,7 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
                       {/* Badges */}
                       <div className="flex flex-wrap gap-1.5">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          order.source === 'physical' ? 'bg-[#eff4ff] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
+                          order.source === 'physical' ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
                         }`}>
                           {order.source === 'physical' ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
                           {order.source === 'physical' ? 'Physical' : 'Online'}
@@ -358,7 +358,7 @@ export default function CustomersPage() {
                 <tr key={customer._id} className="hover:bg-[#f9fafb] transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#eff4ff] rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-[var(--color-primary-light)] rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-[var(--color-primary)]">{customer.avatar}</span>
                       </div>
                       <div className="text-sm font-medium text-[#101828]">{customer.name}</div>
@@ -372,7 +372,7 @@ export default function CustomersPage() {
                   <td className="px-5 py-4">
                     <button
                       onClick={() => setSelected(customer)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg transition-colors text-xs font-medium"
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg transition-colors text-xs font-medium"
                     >
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>

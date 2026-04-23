@@ -1,103 +1,105 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Search, User, Star, PieChart, ArrowUp } from "lucide-react"
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/app/components/ui/native-select"
-import { ReportsTabs } from '../../components/ReportsTabs'
-import { ReportsDateToolbar } from '../../components/ReportsDateToolbar'
+import { useState } from 'react';
+import { Search, User, Star, PieChart, ArrowUp } from 'lucide-react';
+import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
+import { ReportsTabs } from '../../components/ReportsTabs';
+import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 
-// Updated productData to fix the rendering errors in the table mapping below
-const productData = [
-  { name: 'Wireless Headphones', phone: '0712345678', type: 'Returning', order: 12, spent: 'Rs. 60,000', loyality: 'Gold' },
-  { name: 'USB-C Cable 2m', phone: '0779876543', type: 'New', order: 1, spent: 'Rs. 22,500', loyality: 'Silver' },
-  { name: 'Mechanical Keyboard', phone: '0754567890', type: 'Returning', order: 5, spent: 'Rs. 45,000', loyality: 'Platinum' },
-]
+const customerData = [
+  { name: 'Wireless Headphones', phone: '0712345678', type: 'Returning', orders: 12, spent: 'Rs. 60,000', loyalty: 'Gold' },
+  { name: 'USB-C Cable 2m',      phone: '0779876543', type: 'New',       orders: 1,  spent: 'Rs. 22,500', loyalty: 'Silver' },
+  { name: 'Mechanical Keyboard', phone: '0754567890', type: 'Returning', orders: 5,  spent: 'Rs. 45,000', loyalty: 'Platinum' },
+];
+
+const loyaltyColors: Record<string, { bg: string; text: string }> = {
+  Gold:     { bg: '#fffaeb', text: '#f79009' },
+  Silver:   { bg: '#f9fafb', text: '#4a5565' },
+  Platinum: { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
+};
 
 export default function CustomerActivityPage() {
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filtered = customerData.filter(
+    (c) =>
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.phone.includes(searchTerm),
+  );
 
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] bg-[#fcfcfd] min-h-screen">
-      <div className="mb-6">
+    <div className="p-6 max-w-[1400px]">
+      <div className="mb-4">
         <ReportsTabs />
         <ReportsDateToolbar />
       </div>
 
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-[#101828]">Daily Customer Activity</h2>
-        <p className="text-sm text-[#667085] mt-1">
-          Real-time overview of customer interactions and transactional performance.
-        </p>
+        <h1 className="text-xl font-bold text-[#101828]">Daily Customer Activity</h1>
+        <p className="text-sm text-[#4a5565] mt-1">Real-time overview of customer interactions and transactional performance.</p>
       </div>
 
-      {/* ✅ Updated Summary Cards Section to match the image exactly */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-        
-        {/* Unique Customers Card */}
-        <div className="bg-white border border-[#e4e7ec] rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
-              <User className="w-5 h-5 text-blue-500" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-sm text-[#4a5565] mb-1">Unique Customers</p>
+              <h3 className="text-2xl font-bold text-[#101828] mb-1">142</h3>
+              <span className="text-sm font-medium" style={{ color: '#12b76a' }}>▲ 12</span>
+              <p className="text-xs text-[#4a5565] mt-1">vs yesterday</p>
             </div>
-            <p className="text-xs font-semibold text-[#667085] uppercase tracking-wider mb-2">Unique Customers</p>
-            <div className="flex items-center gap-3">
-              <h3 className="text-3xl font-bold text-[#101828]">142</h3>
-              <span className="inline-flex items-center text-xs font-bold bg-[#ecfdf3] text-[#027a48] px-2 py-0.5 rounded-md">
-                <ArrowUp className="w-3 h-3 mr-0.5" /> 12
-              </span>
-            </div>
-          </div>
-          <p className="text-sm text-[#98a2b3] font-medium">vs. yesterday</p>
-        </div>
-
-        {/* Top Spender Card */}
-        <div className="bg-white border border-[#e4e7ec] rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="mb-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
-              <Star className="w-5 h-5 text-orange-500" />
-            </div>
-            <p className="text-xs font-semibold text-[#667085] uppercase tracking-wider mb-2">Top Spender</p>
-            <h3 className="text-xl font-bold text-[#101828]">Nimal Perera</h3>
-          </div>
-          <p className="text-sm font-bold text-blue-600">Rs. 45,000</p>
-        </div>
-
-        {/* New vs Returning Card */}
-        <div className="bg-white border border-[#e4e7ec] rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="mb-4">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center mb-4">
-              <PieChart className="w-5 h-5 text-purple-500" />
-            </div>
-            <p className="text-xs font-semibold text-[#667085] uppercase tracking-wider mb-2">New vs Returning</p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-3xl font-bold text-[#101828]">85%</h3>
-              <span className="text-sm text-[#667085] font-medium">Returning</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-[#667085] font-semibold">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 85% Returning
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 15% New
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <User className="w-6 h-6" style={{ color: 'var(--color-primary)' }} />
             </div>
           </div>
         </div>
 
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-sm text-[#4a5565] mb-1">Top Spender</p>
+              <h3 className="text-xl font-bold text-[#101828] mb-1">Nimal Perera</h3>
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Rs. 45,000</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fffaeb' }}>
+              <Star className="w-6 h-6" style={{ color: '#f79009' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-sm text-[#4a5565] mb-1">New vs Returning</p>
+              <h3 className="text-2xl font-bold text-[#101828] mb-1">85% <span className="text-sm font-normal text-[#4a5565]">Returning</span></h3>
+              <div className="flex items-center gap-3 text-xs text-[#4a5565]">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#12b76a' }} />
+                  85% Returning
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: 'var(--color-primary)' }} />
+                  15% New
+                </div>
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#f4f3ff' }}>
+              <PieChart className="w-6 h-6" style={{ color: '#7f56d9' }} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white border border-[#e4e7ec] rounded-xl shadow-sm overflow-hidden">
-        {/* Table Header / Filters */}
-        <div className="p-4 border-b border-[#e4e7ec] flex flex-wrap gap-3 items-center justify-between">
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-[#e4e7ec] shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#e4e7ec] flex flex-wrap gap-3 items-center justify-between">
           <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5565]" />
             <input
               type="text"
-              placeholder="Search Product / SKU..."
-              className="w-full pl-10 pr-4 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search customer or phone..."
+              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -105,63 +107,66 @@ export default function CustomerActivityPage() {
           <div className="flex gap-2">
             <NativeSelect className="w-40">
               <NativeSelectOption value="">All Categories</NativeSelectOption>
-               <NativeSelectOption value="">Baby Products</NativeSelectOption>
-                <NativeSelectOption value="">Bakery</NativeSelectOption>
-                 <NativeSelectOption value="">Beverages</NativeSelectOption>
-                  <NativeSelectOption value="">Canned& Preserved</NativeSelectOption>
-                   <NativeSelectOption value="">Chilled Food</NativeSelectOption>
-                    <NativeSelectOption value="">Confectionery</NativeSelectOption>
-                    <NativeSelectOption value="">Cooking Essentials</NativeSelectOption>
-                    <NativeSelectOption value="">Diary</NativeSelectOption>
-                    <NativeSelectOption value="">Cleaning & Laundry</NativeSelectOption>
+              <NativeSelectOption value="baby">Baby Products</NativeSelectOption>
+              <NativeSelectOption value="bakery">Bakery</NativeSelectOption>
+              <NativeSelectOption value="beverages">Beverages</NativeSelectOption>
             </NativeSelect>
-            
             <NativeSelect className="w-40">
               <NativeSelectOption value="">All Channels</NativeSelectOption>
-              <NativeSelectOption value="">POS(In-store)</NativeSelectOption>
-              <NativeSelectOption value="">E-commerce(Online)</NativeSelectOption>
+              <NativeSelectOption value="pos">POS (In-store)</NativeSelectOption>
+              <NativeSelectOption value="online">E-commerce (Online)</NativeSelectOption>
             </NativeSelect>
           </div>
         </div>
 
-        {/* Data Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#f9fafb] border-b border-[#e4e7ec]">
-                <th className="px-6 py-3 text-xs font-semibold text-[#667085] uppercase">Customer Name</th>
-                <th className="px-6 py-3 text-xs font-semibold text-[#667085] uppercase">Phone</th>
-                <th className="px-6 py-3 text-xs font-semibold text-[#667085] uppercase">Type</th>
-                <th className="px-6 py-3 text-xs font-semibold text-[#667085] uppercase text-right">Orders</th>
-                <th className="px-6 py-3 text-xs font-semibold text-[#667085] uppercase text-right">Total Spent</th>
-                <th className="px-6 py-3 text-xs font-semibold text-[#667085] uppercase text-right">Loyality</th>
+          <table className="w-full">
+            <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
+              <tr>
+                {['Customer Name', 'Phone', 'Type', 'Orders', 'Total Spent', 'Loyalty'].map((h) => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f2f4f7]">
-              {/* Note: Updated map to use the keys defined in productData */}
-              {productData.map((customer, idx) => (
+            <tbody className="divide-y divide-[#e4e7ec]">
+              {filtered.map((customer, idx) => (
                 <tr key={idx} className="hover:bg-[#f9fafb] transition-colors">
-                  <td className="px-6 py-4 text-sm font-bold text-[#101828]">{customer.name}</td>
-                  <td className="px-6 py-4 text-sm text-[#475467]">{customer.phone}</td>
-                  <td className="px-6 py-4 text-sm text-[#475467]">{customer.type}</td>
-                  <td className="px-6 py-4 text-sm text-right text-[#475467]">{customer.order}</td>
-                  <td className="px-6 py-4 text-sm text-right font-bold text-[#101828]">{customer.spent}</td>
-                  <td className="px-6 py-4 text-sm text-right font-bold text-[#101828]">{customer.loyality}</td>
+                  <td className="px-5 py-4 text-sm font-medium text-[#101828]">{customer.name}</td>
+                  <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.phone}</td>
+                  <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.type}</td>
+                  <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.orders}</td>
+                  <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{customer.spent}</td>
+                  <td className="px-5 py-4">
+                    <span
+                      className="inline-block px-2 py-1 rounded text-xs font-medium"
+                      style={{
+                        backgroundColor: loyaltyColors[customer.loyalty]?.bg,
+                        color: loyaltyColors[customer.loyalty]?.text,
+                      }}
+                    >
+                      {customer.loyalty}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="px-6 py-4 border-t border-[#e4e7ec] flex items-center justify-between">
-          <p className="text-sm text-[#667085]">Showing 1-3 of 3</p>
+        <div className="px-5 py-4 border-t border-[#e4e7ec] flex items-center justify-between">
+          <p className="text-sm text-[#4a5565]">Showing 1 to {filtered.length} of {customerData.length} customers</p>
           <div className="flex gap-2">
-            <button className="px-4 py-2 text-sm font-medium border border-[#d0d5dd] rounded-lg text-[#344054] disabled:opacity-50" disabled>Prev</button>
-            <button className="px-4 py-2 text-sm font-medium border border-[#d0d5dd] rounded-lg text-[#344054] disabled:opacity-50" disabled>Next</button>
+            <button className="px-3 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm font-medium transition-colors" disabled>
+              Previous
+            </button>
+            <button className="px-3 py-1.5 bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] rounded-lg text-sm font-medium transition-colors" disabled>
+              Next
+            </button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

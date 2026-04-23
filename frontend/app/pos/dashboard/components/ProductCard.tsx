@@ -94,7 +94,7 @@ export default function ProductCard({
             {product.isWeightBased && <span className="text-[11px] font-normal text-[var(--color-secondary)]"> / kg</span>}
           </div>
           {product.isWeightBased && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#eff4ff] text-[var(--color-primary)] rounded-full">BY WEIGHT</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[var(--color-primary-light)] text-[var(--color-primary)] rounded-full">BY WEIGHT</span>
           )}
         </div>
 

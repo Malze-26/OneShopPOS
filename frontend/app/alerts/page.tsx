@@ -107,7 +107,7 @@ export default function AlertsPage() {
                     <span className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] rounded text-xs">{item.category}</span>
                   </div>
                 </div>
-                <button className="ml-4 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                <button className="ml-4 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
                   Adjust Stock
                 </button>
               </div>

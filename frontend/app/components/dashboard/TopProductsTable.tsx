@@ -40,7 +40,7 @@ export function TopProductsTable({ products, currency }: TopProductsTableProps) 
             <div className="w-6 h-6 flex items-center justify-center bg-[#f9fafb] rounded text-xs font-semibold text-[#4a5565]">
               {product.rank}
             </div>
-            <div className="w-8 h-8 flex items-center justify-center bg-[#eff4ff] rounded text-lg">
+            <div className="w-8 h-8 flex items-center justify-center bg-[var(--color-primary-light)] rounded text-lg">
               {product.image}
             </div>
             <div className="flex-1 min-w-0">

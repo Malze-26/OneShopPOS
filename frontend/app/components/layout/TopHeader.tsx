@@ -21,7 +21,6 @@ const pageTitle: Record<string, string> = {
   '/reports': 'Reports',
   '/alerts': 'Alerts',
   '/settings': 'Settings',
-  '/profile': 'My Profile',
   '/suppliers': 'Suppliers',
   '/stocks': 'Stocks',
   '/dashboard/orders': 'Orders',
@@ -37,7 +36,6 @@ const pageTitle: Record<string, string> = {
   '/dashboard/reports': 'Reports',
   '/dashboard/alerts': 'Alerts',
   '/dashboard/settings': 'Settings',
-  '/dashboard/profile': 'My Profile',
   '/settings': 'Settings',
 };
 
@@ -109,7 +107,7 @@ export function TopHeader() {
                 />
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-[#e4e7ec] py-2 z-20">
                   <Link
-                    href="/profile"
+                    href="/settings?tab=account"
                     className="flex items-center gap-2 px-4 py-2 text-sm text-[#4a5565] hover:bg-[#f9fafb] transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >

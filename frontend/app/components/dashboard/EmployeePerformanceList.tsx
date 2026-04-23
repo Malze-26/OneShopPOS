@@ -28,7 +28,7 @@ export function EmployeePerformanceList({ employees, currency }: EmployeePerform
           <div key={employee.name} className="relative">
             {/* Background performance bar — rendered behind the content */}
             <div
-              className="absolute inset-0 bg-[#eff4ff] rounded"
+              className="absolute inset-0 bg-[var(--color-primary-light)] rounded"
               style={{ width: `${employee.performance}%`, zIndex: 0 }}
             />
             <div className="flex items-center gap-3 relative z-10">

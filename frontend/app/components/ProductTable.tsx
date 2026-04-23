@@ -178,7 +178,7 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                     <Link
                       href={`/products/${product._id}`}
-                      className="flex items-center gap-2 px-3 py-2 text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg transition-colors w-fit"
+                      className="flex items-center gap-2 px-3 py-2 text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg transition-colors w-fit"
                       title="View Product"
                     >
                       <Eye className="w-4 h-4" />

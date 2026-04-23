@@ -207,7 +207,7 @@ export default function EditProductPage() {
                     <button
                       type="button"
                       onClick={generateSKU}
-                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
                     >
                       <Sparkles className="w-4 h-4" />
                       Generate
@@ -310,8 +310,8 @@ export default function EditProductPage() {
                     onClick={() => fileInputRef.current?.click()}
                     className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                       isDragging
-                        ? 'border-[var(--color-primary)] bg-[#eff4ff]'
-                        : 'border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#eff4ff]/30'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
+                        : 'border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)]/30'
                     }`}
                   >
                     <Upload className="w-7 h-7 text-[#4a5565] mx-auto mb-2" />
@@ -415,7 +415,7 @@ export default function EditProductPage() {
                 <span className="text-sm font-medium text-[#101828]">Sold by weight (kg)</span>
               </label>
               {formData.isWeightBased && (
-                <p className="mt-3 text-xs text-[var(--color-primary)] bg-[#eff4ff] rounded-lg px-3 py-2">
+                <p className="mt-3 text-xs text-[var(--color-primary)] bg-[var(--color-primary-light)] rounded-lg px-3 py-2">
                   Price will be per kg. Cashier enters exact weight at checkout.
                 </p>
               )}

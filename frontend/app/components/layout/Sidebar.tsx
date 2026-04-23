@@ -103,7 +103,7 @@ export function Sidebar() {
                   href={item.path}
                   className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors relative ${
                     active
-                      ? 'text-[var(--color-primary)] bg-[#eff4ff] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[var(--color-primary)] before:rounded-r'
+                      ? 'text-[var(--color-primary)] bg-[var(--color-primary-light)] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[var(--color-primary)] before:rounded-r'
                       : 'text-[#4a5565] hover:bg-[#f9fafb]'
                   }`}
                 >

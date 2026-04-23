@@ -145,6 +145,12 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Derived primary variants — auto-update when --color-primary changes at runtime */
+:root {
+  --color-primary-light: color-mix(in srgb, var(--color-primary) 10%, white);
+  --color-primary-dark:  color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

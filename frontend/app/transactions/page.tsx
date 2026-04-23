@@ -16,7 +16,7 @@ const transactionsData = [
 
 const paymentConfig: Record<string, { bg: string; text: string }> = {
   Cash: { bg: '#ecfdf3', text: '#12b76a' },
-  Card: { bg: '#eff4ff', text: 'var(--color-primary)' },
+  Card: { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
   'Bank Transfer': { bg: '#fffaeb', text: '#f79009' },
 };
 
@@ -96,7 +96,7 @@ export default function TransactionsPage() {
             <Calendar className="w-4 h-4" />
             Date Range
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors">
             <Download className="w-4 h-4" />
             Export
           </button>

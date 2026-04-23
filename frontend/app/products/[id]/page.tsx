@@ -117,7 +117,7 @@ export default function ProductDetailPage() {
             <Edit className="w-4 h-4" />
             Edit Product
           </Link>
-          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors">
+          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors">
             <ArrowLeftRight className="w-4 h-4" />
             Adjust Stock
           </button>
