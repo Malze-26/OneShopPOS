@@ -1,4 +1,14 @@
-export default function MetricCard({ icon: Icon, label, value, trend, trendUp }) {
+import { ElementType } from 'react';
+
+interface MetricCardProps {
+  icon: ElementType;
+  label: string;
+  value: string;
+  trend?: string;
+  trendUp?: boolean;
+}
+
+export default function MetricCard({ icon: Icon, label, value, trend, trendUp }: MetricCardProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition">
       <div className="flex items-center justify-between mb-4">

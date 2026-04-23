@@ -5,7 +5,17 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-export default function DoughnutChart({ data }) {
+interface ChartData {
+  labels: string[];
+  values: number[];
+  colors?: string[];
+}
+
+interface DoughnutChartProps {
+  data: ChartData;
+}
+
+export default function DoughnutChart({ data }: DoughnutChartProps) {
   const chartData = {
     labels: data.labels,
     datasets: [
@@ -22,7 +32,7 @@ export default function DoughnutChart({ data }) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'bottom',
+        position: 'bottom' as const,
         labels: { padding: 20, usePointStyle: true },
       },
     },

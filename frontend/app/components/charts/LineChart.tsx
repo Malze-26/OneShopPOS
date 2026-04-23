@@ -15,7 +15,17 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-export default function LineChart({ data, title }) {
+interface ChartData {
+  labels: string[];
+  values: number[];
+}
+
+interface LineChartProps {
+  data: ChartData;
+  title: string;
+}
+
+export default function LineChart({ data, title }: LineChartProps) {
   const chartData = {
     labels: data.labels,
     datasets: [
@@ -35,11 +45,9 @@ export default function LineChart({ data, title }) {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      tooltip: { mode: 'index', intersect: false },
+      tooltip: { mode: 'index' as const, intersect: false },
     },
-    scales: {
-      y: { beginAtZero: true },
-    },
+    scales: { y: { beginAtZero: true } },
   };
 
   return (

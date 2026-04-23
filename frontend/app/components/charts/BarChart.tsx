@@ -13,7 +13,17 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-export default function BarChart({ data, title }) {
+interface ChartData {
+  labels: string[];
+  values: number[];
+}
+
+interface BarChartProps {
+  data: ChartData;
+  title: string;
+}
+
+export default function BarChart({ data, title }: BarChartProps) {
   const chartData = {
     labels: data.labels,
     datasets: [
@@ -31,11 +41,9 @@ export default function BarChart({ data, title }) {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      tooltip: { mode: 'index', intersect: false },
+      tooltip: { mode: 'index' as const, intersect: false },
     },
-    scales: {
-      y: { beginAtZero: true },
-    },
+    scales: { y: { beginAtZero: true } },
   };
 
   return (

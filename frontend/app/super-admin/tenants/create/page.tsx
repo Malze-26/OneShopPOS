@@ -2,64 +2,102 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, Building2, MapPin, Phone, Palette } from 'lucide-react';
+import { ArrowLeft, Upload, Building2, Mail, Palette } from 'lucide-react';
 import MainLayout from '../../../components/layout/MainLayout';
+import { tenantAPI } from '../../../../utils/api';
+
+interface FormData {
+  businessName: string;
+  businessAddress: string;
+  phoneNumber: string;
+  email: string;
+  logo: File | null;
+  primaryColor: string;
+  activeStatus: boolean;
+  subscriptionTier: string;
+}
 
 export default function CreateTenantPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     businessName: '',
     businessAddress: '',
     phoneNumber: '',
+    email: '',
     logo: null,
     primaryColor: '#3B82F6',
     activeStatus: true,
     subscriptionTier: 'free',
   });
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [themePreview, setThemePreview] = useState('primary'); // 'primary' or 'badge'
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [themePreview, setThemePreview] = useState<'primary' | 'badge'>('primary');
+  const [loading, setLoading] = useState(false);
 
   const quickColors = [
-    '#3B82F6', // Blue
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#F59E0B', // Orange
-    '#10B981', // Green
-    '#06B6D4', // Cyan
-    '#EF4444', // Red
-    '#84CC16', // Lime
+    '#3B82F6',
+    '#8B5CF6',
+    '#EC4899',
+    '#F59E0B',
+    '#10B981',
+    '#06B6D4',
+    '#EF4444',
+    '#84CC16',
   ];
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
     });
   };
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result);
+        setLogoPreview(reader.result as string);
         setFormData({ ...formData, logo: file });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    console.log('Creating tenant:', formData);
-    alert('Tenant created successfully! (Demo)');
-    router.push('/super-admin/tenants');
-  };
+    setLoading(true);
 
-  const handleSaveAsDraft = () => {
-    console.log('Saving as draft:', formData);
-    alert('Saved as draft! (Demo)');
+    try {
+      const tenantData = {
+        businessName: formData.businessName,
+        businessAddress: formData.businessAddress,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        logo: logoPreview,
+        primaryColor: formData.primaryColor,
+        subscription: {
+          plan: formData.subscriptionTier,
+          status: formData.activeStatus ? 'active' : 'inactive',
+        },
+        status: formData.activeStatus ? 'active' : 'inactive',
+      };
+
+      const data = await tenantAPI.create(tenantData);
+
+      if (data.success) {
+        alert('Tenant created successfully!');
+        router.push('/super-admin/tenants');
+      } else {
+        alert(data.message || 'Failed to create tenant');
+      }
+    } catch (error) {
+      console.error('Error creating tenant:', error);
+      alert('Error creating tenant');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -135,6 +173,25 @@ export default function CreateTenantPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   required
                 />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Email <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="business@example.com"
+                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -279,7 +336,7 @@ export default function CreateTenantPage() {
                         <div
                           className="w-2 h-2 rounded-full"
                           style={{ backgroundColor: formData.primaryColor }}
-                        ></div>
+                        />
                         Active Status Badge
                       </span>
                     )}
@@ -313,7 +370,7 @@ export default function CreateTenantPage() {
                     onChange={handleChange}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
                 </label>
               </div>
 
@@ -328,7 +385,7 @@ export default function CreateTenantPage() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
-                  <option value="free">Select the subscription plan for this tenant</option>
+                  <option value="free">Free Plan</option>
                   <option value="basic">Basic Plan</option>
                   <option value="premium">Premium Plan</option>
                   <option value="enterprise">Enterprise Plan</option>
@@ -346,24 +403,14 @@ export default function CreateTenantPage() {
             >
               Cancel
             </button>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleSaveAsDraft}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
-              >
-                Save as Draft
-              </button>
-              <button
-                type="submit"
-                className="flex items-center gap-2 px-6 py-3 text-white rounded-lg font-medium transition"
-                style={{ backgroundColor: '#151194' }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#0d0a62'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#151194'}
-              >
-                Create Tenant
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-3 text-white rounded-lg font-medium transition disabled:opacity-50"
+              style={{ backgroundColor: '#151194' }}
+            >
+              {loading ? 'Creating...' : 'Create Tenant'}
+            </button>
           </div>
         </form>
       </div>
