@@ -275,7 +275,7 @@ export default function CustomersPage() {
     <div className="p-6 max-w-[1400px]">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#101828] mb-1">Customers</h1>
+      
         <p className="text-sm text-[#4a5565]">View customer info and their order history</p>
       </div>
 

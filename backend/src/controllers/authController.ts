@@ -1,27 +1,31 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
 
 function signToken(id: string, email: string, role: string, storeId: string): string {
+  const secret = process.env.JWT_SECRET as jwt.Secret;
+  const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as jwt.SignOptions['expiresIn'];
   return jwt.sign(
     { id, email, role, storeId },
-    process.env.JWT_SECRET as string,
-    { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+    secret,
+    { expiresIn }
   );
 }
 
 // POST /api/auth/login
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body as { email?: string; password?: string };
+  const normalizedEmail = email?.trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     res.status(400).json({ message: 'Email and password are required' });
     return;
   }
 
   // Include password (excluded by default via select:false)
-  const user = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
   if (!user || !(await user.comparePassword(password))) {
     res.status(401).json({ message: 'Invalid email or password' });
@@ -31,6 +35,12 @@ export async function login(req: Request, res: Response): Promise<void> {
   if (!user.isActive) {
     res.status(403).json({ message: 'Your account has been deactivated' });
     return;
+  }
+
+  // One-time migration for legacy plaintext passwords.
+  if (!user.password.startsWith('$2')) {
+    const hashed = await bcrypt.hash(password, 12);
+    await User.updateOne({ _id: user._id }, { $set: { password: hashed } });
   }
 
   // Update last login

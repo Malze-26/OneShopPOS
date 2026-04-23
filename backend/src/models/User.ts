@@ -70,6 +70,11 @@ userSchema.pre('save', async function (next) {
 
 // Compare plain password to hashed password
 userSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
+  // Backward compatibility for legacy records that may still store plaintext passwords.
+  // New/updated passwords are always hashed via the pre-save hook.
+  if (!this.password.startsWith('$2')) {
+    return candidate === this.password;
+  }
   return bcrypt.compare(candidate, this.password);
 };
 

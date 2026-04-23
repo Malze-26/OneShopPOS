@@ -36,7 +36,7 @@ export default function AlertsPage() {
     <div className="p-6 max-w-[1400px]">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#101828] mb-1">Alerts</h1>
+        
         <p className="text-sm text-[#4a5565]">Monitor important notifications and warnings</p>
       </div>
 

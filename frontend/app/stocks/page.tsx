@@ -87,7 +87,7 @@ export default function StocksPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#101828]">Stocks</h1>
+   
           <p className="text-sm text-[#4a5565] mt-0.5">Manage goods received notes and stock movements</p>
         </div>
         <Link

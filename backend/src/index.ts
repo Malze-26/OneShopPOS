@@ -1,6 +1,8 @@
 import dns from 'dns';
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
+import dotenv from "dotenv";
+dotenv.config();
 import 'dotenv/config';
 import path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
@@ -17,6 +19,7 @@ import promoRoutes from './routes/promos';
 import orderRoutes from './routes/orders';
 import settingsRoutes from './routes/settings';
 import supplierRoutes from './routes/suppliers';
+import reportRoutes from './routes/reports';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -48,6 +51,7 @@ app.use('/api/promos', promoRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/suppliers', supplierRoutes);
+app.use('/api/reports', reportRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -64,16 +68,15 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 async function start() {
   const mongoUri = process.env.MONGODB_URI;
   if (!mongoUri) {
-    console.error('MONGODB_URI is not set in .env');
-    process.exit(1);
-  }
-
-  try {
-    await mongoose.connect(mongoUri);
-    console.log('✓ Connected to MongoDB');
-  } catch (err) {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
+    console.warn('⚠ MONGODB_URI is not set in .env - running without database');
+  } else {
+    try {
+      await mongoose.connect(mongoUri);
+      console.log('✓ Connected to MongoDB');
+    } catch (err) {
+      console.warn('⚠ MongoDB connection error:', err instanceof Error ? err.message : err);
+      console.warn('⚠ Continuing without database connection');
+    }
   }
 
   app.listen(Number(PORT), '0.0.0.0', () => {

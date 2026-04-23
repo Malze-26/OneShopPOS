@@ -20,7 +20,11 @@ export default function LoginPage() {
     try {
       await login(email, password, rememberMe);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      if (!err.response) {
+        setError('Cannot reach server. Please check backend is running and API URL is correct.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

@@ -8,20 +8,22 @@ import { useAuth } from '@/app/contexts/AuthContext';
 
 const pageTitle: Record<string, string> = {
   '/dashboard': 'Dashboard',
-  '/dashboard/orders': 'Orders',
-  '/dashboard/refunds': 'Refunds',
-  '/dashboard/transactions': 'Transactions',
-  '/dashboard/products': 'Products',
-  '/dashboard/products/add': 'Add Product',
-  '/dashboard/products/edit': 'Edit Product',
-  '/dashboard/inventory': 'Inventory',
-  '/dashboard/categories': 'Categories',
-  '/dashboard/employees': 'Employees',
-  '/dashboard/customers': 'Customers',
-  '/dashboard/reports': 'Reports',
-  '/dashboard/alerts': 'Alerts',
-  '/dashboard/settings': 'Settings',
-  '/dashboard/profile': 'My Profile',
+  '/orders': 'Orders',
+  '/refunds': 'Refunds',
+  '/transactions': 'Transactions',
+  '/products': 'Products',
+  '/products/add': 'Add Product',
+  '/products/edit': 'Edit Product',
+  '/inventory': 'Inventory',
+  '/categories': 'Categories',
+  '/employees': 'Employees',
+  '/customers': 'Customers',
+  '/reports': 'Reports',
+  '/alerts': 'Alerts',
+  '/settings': 'Settings',
+  '/profile': 'My Profile',
+  '/suppliers': 'Suppliers',
+  '/stocks': 'Stocks',
 };
 
 export function TopHeader() {
@@ -86,7 +88,7 @@ export function TopHeader() {
                 />
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-[#e4e7ec] py-2 z-20">
                   <Link
-                    href="/dashboard/profile"
+                    href="/profile"
                     className="flex items-center gap-2 px-4 py-2 text-sm text-[#4a5565] hover:bg-[#f9fafb] transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >

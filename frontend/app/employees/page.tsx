@@ -65,7 +65,7 @@ export default function EmployeesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-[#101828] mb-1">Employees</h1>
+       
           <p className="text-sm text-[#4a5565]">Manage store staff and cashiers</p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors">

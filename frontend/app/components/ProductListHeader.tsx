@@ -6,7 +6,7 @@ export function ProductListHeader() {
     <div className="mb-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-gray-900 mb-2">Products</h1>
+          
           <p className="text-gray-600">Manage your product inventory and stock levels</p>
         </div>
 
