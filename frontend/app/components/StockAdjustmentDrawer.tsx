@@ -86,8 +86,8 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
                 onClick={() => setAdjustmentType('add')}
                 className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
                   adjustmentType === 'add'
-                    ? 'bg-[#155dfc] border-[#155dfc] text-white'
-                    : 'bg-white border-[#e4e7ec] text-[#4a5565] hover:border-[#155dfc]'
+                    ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                    : 'bg-white border-[#e4e7ec] text-[#4a5565] hover:border-[var(--color-primary)]'
                 }`}
               >
                 <Plus className="w-4 h-4 inline-block mr-2" />
@@ -115,7 +115,7 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
             <div className="flex items-center justify-center gap-4 p-4 bg-[#f9fafb] rounded-lg">
               <button
                 onClick={decrementQuantity}
-                className="w-12 h-12 flex items-center justify-center bg-white border-2 border-[#e4e7ec] hover:border-[#155dfc] rounded-lg transition-colors"
+                className="w-12 h-12 flex items-center justify-center bg-white border-2 border-[#e4e7ec] hover:border-[var(--color-primary)] rounded-lg transition-colors"
               >
                 <Minus className="w-5 h-5 text-[#4a5565]" />
               </button>
@@ -123,11 +123,11 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-24 h-12 text-center text-2xl font-bold text-[#101828] bg-white border-2 border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                className="w-24 h-12 text-center text-2xl font-bold text-[#101828] bg-white border-2 border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
               />
               <button
                 onClick={incrementQuantity}
-                className="w-12 h-12 flex items-center justify-center bg-white border-2 border-[#e4e7ec] hover:border-[#155dfc] rounded-lg transition-colors"
+                className="w-12 h-12 flex items-center justify-center bg-white border-2 border-[#e4e7ec] hover:border-[var(--color-primary)] rounded-lg transition-colors"
               >
                 <Plus className="w-5 h-5 text-[#4a5565]" />
               </button>
@@ -152,7 +152,7 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               <option value="">Select a reason...</option>
               {adjustmentType === 'add' ? (
@@ -184,7 +184,7 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               placeholder="Add a note about this adjustment..."
-              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc] resize-none"
+              className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
             />
           </div>
         </div>
@@ -200,7 +200,7 @@ export function StockAdjustmentDrawer({ isOpen, onClose, product }: StockAdjustm
           <button
             onClick={handleSubmit}
             disabled={!reason}
-            className="flex-1 px-4 py-2.5 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Submit Adjustment
           </button>

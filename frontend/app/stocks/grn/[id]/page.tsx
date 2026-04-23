@@ -80,12 +80,12 @@ export default function GRNDetailPage() {
       <div className="p-6 max-w-[900px]">
         {/* Nav bar — no-print */}
         <div className="flex items-center justify-between mb-6 no-print">
-          <Link href="/stocks" className="inline-flex items-center gap-1.5 text-sm text-[#4a5565] hover:text-[#155dfc] transition-colors">
+          <Link href="/stocks" className="inline-flex items-center gap-1.5 text-sm text-[#4a5565] hover:text-[var(--color-primary)] transition-colors">
             <ChevronLeft className="w-4 h-4" /> Back to Stocks
           </Link>
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
           >
             <Printer className="w-4 h-4" /> Print GRN
           </button>
@@ -98,7 +98,7 @@ export default function GRNDetailPage() {
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-[#155dfc] rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-[var(--color-primary)] rounded-lg flex items-center justify-center">
                     <span className="text-white text-xs font-bold">OS</span>
                   </div>
                   <div>
@@ -108,7 +108,7 @@ export default function GRNDetailPage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-[#155dfc]">{grn.grnNumber}</div>
+                <div className="text-2xl font-bold text-[var(--color-primary)]">{grn.grnNumber}</div>
                 <div className="text-sm text-[#4a5565] mt-1">{dateStr}</div>
               </div>
             </div>

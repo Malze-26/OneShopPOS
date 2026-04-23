@@ -133,6 +133,10 @@ export default function CustomerDetailModal({
                     <div className="text-[15px] font-semibold text-[#111827]">{customer.totalOrders}</div>
                   </div>
                   <div>
+                    <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">Loyalty Points</div>
+                    <div className="text-[15px] font-semibold text-[#111827]">{customer.loyaltyPoints}</div>
+                  </div>
+                  <div>
                     <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">Avg. Spend</div>
                     <div className="text-[15px] font-semibold text-[#111827]">
                       Rs. {customer.totalOrders > 0

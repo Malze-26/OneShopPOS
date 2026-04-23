@@ -71,6 +71,58 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
   }
 }
 
+// PUT /api/customers/:id
+export async function updateCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user!.storeId;
+    const { name, email, phone } = req.body;
+
+    if (!name?.trim()) {
+      res.status(400).json({ message: 'Customer name is required' });
+      return;
+    }
+
+    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+    if (!customer) {
+      res.status(404).json({ message: 'Customer not found' });
+      return;
+    }
+
+    // Auto-generate avatar initials if name changed
+    const avatar = name.trim() !== customer.name
+      ? name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+      : customer.avatar;
+
+    customer.name = name.trim();
+    customer.email = email;
+    customer.phone = phone;
+    customer.avatar = avatar;
+
+    await customer.save();
+    res.json({ data: customer });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/customers/:id
+export async function deleteCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const storeId = req.user!.storeId;
+    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+
+    if (!customer) {
+      res.status(404).json({ message: 'Customer not found' });
+      return;
+    }
+
+    await Customer.deleteOne({ _id: req.params.id, storeId });
+    res.json({ message: 'Customer deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/customers/:id/orders
 export async function getCustomerOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {

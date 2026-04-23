@@ -7,6 +7,7 @@ import { AuthRequest } from '../types';
 function signToken(id: string, email: string, role: string, storeId: string): string {
   const secret = process.env.JWT_SECRET as jwt.Secret;
   const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as jwt.SignOptions['expiresIn'];
+
   return jwt.sign(
     { id, email, role, storeId },
     secret,
@@ -104,6 +105,38 @@ export async function register(req: Request, res: Response): Promise<void> {
   });
 }
 
+// POST /api/auth/change-password  (protected)
+export async function changePassword(req: AuthRequest, res: Response): Promise<void> {
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ message: 'Current password and new password are required' });
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    res.status(400).json({ message: 'New password must be at least 8 characters' });
+    return;
+  }
+
+  const user = await User.findById(req.user?.id).select('+password');
+  if (!user) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) {
+    res.status(401).json({ message: 'Current password is incorrect' });
+    return;
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ message: 'Password changed successfully' });
+}
+
 // GET /api/auth/me  (protected)
 export async function getMe(req: AuthRequest, res: Response): Promise<void> {
   const user = await User.findById(req.user?.id);
@@ -117,6 +150,58 @@ export async function getMe(req: AuthRequest, res: Response): Promise<void> {
     email: user.email,
     role: user.role,
     storeId: user.storeId,
+    phone: user.phone ?? '',
+    avatar: user.avatar ?? '',
     lastLogin: user.lastLogin,
   });
+}
+
+// PATCH /api/auth/profile  (protected)
+export async function updateProfile(req: AuthRequest, res: Response): Promise<void> {
+  const { name, phone } = req.body as { name?: string; phone?: string };
+
+  if (!name?.trim()) {
+    res.status(400).json({ message: 'Name is required' });
+    return;
+  }
+
+  const user = await User.findById(req.user?.id);
+  if (!user) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  user.name = name.trim();
+  if (phone !== undefined) user.phone = phone.trim();
+
+  await user.save({ validateBeforeSave: true });
+
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    storeId: user.storeId,
+    phone: user.phone ?? '',
+    avatar: user.avatar ?? '',
+  });
+}
+
+// POST /api/auth/profile/avatar  (protected)
+export async function uploadAvatar(req: AuthRequest, res: Response): Promise<void> {
+  if (!req.file) {
+    res.status(400).json({ message: 'No file uploaded' });
+    return;
+  }
+
+  const user = await User.findById(req.user?.id);
+  if (!user) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  user.avatar = `/uploads/avatars/${req.file.filename}`;
+  await user.save({ validateBeforeSave: false });
+
+  res.json({ avatar: user.avatar });
 }

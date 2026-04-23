@@ -6,15 +6,13 @@ import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
 import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
-import { TAX_RATE, fmt, genId } from "./constants/pos";
+import { fmt, genId } from "./constants/pos";
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
 import PromoModal from "./components/PromoModal";
 import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
-
-// C and CARD_GRADIENTS imports removed — styling lives in child components via Tailwind
 
 interface Product {
   _id: string;
@@ -36,6 +34,7 @@ interface Customer {
   avatar: string;
   totalOrders: number;
   totalSpent: number;
+  loyaltyPoints?: number;
 }
 
 interface Category {
@@ -61,6 +60,8 @@ export default function POSDashboard() {
   const [time, setTime] = useState(new Date());
   const [showCheckout, setShowCheckout] = useState(false);
   const [discount, setDiscount] = useState(0);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [loyaltyPointsUsed, setLoyaltyPointsUsed] = useState(0);
   const [error, setError] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -86,7 +87,12 @@ export default function POSDashboard() {
   }, []);
 
   useEffect(() => {
-    if (cart.length === 0) { setDiscount(0); setPromoCode(""); }
+    if (cart.length === 0) {
+      setDiscount(0);
+      setPromoCode("");
+      setLoyaltyDiscount(0);
+      setLoyaltyPointsUsed(0);
+    }
   }, [cart]);
 
   useEffect(() => {
@@ -95,7 +101,9 @@ export default function POSDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !user) router.push("/pos/login");
+    if (authLoading) return;
+    if (!user) { router.replace('/login'); return; }
+    if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
   }, [user, authLoading, router]);
 
   useEffect(() => {
@@ -149,12 +157,35 @@ export default function POSDashboard() {
 
   const handleLogout = () => { logout(); router.push("/pos/login"); };
 
+  // ── Loyalty Points Redeem ─────────────────────────────────────────────────
+  const handleRedeemPoints = async () => {
+    if (!selectedCustomer || selectedCustomer._id === "guest") return;
+    const availablePoints = selectedCustomer.loyaltyPoints ?? 0;
+    if (availablePoints <= 0) return;
+
+    // Cap redemption at remaining order total after promo discount
+    const maxRedeemable = Math.floor(subtotal - discount);
+    const pointsToRedeem = Math.min(availablePoints, maxRedeemable);
+    if (pointsToRedeem <= 0) return;
+
+    try {
+      await api.post(`/customers/${selectedCustomer._id}/redeem-points`, { points: pointsToRedeem });
+      setLoyaltyDiscount(pointsToRedeem);
+      setLoyaltyPointsUsed(pointsToRedeem);
+      // Update points locally so UI reflects immediately
+      const updatedCustomer = { ...selectedCustomer, loyaltyPoints: availablePoints - pointsToRedeem };
+      setSelectedCustomer(updatedCustomer);
+      setCustomers(prev => prev.map(c => c._id === selectedCustomer._id ? updatedCustomer : c));
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to redeem points");
+    }
+  };
+
   const subtotal = cart.reduce((acc, item) => {
     if (item.unit === "kg") return acc + item.price;
     return acc + item.price * item.qty;
   }, 0);
-  const tax = parseFloat((subtotal * TAX_RATE).toFixed(2));
-  const total = parseFloat((subtotal + tax - discount).toFixed(2));
+  const total = parseFloat((subtotal - discount - loyaltyDiscount).toFixed(2));
 
   const filteredProducts = products.filter((p) => {
     const matchCat = activeCategory === "All" || p.category === activeCategory;
@@ -192,11 +223,20 @@ export default function POSDashboard() {
     setCustomerSearch("");
     setDiscount(0);
     setPromoCode("");
+    setLoyaltyDiscount(0);
+    setLoyaltyPointsUsed(0);
     setShowCheckout(false);
     refreshPendingCount();
   };
 
-  const checkoutState = { items: cart, customer: selectedCustomer, discount, discountCode: promoCode };
+  const checkoutState = {
+    items: cart,
+    customer: selectedCustomer,
+    discount,
+    discountCode: promoCode,
+    loyaltyDiscount,
+    loyaltyPointsUsed,
+  };
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || loadingData) {
@@ -319,18 +359,39 @@ export default function POSDashboard() {
           customerSearch={customerSearch}
           showCustomerDropdown={showCustomerDropdown}
           subtotal={subtotal}
-          tax={tax}
           total={total}
           discount={discount}
           promoCode={promoCode}
+          loyaltyDiscount={loyaltyDiscount}
+          loyaltyPointsUsed={loyaltyPointsUsed}
           error={error}
           onCustomerSearch={setCustomerSearch}
-          onSelectCustomer={(c) => { setSelectedCustomer(c); setShowCustomerDropdown(false); setCustomerSearch(""); }}
-          onClearCustomer={() => { setSelectedCustomer(null); setCustomerSearch(""); }}
+          onSelectCustomer={(c) => {
+            setSelectedCustomer(c);
+            setShowCustomerDropdown(false);
+            setCustomerSearch("");
+            // Reset loyalty if customer changes
+            setLoyaltyDiscount(0);
+            setLoyaltyPointsUsed(0);
+          }}
+          onClearCustomer={() => {
+            setSelectedCustomer(null);
+            setCustomerSearch("");
+            setLoyaltyDiscount(0);
+            setLoyaltyPointsUsed(0);
+          }}
           onShowCustomerDropdown={setShowCustomerDropdown}
           onUpdateQty={updateQty}
-          onClearCart={() => { setCart([]); setDiscount(0); setPromoCode(""); setSelectedCustomer(null); }}
+          onClearCart={() => {
+            setCart([]);
+            setDiscount(0);
+            setPromoCode("");
+            setLoyaltyDiscount(0);
+            setLoyaltyPointsUsed(0);
+            setSelectedCustomer(null);
+          }}
           onShowPromo={() => { setShowPromo(true); setPromoError(""); setPromoSuccess(""); }}
+          onRedeemPoints={handleRedeemPoints}
           onCheckout={() => {
             if (cart.length === 0) { setError("Cart is empty"); return; }
             setError("");
@@ -344,7 +405,6 @@ export default function POSDashboard() {
         <CheckoutModal
           state={checkoutState}
           subtotal={subtotal}
-          tax={tax}
           total={total}
           isOnline={isOnline}
           onClose={() => setShowCheckout(false)}

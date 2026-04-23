@@ -84,7 +84,7 @@ export default function AlertsPage() {
                 {lowStockAlerts.length}
               </span>
             </div>
-            <Link href="/dashboard/inventory" className="text-sm text-[#155dfc] hover:underline font-medium">
+            <Link href="/dashboard/inventory" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
               View All
             </Link>
           </div>
@@ -107,7 +107,7 @@ export default function AlertsPage() {
                     <span className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] rounded text-xs">{item.category}</span>
                   </div>
                 </div>
-                <button className="ml-4 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                <button className="ml-4 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
                   Adjust Stock
                 </button>
               </div>
@@ -125,7 +125,7 @@ export default function AlertsPage() {
                 {noSalesAlerts.length}
               </span>
             </div>
-            <Link href="/dashboard/products" className="text-sm text-[#155dfc] hover:underline font-medium">
+            <Link href="/dashboard/products" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
               View All Products
             </Link>
           </div>
@@ -142,7 +142,7 @@ export default function AlertsPage() {
                 </div>
                 <Link
                   href="/dashboard/products"
-                  className="ml-4 flex items-center gap-1 text-[#155dfc] hover:underline text-sm font-medium"
+                  className="ml-4 flex items-center gap-1 text-[var(--color-primary)] hover:underline text-sm font-medium"
                 >
                   View Product
                   <ChevronRight className="w-4 h-4" />
@@ -162,7 +162,7 @@ export default function AlertsPage() {
                 {inactiveCashierAlerts.length}
               </span>
             </div>
-            <Link href="/dashboard/employees" className="text-sm text-[#155dfc] hover:underline font-medium">
+            <Link href="/dashboard/employees" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
               View All Employees
             </Link>
           </div>
@@ -182,7 +182,7 @@ export default function AlertsPage() {
                     </div>
                   </div>
                 </div>
-                <Link href="/dashboard/employees" className="ml-4 flex items-center gap-1 text-[#155dfc] hover:underline text-sm font-medium">
+                <Link href="/dashboard/employees" className="ml-4 flex items-center gap-1 text-[var(--color-primary)] hover:underline text-sm font-medium">
                   View Employee
                   <ChevronRight className="w-4 h-4" />
                 </Link>
@@ -201,7 +201,7 @@ export default function AlertsPage() {
                 {highRefundAlerts.length}
               </span>
             </div>
-            <Link href="/dashboard/refunds" className="text-sm text-[#155dfc] hover:underline font-medium">
+            <Link href="/dashboard/refunds" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
               View All Refunds
             </Link>
           </div>
@@ -210,7 +210,7 @@ export default function AlertsPage() {
               <div key={refund.id} className="p-4 bg-[#fef3f2] border border-[#f04438]/20 rounded-lg flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="text-sm font-medium text-[#155dfc]">{refund.refundId}</div>
+                    <div className="text-sm font-medium text-[var(--color-primary)]">{refund.refundId}</div>
                     <span className="text-xs text-[#4a5565]">({refund.orderId})</span>
                   </div>
                   <div className="flex items-center gap-4 text-xs">

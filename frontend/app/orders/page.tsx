@@ -55,7 +55,7 @@ interface Stats {
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
   pending:    { label: 'Pending',    color: 'bg-[#fff8e1] text-[#f59e0b]', icon: Clock },
   confirmed:  { label: 'Confirmed',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
-  processing: { label: 'Processing', color: 'bg-[#eff4ff] text-[#155dfc]', icon: Package },
+  processing: { label: 'Processing', color: 'bg-[#eff4ff] text-[var(--color-primary)]', icon: Package },
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
@@ -127,7 +127,7 @@ function OrderModal({ order, onClose, onStatusChange }: {
           {/* Source + Status */}
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-              order.source === 'physical' ? 'bg-[#eff4ff] text-[#155dfc]' : 'bg-[#f3e8ff] text-[#7f56d9]'
+              order.source === 'physical' ? 'bg-[#eff4ff] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
             }`}>
               {order.source === 'physical' ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
               {order.source === 'physical' ? 'Physical Store' : 'Online'}
@@ -292,7 +292,7 @@ export default function OrdersPage() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Orders"    value={stats.total}    icon={ShoppingBag}   color="bg-[#eff4ff] text-[#155dfc]" />
+          <StatCard label="Total Orders"    value={stats.total}    icon={ShoppingBag}   color="bg-[#eff4ff] text-[var(--color-primary)]" />
           <StatCard label="Physical"        value={stats.physical} icon={Store}         color="bg-[#e8f5e9] text-[#12b76a]" sub="In-store" />
           <StatCard label="Online"          value={stats.online}   icon={Globe}         color="bg-[#f3e8ff] text-[#7f56d9]" sub="Website" />
           <StatCard label="Pending"         value={stats.pending}  icon={Clock}         color="bg-[#fff8e1] text-[#f59e0b]" sub="Needs attention" />
@@ -308,7 +308,7 @@ export default function OrdersPage() {
             placeholder="Search customer name..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           />
         </div>
 
@@ -317,7 +317,7 @@ export default function OrdersPage() {
           <select
             value={sourceFilter}
             onChange={e => { setSource(e.target.value as 'all' | OrderSource); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#155dfc] bg-white text-[#101828]"
+            className="appearance-none pl-3 pr-8 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] bg-white text-[#101828]"
           >
             <option value="all">All Sources</option>
             <option value="physical">Physical Store</option>
@@ -331,7 +331,7 @@ export default function OrdersPage() {
           <select
             value={statusFilter}
             onChange={e => { setStatus(e.target.value); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#155dfc] bg-white text-[#101828]"
+            className="appearance-none pl-3 pr-8 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] bg-white text-[#101828]"
           >
             <option value="all">All Statuses</option>
             {ORDER_STATUSES.map(s => (
@@ -365,12 +365,12 @@ export default function OrdersPage() {
                 const StatusIcon = cfg.icon;
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-[#155dfc] font-medium whitespace-nowrap">
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--color-primary)] font-medium whitespace-nowrap">
                       {order.orderId}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        order.source === 'physical' ? 'bg-[#eff4ff] text-[#155dfc]' : 'bg-[#f3e8ff] text-[#7f56d9]'
+                        order.source === 'physical' ? 'bg-[#eff4ff] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
                       }`}>
                         {order.source === 'physical' ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
                         {order.source === 'physical' ? 'Physical' : 'Online'}
@@ -402,7 +402,7 @@ export default function OrdersPage() {
                     <td className="px-4 py-3">
                       <button
                         onClick={() => setSelected(order)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-[#155dfc] hover:bg-[#eff4ff] rounded-lg transition-colors text-xs font-medium"
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg transition-colors text-xs font-medium"
                       >
                         <Eye className="w-3.5 h-3.5" /> View
                       </button>

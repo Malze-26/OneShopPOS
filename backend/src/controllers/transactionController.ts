@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { Transaction } from '../models/Transaction';
+import { Customer } from '../models/Customer';
 
 function generateTxnId(): string {
   const num = Math.floor(Math.random() * 90000) + 10000;
@@ -55,7 +56,6 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
     const result: Record<string, { total: number; count: number }> = {
       Cash: { total: 0, count: 0 },
       Card: { total: 0, count: 0 },
-      'Bank Transfer': { total: 0, count: 0 },
     };
 
     stats.forEach((s) => {
@@ -82,6 +82,19 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       storeId,
       createdBy: userId,
     });
+
+    // Award loyalty points: 1 point per Rs. 100 spent
+    if (req.body.customerId && req.body.customerId !== 'guest') {
+      const pointsEarned = Math.floor(req.body.amount / 100);
+      await Customer.findByIdAndUpdate(req.body.customerId, {
+        $inc: {
+          loyaltyPoints: pointsEarned,
+          totalOrders: 1,
+          totalSpent: req.body.amount,
+        },
+        lastPurchase: new Date(),
+      });
+    }
 
     res.status(201).json({ data: transaction });
   } catch (err) {

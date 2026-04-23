@@ -54,7 +54,9 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { storeName } = useStore();
+  const { storeName, logoUrl } = useStore();
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
+  const logoSrc = logoUrl ? `${apiBase}${logoUrl}` : null;
 
   const isActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
 
@@ -71,14 +73,14 @@ export function Sidebar() {
       {/* Logo & Store Name */}
       <div className="h-16 flex items-center px-6 border-b border-[#e4e7ec]">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#155dfc] rounded-lg flex items-center justify-center">
-            <Package className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-[var(--color-primary)]">
+            {logoSrc
+              ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" />
+              : <Package className="w-6 h-6 text-white" />
+            }
           </div>
           <div className="flex flex-col">
             <span className="text-base font-bold text-[#101828]">{storeName}</span>
-            <span className="text-[10px] px-2 py-0.5 bg-[#eff4ff] text-[#155dfc] rounded-full font-medium w-fit">
-              {user?.role ?? 'Manager'}
-            </span>
           </div>
         </Link>
       </div>
@@ -101,7 +103,7 @@ export function Sidebar() {
                   href={item.path}
                   className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors relative ${
                     active
-                      ? 'text-[#155dfc] bg-[#eff4ff] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#155dfc] before:rounded-r'
+                      ? 'text-[var(--color-primary)] bg-[#eff4ff] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[var(--color-primary)] before:rounded-r'
                       : 'text-[#4a5565] hover:bg-[#f9fafb]'
                   }`}
                 >
@@ -121,17 +123,8 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Bottom Section - User & Logout */}
+      {/* Bottom Section - Logout */}
       <div className="border-t border-[#e4e7ec] p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-[#155dfc] rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-medium">{initials}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-[#101828] truncate">{user?.name ?? 'User'}</div>
-            <div className="text-xs text-[#4a5565]">{user?.role ?? 'Manager'}</div>
-          </div>
-        </div>
         <button
           onClick={logout}
           className="flex items-center gap-2 px-3 py-2 text-[#f04438] hover:bg-[#fef3f2] rounded-lg transition-colors text-sm font-medium w-full"

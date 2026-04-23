@@ -9,16 +9,19 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'Manager' | 'Cashier';
+  role: 'Manager' | 'Cashier' | 'Sales Representative';
   storeId: string;
+  phone?: string;
+  avatar?: string;
 }
 
 interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean, expectedRole?: 'Manager' | 'Cashier') => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -43,6 +46,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
+
+        // Fetch fresh user data so name/role changes are reflected immediately
+        api.get<User>('/auth/me').then(({ data }) => {
+          setUser(data);
+          const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+          storage.setItem('user', JSON.stringify(data));
+        }).catch(() => {
+          // Token expired or invalid — clear session
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          setToken(null);
+          setUser(null);
+        });
       } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -55,11 +73,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Login ────────────────────────────────────────────────────────────────
   const login = useCallback(
-    async (email: string, password: string, rememberMe: boolean = false) => {
+    async (email: string, password: string, rememberMe: boolean = false, expectedRole?: 'Manager' | 'Cashier') => {
       const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
         email,
         password,
       });
+
+      // Enforce role match — reject if the user logged in under the wrong role button
+      if (expectedRole) {
+        const isPosRole = data.user.role === 'Cashier' || data.user.role === 'Sales Representative';
+        const mismatch =
+          (expectedRole === 'Manager' && data.user.role !== 'Manager') ||
+          (expectedRole === 'Cashier' && !isPosRole);
+        if (mismatch) {
+          const dest = data.user.role === 'Manager' ? 'Manager login' : 'Cashier login';
+          throw { response: { data: { message: `This account is a ${data.user.role}. Please use ${dest}.` } } };
+        }
+      }
 
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('token', data.token);
@@ -73,10 +103,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       setUser(data.user);
 
-      router.push('/dashboard');
+      // Redirect based on role
+      const isPosUser = data.user.role === 'Cashier' || data.user.role === 'Sales Representative';
+      router.push(isPosUser ? '/pos/dashboard' : '/dashboard');
     },
     [router]
   );
+
+  // ── Refresh user profile ─────────────────────────────────────────────────
+  const refreshUser = useCallback(async () => {
+    const { data } = await api.get<User>('/auth/me');
+    setUser(data);
+    const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+    storage.setItem('user', JSON.stringify(data));
+  }, []);
 
   // ── Logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
@@ -98,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         logout,
+        refreshUser,
         isAuthenticated: !!token && !!user,
       }}
     >

@@ -24,6 +24,21 @@ const pageTitle: Record<string, string> = {
   '/profile': 'My Profile',
   '/suppliers': 'Suppliers',
   '/stocks': 'Stocks',
+  '/dashboard/orders': 'Orders',
+  '/dashboard/refunds': 'Refunds',
+  '/dashboard/transactions': 'Transactions',
+  '/dashboard/products': 'Products',
+  '/dashboard/products/add': 'Add Product',
+  '/dashboard/products/edit': 'Edit Product',
+  '/dashboard/inventory': 'Inventory',
+  '/dashboard/categories': 'Categories',
+  '/dashboard/employees': 'Employees',
+  '/dashboard/customers': 'Customers',
+  '/dashboard/reports': 'Reports',
+  '/dashboard/alerts': 'Alerts',
+  '/dashboard/settings': 'Settings',
+  '/dashboard/profile': 'My Profile',
+  '/settings': 'Settings',
 };
 
 export function TopHeader() {
@@ -57,7 +72,7 @@ export function TopHeader() {
             <input
               type="text"
               placeholder="Search anything..."
-              className="w-[280px] pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent transition-all bg-white"
+              className="w-[280px] pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all bg-white"
             />
           </div>
 
@@ -73,10 +88,16 @@ export function TopHeader() {
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-2 px-3 py-2 hover:bg-[#f9fafb] rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-[#155dfc] rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-medium">{initials}</span>
+              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center overflow-hidden">
+                {user?.avatar
+                  ? <img src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}`} alt={user.name} className="w-full h-full object-cover" />
+                  : <span className="text-white text-xs font-medium">{initials}</span>
+                }
               </div>
-              <span className="text-sm font-medium text-[#101828]">{user?.name ?? 'User'}</span>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-medium text-[#101828] leading-tight">{user?.name ?? 'User'}</span>
+                <span className="text-xs text-[#4a5565] leading-tight">{user?.role ?? 'Manager'}</span>
+              </div>
               <ChevronDown className="w-4 h-4 text-[#4a5565]" />
             </button>
 

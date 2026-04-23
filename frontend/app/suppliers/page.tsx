@@ -147,7 +147,7 @@ export default function SuppliersPage() {
         </div>
         <button
           onClick={openAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Supplier
@@ -156,7 +156,7 @@ export default function SuppliersPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard icon={<Building2 className="w-5 h-5 text-[#155dfc]" />} label="Total Suppliers" value={stats.total} bg="#eff4ff" />
+        <StatCard icon={<Building2 className="w-5 h-5 text-[var(--color-primary)]" />} label="Total Suppliers" value={stats.total} bg="#eff4ff" />
         <StatCard icon={<CheckCircle className="w-5 h-5 text-[#12b76a]" />} label="Active" value={stats.active} bg="#ecfdf3" />
         <StatCard icon={<XCircle className="w-5 h-5 text-[#f04438]" />} label="Inactive" value={stats.inactive} bg="#fef3f2" />
         <StatCard icon={<Tag className="w-5 h-5 text-[#f79009]" />} label="Categories Supplied" value={stats.categoriesSupplied} bg="#fffaeb" />
@@ -171,13 +171,13 @@ export default function SuppliersPage() {
             placeholder="Search by name, contact, email or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] focus:outline-none focus:ring-2 focus:ring-[#155dfc]/30 focus:border-[#155dfc]"
+            className="w-full pl-9 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#155dfc]/30 focus:border-[#155dfc] bg-white"
+          className="px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] bg-white"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -206,7 +206,7 @@ export default function SuppliersPage() {
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setSlideOver(s)}
-                      className="text-sm font-medium text-[#155dfc] hover:underline text-left"
+                      className="text-sm font-medium text-[var(--color-primary)] hover:underline text-left"
                     >
                       {s.name}
                     </button>
@@ -219,7 +219,7 @@ export default function SuppliersPage() {
                       {s.categories.length === 0
                         ? <span className="text-sm text-[#4a5565]">—</span>
                         : s.categories.slice(0, 2).map((c) => (
-                          <span key={c} className="px-2 py-0.5 bg-[#eff4ff] text-[#155dfc] text-xs rounded-full">{c}</span>
+                          <span key={c} className="px-2 py-0.5 bg-[#eff4ff] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
                         ))}
                       {s.categories.length > 2 && (
                         <span className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] text-xs rounded-full">+{s.categories.length - 2}</span>
@@ -237,7 +237,7 @@ export default function SuppliersPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEdit(s)}
-                        className="text-xs text-[#155dfc] hover:underline font-medium"
+                        className="text-xs text-[var(--color-primary)] hover:underline font-medium"
                       >
                         Edit
                       </button>
@@ -311,7 +311,7 @@ export default function SuppliersPage() {
                 <select
                   value={form.status}
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))}
-                  className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#155dfc]/30 focus:border-[#155dfc] bg-white"
+                  className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] bg-white"
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -324,7 +324,7 @@ export default function SuppliersPage() {
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   rows={3}
                   placeholder="Optional notes about this supplier..."
-                  className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] focus:outline-none focus:ring-2 focus:ring-[#155dfc]/30 focus:border-[#155dfc] resize-none"
+                  className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] resize-none"
                 />
               </div>
             </div>
@@ -339,7 +339,7 @@ export default function SuppliersPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
               >
                 {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Supplier'}
               </button>
@@ -402,7 +402,7 @@ export default function SuppliersPage() {
                   <p className="text-xs text-[#4a5565] mb-1.5">Categories</p>
                   <div className="flex flex-wrap gap-2">
                     {slideOver.categories.map((c) => (
-                      <span key={c} className="px-2.5 py-1 bg-[#eff4ff] text-[#155dfc] text-xs rounded-full">{c}</span>
+                      <span key={c} className="px-2.5 py-1 bg-[#eff4ff] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
                     ))}
                   </div>
                 </div>
@@ -422,7 +422,7 @@ export default function SuppliersPage() {
             <div className="px-6 py-4 border-t border-[#e4e7ec] flex gap-3">
               <button
                 onClick={() => openEdit(slideOver)}
-                className="flex-1 px-4 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex-1 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
               >
                 Edit
               </button>
@@ -467,7 +467,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] focus:outline-none focus:ring-2 focus:ring-[#155dfc]/30 focus:border-[#155dfc]"
+        className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]"
       />
     </div>
   );

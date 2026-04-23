@@ -68,7 +68,7 @@ function fmtDate(iso?: string) {
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
   pending:    { label: 'Pending',    color: 'bg-[#fff8e1] text-[#f59e0b]', icon: Clock },
   confirmed:  { label: 'Confirmed',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
-  processing: { label: 'Processing', color: 'bg-[#eff4ff] text-[#155dfc]', icon: Package },
+  processing: { label: 'Processing', color: 'bg-[#eff4ff] text-[var(--color-primary)]', icon: Package },
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
@@ -108,7 +108,7 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e4e7ec]">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 bg-[#eff4ff] rounded-full flex items-center justify-center">
-              <span className="text-base font-semibold text-[#155dfc]">{customer.avatar}</span>
+              <span className="text-base font-semibold text-[var(--color-primary)]">{customer.avatar}</span>
             </div>
             <div>
               <h2 className="text-base font-semibold text-[#101828]">{customer.name}</h2>
@@ -147,7 +147,7 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-[#eff4ff] rounded-xl p-3 text-center">
-              <ShoppingBag className="w-4 h-4 text-[#155dfc] mx-auto mb-1" />
+              <ShoppingBag className="w-4 h-4 text-[var(--color-primary)] mx-auto mb-1" />
               <p className="text-lg font-bold text-[#101828]">{customer.totalOrders}</p>
               <p className="text-xs text-[#4a5565]">Orders</p>
             </div>
@@ -182,14 +182,14 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
                     <div key={order._id} className="border border-[#e4e7ec] rounded-xl p-4 space-y-2">
                       {/* Order header */}
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-semibold text-[#155dfc]">{order.orderId}</span>
+                        <span className="font-mono text-xs font-semibold text-[var(--color-primary)]">{order.orderId}</span>
                         <span className="text-xs text-[#4a5565]">{fmtDate(order.createdAt)}</span>
                       </div>
 
                       {/* Badges */}
                       <div className="flex flex-wrap gap-1.5">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          order.source === 'physical' ? 'bg-[#eff4ff] text-[#155dfc]' : 'bg-[#f3e8ff] text-[#7f56d9]'
+                          order.source === 'physical' ? 'bg-[#eff4ff] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
                         }`}>
                           {order.source === 'physical' ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
                           {order.source === 'physical' ? 'Physical' : 'Online'}
@@ -305,13 +305,13 @@ export default function CustomersPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email, or phone..."
-              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
           <select
             value={sort}
             onChange={e => setSort(e.target.value as SortKey)}
-            className="px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white focus:outline-none focus:ring-2 focus:ring-[#155dfc]"
+            className="px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#4a5565] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >
             <option value="recent">Sort: Recent</option>
             <option value="spent_high">Sort: Spent (High → Low)</option>
@@ -359,7 +359,7 @@ export default function CustomersPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#eff4ff] rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-[#155dfc]">{customer.avatar}</span>
+                        <span className="text-sm font-medium text-[var(--color-primary)]">{customer.avatar}</span>
                       </div>
                       <div className="text-sm font-medium text-[#101828]">{customer.name}</div>
                     </div>
@@ -372,7 +372,7 @@ export default function CustomersPage() {
                   <td className="px-5 py-4">
                     <button
                       onClick={() => setSelected(customer)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[#155dfc] hover:bg-[#eff4ff] rounded-lg transition-colors text-xs font-medium"
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg transition-colors text-xs font-medium"
                     >
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>

@@ -4,10 +4,13 @@ import {
   getCustomers,
   getCustomer,
   createCustomer,
+  updateCustomer,
+  deleteCustomer,
   getCustomerStats,
   getCustomerOrders,
 } from '../controllers/customerController';
 import { AuthRequest } from '../types';
+import { Customer } from '../models/Customer';
 
 const router = Router();
 
@@ -22,5 +25,38 @@ router.get('/', asyncHandler(getCustomers));
 router.get('/:id/orders', asyncHandler(getCustomerOrders));
 router.get('/:id', asyncHandler(getCustomer));
 router.post('/', asyncHandler(createCustomer));
+router.put('/:id', asyncHandler(updateCustomer));
+router.delete('/:id', asyncHandler(deleteCustomer));
+
+// POST /api/customers/:id/redeem-points
+router.post('/:id/redeem-points', async (req: Request, res: Response) => {
+  try {
+    const { points } = req.body;
+
+    if (!points || points <= 0) {
+      res.status(400).json({ message: 'Invalid points amount' });
+      return;
+    }
+
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) {
+      res.status(404).json({ message: 'Customer not found' });
+      return;
+    }
+
+    if (customer.loyaltyPoints < points) {
+      res.status(400).json({ message: 'Insufficient loyalty points' });
+      return;
+    }
+
+    customer.loyaltyPoints -= points;
+    await customer.save();
+
+    // 1 point = Rs. 1 discount
+    res.json({ data: customer, discountAmount: points });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 export default router;

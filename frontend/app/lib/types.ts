@@ -40,6 +40,7 @@ export interface ICustomer {
   avatar: string;
   totalOrders: number;
   totalSpent: number;
+  loyaltyPoints: number;
   lastPurchase?: string; // ISO date string from API
   storeId: string;
   createdAt: string;

@@ -143,7 +143,7 @@ export default function AddProductPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter product name"
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
                 </div>
@@ -156,13 +156,13 @@ export default function AddProductPage() {
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       placeholder="SKU-XXXXX"
-                      className="flex-1 px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                      className="flex-1 px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                       required
                     />
                     <button
                       type="button"
                       onClick={generateSKU}
-                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[#155dfc] text-[#155dfc] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors"
                     >
                       <Sparkles className="w-4 h-4" />
                       Generate
@@ -177,7 +177,7 @@ export default function AddProductPage() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Enter product description"
                     rows={4}
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none"
                   />
                 </div>
               </div>
@@ -195,7 +195,7 @@ export default function AddProductPage() {
                     value={formData.sellingPrice}
                     onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
                     placeholder="0.00"
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
                 </div>
@@ -207,7 +207,7 @@ export default function AddProductPage() {
                     value={formData.costPrice}
                     onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
                     placeholder="0.00"
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
                 </div>
@@ -226,7 +226,7 @@ export default function AddProductPage() {
                     value={formData.initialStock}
                     onChange={(e) => setFormData({ ...formData, initialStock: e.target.value })}
                     placeholder="0"
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
                 </div>
@@ -238,7 +238,7 @@ export default function AddProductPage() {
                     value={formData.lowStockThreshold}
                     onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
                     placeholder="0"
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
                 </div>
@@ -263,8 +263,8 @@ export default function AddProductPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                   isDragging
-                    ? 'border-[#155dfc] bg-[#eff4ff]'
-                    : 'border-[#e4e7ec] hover:border-[#155dfc] hover:bg-[#eff4ff]/30'
+                    ? 'border-[var(--color-primary)] bg-[#eff4ff]'
+                    : 'border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#eff4ff]/30'
                 }`}
               >
                 <Upload className="w-7 h-7 text-[#4a5565] mx-auto mb-2" />
@@ -316,7 +316,7 @@ export default function AddProductPage() {
                   id="category"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#155dfc] focus:border-transparent"
+                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                   required
                 >
                   <option value="">Choose a category</option>
@@ -334,14 +334,14 @@ export default function AddProductPage() {
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <div
                   onClick={() => setFormData(f => ({ ...f, isWeightBased: !f.isWeightBased, unit: !f.isWeightBased ? 'kg' : 'item' }))}
-                  className={`w-11 h-6 rounded-full transition-colors ${formData.isWeightBased ? 'bg-[#155dfc]' : 'bg-[#d0d5dd]'} relative`}
+                  className={`w-11 h-6 rounded-full transition-colors ${formData.isWeightBased ? 'bg-[var(--color-primary)]' : 'bg-[#d0d5dd]'} relative`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.isWeightBased ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </div>
                 <span className="text-sm font-medium text-[#101828]">Sold by weight (kg)</span>
               </label>
               {formData.isWeightBased && (
-                <p className="mt-3 text-xs text-[#155dfc] bg-[#eff4ff] rounded-lg px-3 py-2">
+                <p className="mt-3 text-xs text-[var(--color-primary)] bg-[#eff4ff] rounded-lg px-3 py-2">
                   Price will be per kg. Cashier enters exact weight at checkout.
                 </p>
               )}
@@ -360,7 +360,7 @@ export default function AddProductPage() {
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-[#155dfc] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : 'Save Product'}
           </button>

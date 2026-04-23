@@ -1,12 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type PaymentMethod = 'Cash' | 'Card' | 'Bank Transfer';
-export type TransactionStatus = 'success' | 'pending' | 'failed';
+export type PaymentMethod = 'Cash' | 'Card';
+export type TransactionStatus = 'success' | 'pending' | 'failed' | 'refunded' | 'voided';
 
 export interface ITransaction extends Document {
   txnId: string;
   orderId: string;
   customer: string;
+  customerId?: string;
   paymentMethod: PaymentMethod;
   amount: number;
   status: TransactionStatus;
@@ -30,9 +31,13 @@ const transactionSchema = new Schema<ITransaction>(
       required: [true, 'Customer is required'],
       trim: true,
     },
+    customerId: {
+      type: String,
+      default: null,
+    },
     paymentMethod: {
       type: String,
-      enum: ['Cash', 'Card', 'Bank Transfer'],
+      enum: ['Cash', 'Card'],
       required: [true, 'Payment method is required'],
     },
     amount: {
@@ -40,11 +45,11 @@ const transactionSchema = new Schema<ITransaction>(
       required: [true, 'Amount is required'],
       min: [0, 'Amount must be non-negative'],
     },
-   status: {
-  type: String,
-  enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
-  default: 'success',
-},
+    status: {
+      type: String,
+      enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
+      default: 'success',
+    },
     storeId: {
       type: String,
       required: true,

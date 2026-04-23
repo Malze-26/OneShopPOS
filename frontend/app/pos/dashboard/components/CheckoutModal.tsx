@@ -10,12 +10,13 @@ interface CheckoutState {
   customer: { _id: string; name: string } | null;
   discount: number;
   discountCode: string;
+  loyaltyDiscount: number;
+loyaltyPointsUsed: number;
 }
 
 interface CheckoutModalProps {
   state: CheckoutState;
   subtotal: number;
-  tax: number;
   total: number;
   isOnline: boolean;
   onClose: () => void;
@@ -25,7 +26,6 @@ interface CheckoutModalProps {
 export default function CheckoutModal({
   state,
   subtotal,
-  tax,
   total,
   isOnline,
   onClose,
@@ -173,10 +173,7 @@ export default function CheckoutModal({
             <span>Subtotal</span>
             <span>${fmt(subtotal)}</span>
           </div>
-          <div class="row">
-            <span>Tax (8%)</span>
-            <span>${fmt(tax)}</span>
-          </div>
+          
           ${state.discount > 0 ? `
           <div class="row">
             <span>Discount (${state.discountCode})</span>
@@ -277,12 +274,17 @@ export default function CheckoutModal({
               ))}
               <div className="border-t border-[#E3E6F0] mt-2 pt-2 text-[13px]">
                 <div className="flex justify-between mb-1 text-[#6B7280]"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                <div className="flex justify-between mb-1 text-[#6B7280]"><span>Tax (8%)</span><span>{fmt(tax)}</span></div>
                 {state.discount > 0 && (
                   <div className="flex justify-between mb-1 text-amber-600 font-semibold">
                     <span>Discount</span><span>−{fmt(state.discount)}</span>
                   </div>
                 )}
+                {state.loyaltyDiscount > 0 && (
+               <div className="flex justify-between mb-1 text-amber-600 font-semibold">
+               <span>⭐ Loyalty ({state.loyaltyPointsUsed} pts)</span>
+                <span>−{fmt(state.loyaltyDiscount)}</span>
+                  </div>
+          )}
                 <div className="flex justify-between mt-1 text-[#1B1A55] font-bold text-[15px]">
                   <span>Total</span><span>{fmt(total)}</span>
                 </div>
@@ -296,7 +298,6 @@ export default function CheckoutModal({
                 {[
                   { id: "cash",     label: "Cash",          icon: "💵" },
                   { id: "card",     label: "Card",          icon: "💳" },
-                  { id: "transfer", label: "Bank Transfer", icon: "🏦" },
                 ].map((m) => (
                   <button
                     key={m.id}
@@ -387,7 +388,6 @@ export default function CheckoutModal({
               ))}
               <div className="border-t border-dashed border-[#E3E6F0] mt-2 pt-2">
                 <div className="flex justify-between text-[#6B7280] mb-1"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                <div className="flex justify-between text-[#6B7280] mb-1"><span>Tax (8%)</span><span>{fmt(tax)}</span></div>
                 {state.discount > 0 && (
                   <div className="flex justify-between text-amber-600 mb-1 font-semibold">
                     <span>Discount</span><span>−{fmt(state.discount)}</span>
