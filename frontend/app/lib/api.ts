@@ -7,7 +7,7 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache',  // add this
+    'Cache-Control': 'no-cache',  
   },
 });
 
@@ -27,7 +27,7 @@ api.interceptors.request.use((config) => {
 
 // ── Handle 401 globally ───────────────────────────────────────────────────────
 api.interceptors.response.use(
-  (response) => response,
+  (response) => response, // Pass through successful responses
   (error) => {
     const isLoginRequest = error.config?.url?.includes('/auth/login');
     if (error.response?.status === 401 && !isLoginRequest) {

@@ -2,16 +2,17 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
+// Store context to provide global store settings like name, currency, and theme color
 interface StoreSettings {
-  storeName: string;
-  currency: string;
-  currencyLocale: string;
+  storeName: string;    //OneShop
+  currency: string; // LKR
+  currencyLocale: string; // en-LK
   address: string;
   phone: string;
   email: string;
   storeId: string;
   logoUrl: string;
-  primaryColor: string;
+  primaryColor: string; //#155dfc(default blue)
 }
 
 const defaults: StoreSettings = {
@@ -35,6 +36,7 @@ const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: ()
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaults);
 
+  // Fetch store settings from the API and update context state
   const fetchSettings = () => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     fetch(`${apiBase}/settings`)
@@ -47,6 +49,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     fetchSettings();
   }, []);
 
+  // Update CSS variable for primary color whenever it changes
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.style.setProperty('--color-primary', settings.primaryColor);

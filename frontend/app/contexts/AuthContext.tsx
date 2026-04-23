@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import api from '@/app/lib/api';
 
+// Authentication context to manage user sessions, login/logout, and profile refresh
 export interface User {
   id: string;
   name: string;
@@ -15,9 +16,10 @@ export interface User {
   avatar?: string;
 }
 
+// Defines the shape of the authentication context value, including user info, token, loading state, and auth functions
 interface AuthContextValue {
   user: User | null;
-  token: string | null;
+  token: string | null; // JWT token for authenticated API requests
   loading: boolean;
   login: (email: string, password: string, rememberMe?: boolean, expectedRole?: 'Manager' | 'Cashier') => Promise<void>;
   logout: () => void;
@@ -94,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('token', data.token);
       storage.setItem('user', JSON.stringify(data.user));
-
+// Set a cookie for server-side authentication (if needed)
       Cookies.set('token', data.token, {
         expires: rememberMe ? 7 : undefined,
         sameSite: 'Strict',

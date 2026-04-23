@@ -1,12 +1,12 @@
-'use client';
+'use client'; //runs in browser, not server
 
 import { useState } from 'react';
-import { useAuth } from '@/app/contexts/AuthContext';
-import { useStore } from '@/app/contexts/StoreContext';
+import { useAuth } from '@/app/contexts/AuthContext'; //login logic from context provider
+import { useStore } from '@/app/contexts/StoreContext'; //store info from context provider
 import Link from 'next/link';
 
 type Role = 'Manager' | 'Cashier' | null;
-
+// Login page with role selection, email/password form, and error handling
 export default function LoginPage() {
   const { login } = useAuth();
   const { storeName, logoUrl } = useStore();
@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+// Handle login form submission
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -33,7 +34,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
+// Reset form and go back to role selection
   const handleBack = () => {
     setSelectedRole(null);
     setEmail('');
@@ -41,7 +42,7 @@ export default function LoginPage() {
     setError('');
     setShowPassword(false);
   };
-
+// Main render with conditional UI for role selection and login form
   return (
     <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
