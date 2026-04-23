@@ -17,7 +17,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean, redirectUrl?: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Login ────────────────────────────────────────────────────────────────
   const login = useCallback(
-    async (email: string, password: string, rememberMe: boolean = false) => {
+    async (email: string, password: string, rememberMe: boolean = false, redirectUrl: string = '/dashboard') => {
       const { data } = await api.post<{ token: string; user: User }>('/auth/login', {
         email,
         password,
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
       setUser(data.user);
 
-      router.push('/dashboard');
+      router.push(redirectUrl);
     },
     [router]
   );

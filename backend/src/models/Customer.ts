@@ -10,6 +10,7 @@ export interface ICustomer extends Document {
   address?: string;
   totalOrders: number;
   totalSpent: number;
+  loyaltyPoints: number;
   lastPurchase?: Date;
   storeId: string;
   comparePassword(candidate: string): Promise<boolean>;
@@ -50,6 +51,11 @@ const customerSchema = new Schema<ICustomer>(
       min: 0,
     },
     totalSpent: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    loyaltyPoints: {
       type: Number,
       default: 0,
       min: 0,

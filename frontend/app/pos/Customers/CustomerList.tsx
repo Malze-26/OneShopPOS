@@ -42,8 +42,8 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
         </button>
       </div>
       {/* Header */}
-      <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_60px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
-        {["Customer", "Contact", "Orders", "Total Spent", "Last Purchase", ""].map((h) => (
+      <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_60px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
+        {["Customer", "Contact", "Orders", "Total Spent", "Loyalty Points", "Last Purchase", ""].map((h) => (
           <div key={h} className="text-[12px] font-bold text-[#535C91] tracking-[0.3px]">{h}</div>
         ))}
       </div>
@@ -54,7 +54,7 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
         </div>
       ) : (
         filtered.map((c, i) => (
-          <div key={c._id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_60px] px-6 py-4 border-b border-[#E3E6F0] hover:bg-[#F7F8FC] cursor-pointer" onClick={() => onSelect(c)}>
+          <div key={c._id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_60px] px-6 py-4 border-b border-[#E3E6F0] hover:bg-[#F7F8FC] cursor-pointer" onClick={() => onSelect(c)}>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-[#E3E6F0] flex items-center justify-center font-bold text-[#1B1A55] text-[15px]">{getInitials(c.name)}</div>
               <div>
@@ -65,6 +65,7 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
             <div className="text-[#374151] text-[13px]">{c.email || "—"}<br />{c.phone || "—"}</div>
             <div className="text-[#374151] text-[13px]">{c.totalOrders}</div>
             <div className="text-[#374151] text-[13px]">Rs. {c.totalSpent.toLocaleString()}</div>
+            <div className="text-[#374151] text-[13px]">{c.loyaltyPoints}</div>
             <div className="text-[#374151] text-[13px]">{formatDate(c.lastPurchase)}</div>
             <div className="flex items-center gap-2">
               {/* Add action buttons here if needed */}

@@ -10,6 +10,8 @@ export interface ISupplier extends Document {
   status: 'active' | 'inactive';
   notes: string;
   storeId: string;
+  customerId?: string;
+
 }
 
 const supplierSchema = new Schema<ISupplier>(
@@ -17,6 +19,7 @@ const supplierSchema = new Schema<ISupplier>(
     name:          { type: String, required: true, trim: true },
     contactPerson: { type: String, trim: true, default: '' },
     email:         { type: String, trim: true, lowercase: true, default: '' },
+    customerId:    { type: String, default: null },  
     phone:         { type: String, trim: true, default: '' },
     address:       { type: String, trim: true, default: '' },
     categories:    { type: [String], default: [] },

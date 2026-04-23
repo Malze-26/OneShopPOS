@@ -10,6 +10,8 @@ interface CheckoutState {
   customer: { _id: string; name: string } | null;
   discount: number;
   discountCode: string;
+  loyaltyDiscount: number;
+loyaltyPointsUsed: number;
 }
 
 interface CheckoutModalProps {
@@ -277,6 +279,12 @@ export default function CheckoutModal({
                     <span>Discount</span><span>−{fmt(state.discount)}</span>
                   </div>
                 )}
+                {state.loyaltyDiscount > 0 && (
+               <div className="flex justify-between mb-1 text-amber-600 font-semibold">
+               <span>⭐ Loyalty ({state.loyaltyPointsUsed} pts)</span>
+                <span>−{fmt(state.loyaltyDiscount)}</span>
+                  </div>
+          )}
                 <div className="flex justify-between mt-1 text-[#1B1A55] font-bold text-[15px]">
                   <span>Total</span><span>{fmt(total)}</span>
                 </div>
@@ -290,7 +298,6 @@ export default function CheckoutModal({
                 {[
                   { id: "cash",     label: "Cash",          icon: "💵" },
                   { id: "card",     label: "Card",          icon: "💳" },
-                  { id: "transfer", label: "Bank Transfer", icon: "🏦" },
                 ].map((m) => (
                   <button
                     key={m.id}

@@ -18,7 +18,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password, rememberMe);
+      await login(email, password, rememberMe, '/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
