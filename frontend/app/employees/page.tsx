@@ -132,7 +132,7 @@ export default function EmployeesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-[#101828] mb-1">Employees</h1>
+       
           <p className="text-sm text-[#4a5565]">Manage store staff and cashiers</p>
         </div>
         <button

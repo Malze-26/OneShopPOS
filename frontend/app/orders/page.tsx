@@ -284,7 +284,7 @@ export default function OrdersPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#101828]">Orders</h1>
+         
           <p className="text-sm text-[#4a5565]">All physical store and online purchases</p>
         </div>
       </div>
