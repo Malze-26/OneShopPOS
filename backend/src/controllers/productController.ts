@@ -413,7 +413,7 @@ export async function deleteProductImage(req: AuthRequest, res: Response, next: 
     product.images = product.images.filter((img) => img !== imagePath);
     await product.save();
 
-    const fullPath = path.join(process.cwd(), 'uploads', 'products', filename);
+    const fullPath = path.join(process.cwd(), 'uploads', 'products', filename as string);
     try { fs.unlinkSync(fullPath); } catch { /* file may not exist */ }
 
     res.json({ data: product });

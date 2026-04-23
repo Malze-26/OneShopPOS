@@ -4,10 +4,13 @@ import { User } from '../models/User';
 import { AuthRequest } from '../types';
 
 function signToken(id: string, email: string, role: string, storeId: string): string {
+  const secret = process.env.JWT_SECRET as jwt.Secret;
+  const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as jwt.SignOptions['expiresIn'];
+
   return jwt.sign(
     { id, email, role, storeId },
-    process.env.JWT_SECRET as string,
-    { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+    secret,
+    { expiresIn }
   );
 }
 
