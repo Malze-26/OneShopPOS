@@ -31,6 +31,7 @@ export default function CheckoutModal({
   onClose,
   onSuccess,
 }: CheckoutModalProps) {
+  // Local state for payment method, cash input, checkout step, and offline save status
   const [method, setMethod] = useState("cash");
   const [cash, setCash] = useState("");
   const [step, setStep] = useState<"pay" | "success">("pay");
@@ -39,12 +40,13 @@ export default function CheckoutModal({
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const cashAmt = parseFloat(cash) || 0;
-  const change = Math.max(0, cashAmt - total);
+  const change = Math.max(0, cashAmt - total); // Change is only relevant for cash payments, and should not be negative
   const canPay = method !== "cash" || cashAmt >= total;
 
   const methodLabel =
     method === "cash" ? "Cash" : method === "card" ? "Card" : "Bank Transfer";
 
+    // Handle payment confirmation: construct transaction data, attempt to save to server if online, otherwise save offline. Update UI state accordingly.
   const handleConfirm = async () => {
     const transactionData = {
       orderId,
@@ -54,7 +56,7 @@ export default function CheckoutModal({
       amount: total,
       status: "success",
     };
-
+// Attempt to save transaction to server if online, otherwise save to IndexedDB for later sync. Update UI state to show success and whether it was saved offline.
     if (isOnline) {
       try {
         await api.post("/transactions", transactionData);

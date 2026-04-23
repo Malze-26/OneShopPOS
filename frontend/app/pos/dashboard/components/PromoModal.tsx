@@ -14,6 +14,7 @@ interface PromoModalProps {
   onClose: () => void;
 }
 
+// Modal component for applying promo codes, showing current discount, and handling promo-related UI in the POS dashboard
 export default function PromoModal({
   subtotal,
   discount,

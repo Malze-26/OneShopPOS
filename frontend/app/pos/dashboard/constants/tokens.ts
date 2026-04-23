@@ -1,3 +1,4 @@
+// Centralized color palette and card gradient definitions for consistent theming across the POS dashboard components
 export const C = {
   brand:      "#1B1A55",
   brandMid:   "#535C91",
@@ -13,6 +14,7 @@ export const C = {
   danger:     "#EF4444",
 };
 
+// Array of gradient color pairs for card backgrounds, providing visually appealing options for different sections of the POS dashboard
 export const CARD_GRADIENTS = [
   ["#E0E7FF","#C7D2FE"], ["#EDE9FE","#DDD6FE"], ["#DBEAFE","#BFDBFE"],
   ["#CFFAFE","#A5F3FC"], ["#D1FAE5","#A7F3D0"], ["#FEF3C7","#FDE68A"],

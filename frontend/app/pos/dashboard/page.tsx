@@ -6,7 +6,7 @@ import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
 import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
-import { fmt, genId } from "./constants/pos";
+import { fmt, genId } from "./constants/pos"; 
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
 import PromoModal from "./components/PromoModal";
@@ -43,6 +43,7 @@ interface Category {
   icon: string;
 }
 
+// Main POS Dashboard component that handles product listing, cart management, customer selection, and checkout flow
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
@@ -80,12 +81,14 @@ export default function POSDashboard() {
   const [weightInput, setWeightInput] = useState("");
   const [weightError, setWeightError] = useState("");
 
+  // Close customer dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = () => setShowCustomerDropdown(false);
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
+  // Reset discounts and promo when cart is cleared
   useEffect(() => {
     if (cart.length === 0) {
       setDiscount(0);
@@ -95,17 +98,20 @@ export default function POSDashboard() {
     }
   }, [cart]);
 
+  // Update time every second
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Redirect to login if not authenticated, or to main dashboard if user role is not cashier
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
   }, [user, authLoading, router]);
 
+  // Fetch products, categories, and customers on mount
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
@@ -132,8 +138,10 @@ export default function POSDashboard() {
     setPendingCount(count);
   }, []);
 
+  // Refresh pending transaction count on mount and after every sync
   useEffect(() => { refreshPendingCount(); }, [refreshPendingCount]);
 
+  // Automatically sync pending transactions when back online
   useEffect(() => {
     if (isOnline && pendingCount > 0) handleSync();
   }, [isOnline]);
@@ -182,8 +190,8 @@ export default function POSDashboard() {
   };
 
   const subtotal = cart.reduce((acc, item) => {
-    if (item.unit === "kg") return acc + item.price;
-    return acc + item.price * item.qty;
+    if (item.unit === "kg") return acc + item.price; // price for weight-based items is already qty * unit price, so just add it directly
+    return acc + item.price * item.qty;// for regular items, multiply price by quantity
   }, 0);
   const total = parseFloat((subtotal - discount - loyaltyDiscount).toFixed(2));
 

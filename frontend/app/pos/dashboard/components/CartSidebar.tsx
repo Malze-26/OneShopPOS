@@ -21,6 +21,7 @@ interface Customer {
   loyaltyPoints?: number;
 }
 
+// Props for the CartSidebar component, including cart items, customer info, totals, and event handlers
 interface CartSidebarProps {
   cart: CartItem[];
   customers: Customer[];
@@ -34,6 +35,7 @@ interface CartSidebarProps {
   loyaltyDiscount: number;
   loyaltyPointsUsed: number;
   error: string;
+  // Event handlers for customer search, selection, quantity updates, cart clearing, promo code application, points redemption, and checkout
   onCustomerSearch: (val: string) => void;
   onSelectCustomer: (customer: Customer) => void;
   onClearCustomer: () => void;
@@ -69,6 +71,7 @@ export default function CartSidebar({
   onCheckout,
 }: CartSidebarProps) {
 
+  // Helper function to filter customers based on search input, matching name or phone number
   const filterCustomers = (list: Customer[], search: string) =>
     list.filter(c =>
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
