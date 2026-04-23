@@ -94,7 +94,7 @@ export default function DashboardPage() {
       value: '47',
       subtext: '8 pending',
       icon: ShoppingBag,
-      iconBg: '#eff4ff',
+      iconBg: 'var(--color-primary-light)',
       iconColor: 'var(--color-primary)',
     },
     {

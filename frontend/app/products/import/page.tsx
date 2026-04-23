@@ -197,7 +197,7 @@ export default function CSVImportPage() {
           </div>
           <button
             onClick={handleDownloadTemplate}
-            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-sm font-medium transition-colors"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
           >
             <Download className="w-4 h-4" />
             Download Template
@@ -221,8 +221,8 @@ export default function CSVImportPage() {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
               isDragging
-                ? 'border-[var(--color-primary)] bg-[#eff4ff]'
-                : 'border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#eff4ff]/30'
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
+                : 'border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)]/30'
             }`}
           >
             <CloudUpload className="w-14 h-14 text-[var(--color-primary)] mx-auto mb-4" />

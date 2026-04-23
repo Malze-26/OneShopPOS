@@ -8,6 +8,21 @@ import { useAuth } from '@/app/contexts/AuthContext';
 
 const pageTitle: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/orders': 'Orders',
+  '/refunds': 'Refunds',
+  '/transactions': 'Transactions',
+  '/products': 'Products',
+  '/products/add': 'Add Product',
+  '/products/edit': 'Edit Product',
+  '/inventory': 'Inventory',
+  '/categories': 'Categories',
+  '/employees': 'Employees',
+  '/customers': 'Customers',
+  '/reports': 'Reports',
+  '/alerts': 'Alerts',
+  '/settings': 'Settings',
+  '/suppliers': 'Suppliers',
+  '/stocks': 'Stocks',
   '/dashboard/orders': 'Orders',
   '/dashboard/refunds': 'Refunds',
   '/dashboard/transactions': 'Transactions',
@@ -21,7 +36,6 @@ const pageTitle: Record<string, string> = {
   '/dashboard/reports': 'Reports',
   '/dashboard/alerts': 'Alerts',
   '/dashboard/settings': 'Settings',
-  '/dashboard/profile': 'My Profile',
   '/settings': 'Settings',
 };
 

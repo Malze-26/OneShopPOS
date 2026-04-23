@@ -2,7 +2,7 @@ import { AuthProvider } from '@/app/contexts/AuthContext';
 import { Sidebar } from '@/app/components/layout/Sidebar';
 import { TopHeader } from '@/app/components/layout/TopHeader';
 
-export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+export default function ReportsLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <div className="flex h-screen bg-[#f9fafb]">

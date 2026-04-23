@@ -29,7 +29,11 @@ export default function LoginPage() {
     try {
       await login(email, password, rememberMe, selectedRole!);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      if (!err.response) {
+        setError('Cannot reach server. Please check backend is running and API URL is correct.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -50,7 +54,7 @@ export default function LoginPage() {
         {/* Logo + Store name */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center mb-3"
-            style={{ background: logoSrc ? 'white' : '#eff4ff', border: logoSrc ? '1px solid #e4e7ec' : 'none' }}>
+            style={{ background: logoSrc ? 'white' : 'var(--color-primary-light)', border: logoSrc ? '1px solid #e4e7ec' : 'none' }}>
             {logoSrc
               ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" />
               : (
@@ -79,7 +83,7 @@ export default function LoginPage() {
                 onClick={() => setSelectedRole('Manager')}
                 className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#f5f8ff] transition-all group"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#eff4ff] group-hover:bg-[var(--color-primary)] flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[var(--color-primary-light)] group-hover:bg-[var(--color-primary)] flex items-center justify-center transition-colors">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     className="text-[var(--color-primary)] group-hover:text-white transition-colors">
@@ -100,7 +104,7 @@ export default function LoginPage() {
                 onClick={() => setSelectedRole('Cashier')}
                 className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#f5f8ff] transition-all group"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#eff4ff] group-hover:bg-[var(--color-primary)] flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[var(--color-primary-light)] group-hover:bg-[var(--color-primary)] flex items-center justify-center transition-colors">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     className="text-[var(--color-primary)] group-hover:text-white transition-colors">

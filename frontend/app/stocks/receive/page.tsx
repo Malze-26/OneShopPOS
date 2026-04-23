@@ -193,7 +193,7 @@ export default function ReceiveGoodsPage() {
             <button
               type="button"
               onClick={addLine}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[#eff4ff] rounded-lg text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-xs font-medium transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Add Row
             </button>

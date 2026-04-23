@@ -111,7 +111,7 @@ export default function CategoriesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-[#101828] mb-1">Categories</h1>
+         
           <p className="text-sm text-[#4a5565]">Manage product categories</p>
         </div>
         <button
@@ -163,7 +163,7 @@ export default function CategoriesPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); openEdit(category); }}
-                    className="p-1.5 text-[#4a5565] hover:text-[var(--color-primary)] hover:bg-[#eff4ff] rounded transition-colors"
+                    className="p-1.5 text-[#4a5565] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded transition-colors"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
@@ -191,7 +191,7 @@ export default function CategoriesPage() {
           {/* Add New Category Card */}
           <button
             onClick={openAdd}
-            className="bg-white rounded-xl p-5 shadow-sm border-2 border-dashed border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[#eff4ff] transition-all flex flex-col items-center justify-center min-h-[140px] group"
+            className="bg-white rounded-xl p-5 shadow-sm border-2 border-dashed border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all flex flex-col items-center justify-center min-h-[140px] group"
           >
             <Plus className="w-8 h-8 text-[#4a5565] group-hover:text-[var(--color-primary)] mb-2" />
             <span className="text-sm font-medium text-[#4a5565] group-hover:text-[var(--color-primary)]">
