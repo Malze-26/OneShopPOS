@@ -1,7 +1,12 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthRequest, TokenPayload } from '../types';
+import { AuthRequest, TokenPayload, UserRole } from '../types';
 
+/**
+ * Verifies the Bearer JWT on every protected route.
+ * Attaches the decoded payload to req.user for downstream handlers.
+ * Returns 401 if the token is missing, malformed, or expired.
+ */
 export function protect(req: AuthRequest, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 
@@ -21,7 +26,15 @@ export function protect(req: AuthRequest, res: Response, next: NextFunction): vo
   }
 }
 
-export function requireRole(...roles: Array<'Manager' | 'Cashier'>) {
+/**
+ * Role-based access guard. Pass one or more allowed roles.
+ * Returns 403 if the authenticated user's role is not in the allowed list.
+ *
+ * @example
+ *   router.post('/register', protect, requireRole('Manager'), handler);
+ *   router.get('/pos', protect, requireRole('Cashier', 'Sales Representative'), handler);
+ */
+export function requireRole(...roles: UserRole[]) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user || !roles.includes(req.user.role)) {
       res.status(403).json({ message: 'Insufficient permissions' });

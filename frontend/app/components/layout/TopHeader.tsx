@@ -22,6 +22,7 @@ const pageTitle: Record<string, string> = {
   '/dashboard/alerts': 'Alerts',
   '/dashboard/settings': 'Settings',
   '/dashboard/profile': 'My Profile',
+  '/settings': 'Settings',
 };
 
 export function TopHeader() {
@@ -71,10 +72,16 @@ export function TopHeader() {
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-2 px-3 py-2 hover:bg-[#f9fafb] rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-medium">{initials}</span>
+              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center overflow-hidden">
+                {user?.avatar
+                  ? <img src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}`} alt={user.name} className="w-full h-full object-cover" />
+                  : <span className="text-white text-xs font-medium">{initials}</span>
+                }
               </div>
-              <span className="text-sm font-medium text-[#101828]">{user?.name ?? 'User'}</span>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-medium text-[#101828] leading-tight">{user?.name ?? 'User'}</span>
+                <span className="text-xs text-[#4a5565] leading-tight">{user?.role ?? 'Manager'}</span>
+              </div>
               <ChevronDown className="w-4 h-4 text-[#4a5565]" />
             </button>
 
@@ -86,7 +93,7 @@ export function TopHeader() {
                 />
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-[#e4e7ec] py-2 z-20">
                   <Link
-                    href="/dashboard/profile"
+                    href="/settings?tab=account"
                     className="flex items-center gap-2 px-4 py-2 text-sm text-[#4a5565] hover:bg-[#f9fafb] transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >

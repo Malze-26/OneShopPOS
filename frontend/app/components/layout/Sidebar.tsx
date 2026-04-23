@@ -81,9 +81,6 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-base font-bold text-[#101828]">{storeName}</span>
-            <span className="text-[10px] px-2 py-0.5 bg-[#eff4ff] text-[var(--color-primary)] rounded-full font-medium w-fit">
-              {user?.role ?? 'Manager'}
-            </span>
           </div>
         </Link>
       </div>
@@ -126,17 +123,8 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Bottom Section - User & Logout */}
+      {/* Bottom Section - Logout */}
       <div className="border-t border-[#e4e7ec] p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-[var(--color-primary)] rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-medium">{initials}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-[#101828] truncate">{user?.name ?? 'User'}</div>
-            <div className="text-xs text-[#4a5565]">{user?.role ?? 'Manager'}</div>
-          </div>
-        </div>
         <button
           onClick={logout}
           className="flex items-center gap-2 px-3 py-2 text-[#f04438] hover:bg-[#fef3f2] rounded-lg transition-colors text-sm font-medium w-full"

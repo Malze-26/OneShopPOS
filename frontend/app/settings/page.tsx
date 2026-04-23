@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { Store, Palette, KeyRound, Upload, Check, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Store, Palette, KeyRound, Upload, Check, Eye, EyeOff, Loader2, User } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { useAuth } from '@/app/contexts/AuthContext';
 
 const CURRENCIES = [
   { code: 'LKR', label: 'LKR — Sri Lankan Rupee', locale: 'en-LK' },
@@ -30,9 +32,13 @@ type Tab = 'store' | 'appearance' | 'account';
 
 export default function SettingsPage() {
   const store = useStore();
+  const { user, refreshUser } = useAuth();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const [tab, setTab] = useState<Tab>('store');
+  const initialTab = (searchParams.get('tab') as Tab) ?? 'store';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -49,12 +55,36 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile]         = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  // Account
+  // Profile
+  const [profileName, setProfileName]   = useState(user?.name ?? '');
+  const [profileEmail, setProfileEmail] = useState(user?.email ?? '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone ?? '');
+  const [avatarPreview, setAvatarPreview] = useState<string>(
+    user?.avatar ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}` : ''
+  );
+
+  // Sync profile fields once user loads from AuthContext
+  useEffect(() => {
+    if (!user) return;
+    setProfileName(n => n || user.name);
+    setProfileEmail(user.email);
+    setProfilePhone(p => p || (user.phone ?? ''));
+    if (user.avatar && !avatarPreview) {
+      setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}`);
+    }
+  }, [user]);
+  const [avatarFile, setAvatarFile]       = useState<File | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Account / Password
   const [currentPw, setCurrentPw]   = useState('');
   const [newPw, setNewPw]           = useState('');
   const [confirmPw, setConfirmPw]   = useState('');
   const [showPw, setShowPw]         = useState({ current: false, new: false, confirm: false });
   const [pwError, setPwError]       = useState('');
+
+  const initials = (profileName || user?.name || 'U')
+    .split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -123,6 +153,37 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (avatarFile) {
+        setUploadingAvatar(true);
+        const form = new FormData();
+        form.append('avatar', avatarFile);
+        const { data } = await api.post('/auth/profile/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${data.avatar}`);
+        setAvatarFile(null);
+        setUploadingAvatar(false);
+      }
+      await api.patch('/auth/profile', { name: profileName, phone: profilePhone });
+      await refreshUser();
+      showToast('Profile saved');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to save profile', false);
+      setUploadingAvatar(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAvatarFile = useCallback((file: File) => {
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = e => setAvatarPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }, []);
 
   const handleLogoFile = useCallback((file: File) => {
     setLogoFile(file);
@@ -362,56 +423,149 @@ export default function SettingsPage() {
 
       {/* ── Account Tab ── */}
       {tab === 'account' && (
-        <form onSubmit={handlePasswordSubmit} className="bg-white rounded-2xl border border-[#e4e7ec] p-6 space-y-5">
-          <div>
-            <h2 className="text-base font-semibold text-[#101828]">Change Password</h2>
-            <p className="text-sm text-[#4a5565] mt-1">Update your account password. You'll stay logged in.</p>
-          </div>
+        <div className="space-y-6">
+          {/* Profile Info */}
+          <form onSubmit={handleProfileSubmit} className="bg-white rounded-2xl border border-[#e4e7ec] p-6 space-y-5">
+            <div>
+              <h2 className="text-base font-semibold text-[#101828]">Profile Information</h2>
+              <p className="text-sm text-[#4a5565] mt-1">Update your name, email, phone, and profile picture.</p>
+            </div>
 
-          {[
-            { label: 'Current Password', value: currentPw, onChange: setCurrentPw, key: 'current' as const },
-            { label: 'New Password',     value: newPw,     onChange: setNewPw,     key: 'new' as const },
-            { label: 'Confirm New Password', value: confirmPw, onChange: setConfirmPw, key: 'confirm' as const },
-          ].map(field => (
-            <div key={field.key}>
-              <label className="block text-sm font-medium text-[#101828] mb-1.5">{field.label}</label>
-              <div className="relative">
+            {/* Avatar */}
+            <div>
+              <label className="block text-sm font-medium text-[#101828] mb-3">Profile Picture</label>
+              <div className="flex items-center gap-5">
+                {/* Avatar preview */}
+                <div className="w-20 h-20 rounded-full border-2 border-[#e4e7ec] flex items-center justify-center bg-[#f9fafb] overflow-hidden flex-shrink-0">
+                  {avatarPreview
+                    ? <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    : <span className="text-xl font-bold" style={{ color: primaryColor }}>{initials}</span>
+                  }
+                </div>
+                {/* Upload button */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {avatarFile ? avatarFile.name : 'Upload Photo'}
+                  </button>
+                  <p className="text-xs text-[#9ca3af] mt-1.5">PNG, JPG, WEBP · max 2MB</p>
+                </div>
                 <input
-                  type={showPw[field.key] ? 'text' : 'password'}
-                  value={field.value}
-                  onChange={e => field.onChange(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 pr-10 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarFile(f); }}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(p => ({ ...p, [field.key]: !p[field.key] }))}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#4a5565]"
-                >
-                  {showPw[field.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
             </div>
-          ))}
 
-          {pwError && (
-            <div className="px-4 py-3 bg-[#fef2f2] border border-[#fecaca] rounded-lg text-sm text-[#dc2626]">
-              {pwError}
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-medium text-[#101828] mb-1.5">Full Name</label>
+              <input
+                type="text"
+                value={profileName}
+                onChange={e => setProfileName(e.target.value)}
+                required
+                placeholder="Your name"
+                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
             </div>
-          )}
 
-          <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-              style={{ background: primaryColor }}
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-              Change Password
-            </button>
-          </div>
-        </form>
+            {/* Email — read-only, set by Super Admin */}
+            <div>
+              <label className="block text-sm font-medium text-[#101828] mb-1.5">Email Address</label>
+              <input
+                type="email"
+                value={profileEmail}
+                readOnly
+                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm bg-[#f9fafb] text-[#4a5565] cursor-not-allowed"
+              />
+              <p className="text-xs text-[#9ca3af] mt-1">Email can only be changed by a Super Admin.</p>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-[#101828] mb-1.5">Phone Number</label>
+              <input
+                type="text"
+                value={profilePhone}
+                onChange={e => setProfilePhone(e.target.value)}
+                placeholder="+94 77 123 4567"
+                className="w-full px-4 py-2.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+                style={{ background: primaryColor }}
+              >
+                {saving || uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <User className="w-4 h-4" />}
+                Save Profile
+              </button>
+            </div>
+          </form>
+
+          {/* Change Password */}
+          <form onSubmit={handlePasswordSubmit} className="bg-white rounded-2xl border border-[#e4e7ec] p-6 space-y-5">
+            <div>
+              <h2 className="text-base font-semibold text-[#101828]">Change Password</h2>
+              <p className="text-sm text-[#4a5565] mt-1">Update your account password. You'll stay logged in.</p>
+            </div>
+
+            {[
+              { label: 'Current Password', value: currentPw, onChange: setCurrentPw, key: 'current' as const },
+              { label: 'New Password',     value: newPw,     onChange: setNewPw,     key: 'new' as const },
+              { label: 'Confirm New Password', value: confirmPw, onChange: setConfirmPw, key: 'confirm' as const },
+            ].map(field => (
+              <div key={field.key}>
+                <label className="block text-sm font-medium text-[#101828] mb-1.5">{field.label}</label>
+                <div className="relative">
+                  <input
+                    type={showPw[field.key] ? 'text' : 'password'}
+                    value={field.value}
+                    onChange={e => field.onChange(e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 pr-10 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(p => ({ ...p, [field.key]: !p[field.key] }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#4a5565]"
+                  >
+                    {showPw[field.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {pwError && (
+              <div className="px-4 py-3 bg-[#fef2f2] border border-[#fecaca] rounded-lg text-sm text-[#dc2626]">
+                {pwError}
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+                style={{ background: primaryColor }}
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                Change Password
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );
