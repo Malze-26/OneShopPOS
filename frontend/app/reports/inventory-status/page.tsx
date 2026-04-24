@@ -7,10 +7,10 @@ import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 
 const productData = [
-  { sku: 'AU-001', name: 'Wireless Headphones', cost: 2500,  retail: 4000, stock: 15, value: 37500, status: 'In Stock' },
-  { sku: 'EL-102', name: 'USB-C Hub',           cost: 5000,  retail: 8500, stock: 2,  value: 10000, status: 'Low Stock' },
-  { sku: 'AU-002', name: 'Bluetooth Speaker',   cost: 2500,  retail: 4000, stock: 0,  value: 0,     status: 'Out of Stock' },
-  { sku: 'AU-003', name: 'Smart Watch',         cost: 2500,  retail: 4000, stock: 8,  value: 20000, status: 'In Stock' },
+  { sku: 'AU-001', name: 'Wireless Headphones', cost: 2500, retail: 4000, stock: 15, status: 'In Stock' },
+  { sku: 'EL-102', name: 'USB-C Hub',           cost: 5000, retail: 8500, stock: 2,  status: 'Low Stock' },
+  { sku: 'AU-002', name: 'Bluetooth Speaker',   cost: 2500, retail: 4000, stock: 0,  status: 'Out of Stock' },
+  { sku: 'AU-003', name: 'Smart Watch',         cost: 2500, retail: 4000, stock: 8,  status: 'In Stock' },
 ];
 
 const statusConfig: Record<string, { bg: string; text: string }> = {
@@ -21,6 +21,9 @@ const statusConfig: Record<string, { bg: string; text: string }> = {
 
 export default function InventoryStatusPage() {
   const [searchTerm, setSearchTerm] = useState('');
+
+  const totalCostValue   = productData.reduce((sum, p) => sum + p.cost * p.stock, 0);
+  const totalRetailValue = productData.reduce((sum, p) => sum + p.retail * p.stock, 0);
 
   const filtered = productData.filter(
     (p) =>
@@ -44,7 +47,7 @@ export default function InventoryStatusPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565] mb-1">Total Asset Value</p>
-          <h3 className="text-2xl font-bold text-[#101828] mb-3">Rs. 1,250,000</h3>
+          <h3 className="text-2xl font-bold text-[#101828] mb-3">Rs. {totalCostValue.toLocaleString()}</h3>
           <div className="flex items-center justify-between">
             <span className="text-xs text-[#4a5565]">Cost Price</span>
             <span className="text-sm font-semibold flex items-center gap-1" style={{ color: '#12b76a' }}>
@@ -55,7 +58,7 @@ export default function InventoryStatusPage() {
 
         <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565] mb-1">Est. Retail Value</p>
-          <h3 className="text-2xl font-bold text-[#101828] mb-3">Rs. 1,850,000</h3>
+          <h3 className="text-2xl font-bold text-[#101828] mb-3">Rs. {totalRetailValue.toLocaleString()}</h3>
           <div className="flex items-center justify-between">
             <span className="text-xs text-[#4a5565]">Selling Price</span>
             <span className="text-sm font-semibold flex items-center gap-1" style={{ color: '#12b76a' }}>
@@ -121,7 +124,7 @@ export default function InventoryStatusPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Stock', 'Value (Rs.)', 'Status', 'Action'].map((h) => (
+                {['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Quantity', 'Cost Value (Rs.)', 'Retail Value (Rs.)', 'Status', 'Action'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -136,7 +139,8 @@ export default function InventoryStatusPage() {
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{product.cost.toLocaleString()}</td>
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{product.retail.toLocaleString()}</td>
                   <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{product.stock}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{product.value.toLocaleString()}</td>
+                  <td className="px-5 py-4 text-sm text-[#4a5565]">{(product.cost * product.stock).toLocaleString()}</td>
+                  <td className="px-5 py-4 text-sm text-[#4a5565]">{(product.retail * product.stock).toLocaleString()}</td>
                   <td className="px-5 py-4">
                     <span
                       className="inline-block px-2 py-1 rounded-full text-xs font-medium"
