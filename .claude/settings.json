@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" push origin main)",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" pull origin main)",
+      "Bash(git commit -m ' *)",
+      "Bash(node -e ' *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
+      "Read(//c/Users/ASUS/AppData/Local/Packages/5319275A.WhatsAppDesktop_cv1g1gvanyjgm/LocalState/sessions/1B1C4707B743111EAC8408D4CBA9D6F9601E0586/transfers/2026-17/**)",
+      "Bash(python3 -c \"import json; data=json.load\\(open\\(r'c:\\\\Users\\\\ASUS\\\\AppData\\\\Local\\\\Packages\\\\5319275A.WhatsAppDesktop_cv1g1gvanyjgm\\\\LocalState\\\\sessions\\\\1B1C4707B743111EAC8408D4CBA9D6F9601E0586\\\\transfers\\\\2026-17\\\\OneShop.products.json'\\)\\); print\\(len\\(data\\), 'products'\\)\")",
+      "Bash(node -e \"const d=require\\(String.raw\\\\`c:\\\\Users\\\\ASUS\\\\AppData\\\\Local\\\\Packages\\\\5319275A.WhatsAppDesktop_cv1g1gvanyjgm\\\\LocalState\\\\sessions\\\\1B1C4707B743111EAC8408D4CBA9D6F9601E0586\\\\transfers\\\\2026-17\\\\OneShop.products.json\\\\`\\); console.log\\(d.length + ' products'\\)\")",
+      "Bash(xargs grep *)",
+      "Bash(git commit *)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(git stash *)",
+      "Bash(npm --version)",
+      "Bash(npm ls *)",
+      "Bash(npm uninstall *)",
+      "Bash(cmd /c \"dir /b \\\\\"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\frontend\\\\node_modules\\\\\" | findstr /i shadcn\")",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\frontend\\\\node_modules\" -Name | Where-Object { $_ -match \"shadcn|animate|tw-\" })",
+      "PowerShell(npm ls shadcn --prefix \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\frontend\" 2>&1)",
+      "Read(//c/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS/node_modules/tailwindcss/dist/**)",
+      "Bash(git rebase *)",
+      "PowerShell($backend = \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\backend\"; New-Item -ItemType Directory -Path \"$backend\\\\oneshop-api\" -Force | Out-Null; Move-Item \"$backend\\\\src\" \"$backend\\\\oneshop-api\\\\src\" -Force; Move-Item \"$backend\\\\uploads\" \"$backend\\\\oneshop-api\\\\uploads\" -Force; Write-Host \"Done\")",
+      "PowerShell($base = \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\backend\\\\oneshop-tenant-factory\\\\src\"; @\\(\"controllers\",\"middleware\",\"models\",\"routes\",\"utils\",\"scripts\"\\) | ForEach-Object { New-Item -ItemType Directory -Path \"$base\\\\$_\" -Force | Out-Null }; Write-Host \"Directories created\")",
+      "Bash(npx ts-node-dev *)",
+      "Bash(curl -s http://localhost:5001/api/health)"
+    ]
+  }
+}
