@@ -37,7 +37,7 @@ export default function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
       document.cookie = 'token=; path=/; max-age=0; SameSite=Strict';
-      router.push('/login');
+      router.push('/super-admin/login');
     }
   };
 
