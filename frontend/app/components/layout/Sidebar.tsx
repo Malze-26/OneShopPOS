@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useStore } from '@/app/contexts/StoreContext';
 import {
   LayoutDashboard,
@@ -57,6 +58,8 @@ export function Sidebar() {
   const { storeName, logoUrl } = useStore();
   const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
   const logoSrc = logoUrl ? `${apiBase}${logoUrl}` : null;
+  const [logoError, setLogoError] = useState(false);
+  useEffect(() => { setLogoError(false); }, [logoSrc]);
 
   const isActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
 
@@ -74,8 +77,8 @@ export function Sidebar() {
       <div className="h-16 flex items-center px-6 border-b border-[#e4e7ec]">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-[var(--color-primary)]">
-            {logoSrc
-              ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" />
+            {logoSrc && !logoError
+              ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" onError={() => setLogoError(true)} />
               : <Package className="w-6 h-6 text-white" />
             }
           </div>

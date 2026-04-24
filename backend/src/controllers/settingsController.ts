@@ -55,7 +55,7 @@ export async function uploadLogo(req: AuthRequest, res: Response): Promise<void>
     return;
   }
 
-  const logoUrl = `/uploads/logo/${req.file.filename}`;
+  const logoUrl = `/uploads/logo/${req.file.filename}?v=${Date.now()}`;
 
   const settings = await StoreSettings.findOneAndUpdate(
     { storeId },

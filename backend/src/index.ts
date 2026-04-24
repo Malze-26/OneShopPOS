@@ -20,6 +20,8 @@ import orderRoutes from './routes/orders';
 import settingsRoutes from './routes/settings';
 import supplierRoutes from './routes/suppliers';
 import reportRoutes from './routes/reports';
+import dashboardRoutes from './routes/dashboard';
+import alertsRoutes from './routes/alerts';
 import tenantRoutes from './routes/tenants';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 
@@ -74,6 +76,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/alerts', alertsRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {

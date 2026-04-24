@@ -2,6 +2,111 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { buildDateFilter, getDateRangeLabel } from '../utils/dateRange';
 
+// ============= Sales Summary Report =============
+export const getSalesSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const { Transaction } = req.models!;
+    const { preset, startDate, endDate } = req.query;
+
+    const dateFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
+    const dateLabel  = getDateRangeLabel(preset as string, startDate as string, endDate as string);
+
+    const [summaryAgg, hourlyAgg, paymentAgg, dailyAgg] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { ...dateFilter } },
+        {
+          $group: {
+            _id: null,
+            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            refundTotal:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            refundCount:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
+            transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
+          },
+        },
+      ]),
+      // Hourly breakdown — only successful
+      Transaction.aggregate([
+        { $match: { ...dateFilter, status: 'success' } },
+        {
+          $group: {
+            _id: { $hour: '$createdAt' },
+            sales: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      // Payment method breakdown
+      Transaction.aggregate([
+        { $match: { ...dateFilter, status: 'success' } },
+        {
+          $group: {
+            _id: '$paymentMethod',
+            total: { $sum: '$amount' },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      // Daily breakdown for table
+      Transaction.aggregate([
+        { $match: { ...dateFilter, status: 'success' } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            grossSales: { $sum: '$amount' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const s = summaryAgg[0] ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0 };
+    const netSales  = s.grossSales - s.refundTotal;
+    const avgOrder  = s.transactionCount > 0 ? Math.round(s.grossSales / s.transactionCount) : 0;
+
+    // Hourly — fill hours 0–23
+    const hourMap = new Map(hourlyAgg.map((h: { _id: number; sales: number }) => [h._id, h.sales]));
+    const HOURS = ['12 AM','1 AM','2 AM','3 AM','4 AM','5 AM','6 AM','7 AM','8 AM',
+                   '9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM',
+                   '6 PM','7 PM','8 PM','9 PM','10 PM','11 PM'];
+    const hourlySales = HOURS.map((label, i) => ({ time: label, sales: hourMap.get(i) ?? 0 }));
+
+    // Payment methods as percentages
+    const paymentTotal = paymentAgg.reduce((s: number, p: { total: number }) => s + p.total, 0);
+    const paymentMethods = paymentAgg.map((p: { _id: string; total: number; count: number }) => ({
+      name: p._id,
+      amount: p.total,
+      count: p.count,
+      percentage: paymentTotal > 0 ? Math.round((p.total / paymentTotal) * 100) : 0,
+    }));
+
+    // Daily rows
+    const salesBreakdown = dailyAgg.map((d: { _id: string; grossSales: number; count: number }) => ({
+      date: new Date(d._id).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      grossSales: d.grossSales,
+      count: d.count,
+    }));
+
+    res.json({
+      dateRange: dateLabel,
+      summary: {
+        grossSales:       s.grossSales,
+        refundsCount:     s.refundCount,
+        refundTotal:      s.refundTotal,
+        netSales,
+        transactionCount: s.transactionCount,
+        avgOrderValue:    avgOrder,
+      },
+      hourlySales,
+      paymentMethods,
+      salesBreakdown,
+    });
+  } catch (error) {
+    console.error('Error fetching sales summary:', error);
+    res.status(500).json({ error: 'Failed to fetch sales summary' });
+  }
+};
+
 // ============= Sales by Product Report =============
 export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
   try {

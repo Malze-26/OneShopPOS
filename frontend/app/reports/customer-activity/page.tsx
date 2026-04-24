@@ -1,30 +1,49 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, User, Star, PieChart, ArrowUp } from 'lucide-react';
-import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
+import { useEffect, useState } from 'react';
+import { Search, User, Star, PieChart } from 'lucide-react';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
+import api from '@/app/lib/api';
+import { useStore } from '@/app/contexts/StoreContext';
 
-const customerData = [
-  { name: 'Wireless Headphones', phone: '0712345678', type: 'Returning', orders: 12, spent: 'Rs. 60,000', loyalty: 'Gold' },
-  { name: 'USB-C Cable 2m',      phone: '0779876543', type: 'New',       orders: 1,  spent: 'Rs. 22,500', loyalty: 'Silver' },
-  { name: 'Mechanical Keyboard', phone: '0754567890', type: 'Returning', orders: 5,  spent: 'Rs. 45,000', loyalty: 'Platinum' },
-];
+interface CustomerRow {
+  name: string; phone: string; type: string;
+  orderCount: number; spent: number; loyaltyTier: string;
+}
+interface Summary {
+  uniqueCustomers: number; topSpender: string; topSpenderAmount: number;
+  newVsReturning: { returning: number; new: number };
+}
+interface ApiResponse { dateRange: string; summary: Summary; customers: CustomerRow[] }
 
 const loyaltyColors: Record<string, { bg: string; text: string }> = {
   Gold:     { bg: '#fffaeb', text: '#f79009' },
   Silver:   { bg: '#f9fafb', text: '#4a5565' },
   Platinum: { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
+  Bronze:   { bg: '#fef3f2', text: '#b45309' },
 };
 
 export default function CustomerActivityPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const { currency } = useStore();
+  const [data, setData]         = useState<ApiResponse | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [searchTerm, setSearch] = useState('');
 
-  const filtered = customerData.filter(
+  useEffect(() => {
+    api.get<ApiResponse>('/reports/customer-activity?preset=today')
+      .then(({ data: d }) => setData(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
+  const s   = data?.summary;
+
+  const filtered = (data?.customers ?? []).filter(
     (c) =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm),
+      (c.phone ?? '').includes(searchTerm),
   );
 
   return (
@@ -36,7 +55,9 @@ export default function CustomerActivityPage() {
 
       <div className="mb-6">
         <h1 className="text-xl font-bold text-[#101828]">Daily Customer Activity</h1>
-        <p className="text-sm text-[#4a5565] mt-1">Real-time overview of customer interactions and transactional performance.</p>
+        <p className="text-sm text-[#4a5565] mt-1">
+          {loading ? 'Loading...' : `Real-time overview of customer interactions — ${data?.dateRange ?? ''}`}
+        </p>
       </div>
 
       {/* Summary Cards */}
@@ -45,9 +66,7 @@ export default function CustomerActivityPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="text-sm text-[#4a5565] mb-1">Unique Customers</p>
-              <h3 className="text-2xl font-bold text-[#101828] mb-1">142</h3>
-              <span className="text-sm font-medium" style={{ color: '#12b76a' }}>▲ 12</span>
-              <p className="text-xs text-[#4a5565] mt-1">vs yesterday</p>
+              <h3 className="text-2xl font-bold text-[#101828] mb-1">{loading ? '—' : (s?.uniqueCustomers ?? 0)}</h3>
             </div>
             <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
               <User className="w-6 h-6" style={{ color: 'var(--color-primary)' }} />
@@ -59,8 +78,16 @@ export default function CustomerActivityPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="text-sm text-[#4a5565] mb-1">Top Spender</p>
-              <h3 className="text-xl font-bold text-[#101828] mb-1">Nimal Perera</h3>
-              <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Rs. 45,000</p>
+              {loading ? (
+                <p className="text-sm text-[#4a5565]">—</p>
+              ) : s?.topSpender && s.topSpender !== 'N/A' ? (
+                <>
+                  <h3 className="text-lg font-bold text-[#101828] mb-1">{s.topSpender}</h3>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>{fmt(s.topSpenderAmount)}</p>
+                </>
+              ) : (
+                <p className="text-sm text-[#4a5565]">No data yet</p>
+              )}
             </div>
             <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fffaeb' }}>
               <Star className="w-6 h-6" style={{ color: '#f79009' }} />
@@ -72,17 +99,26 @@ export default function CustomerActivityPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="text-sm text-[#4a5565] mb-1">New vs Returning</p>
-              <h3 className="text-2xl font-bold text-[#101828] mb-1">85% <span className="text-sm font-normal text-[#4a5565]">Returning</span></h3>
-              <div className="flex items-center gap-3 text-xs text-[#4a5565]">
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#12b76a' }} />
-                  85% Returning
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: 'var(--color-primary)' }} />
-                  15% New
-                </div>
-              </div>
+              {loading ? (
+                <p className="text-sm text-[#4a5565]">—</p>
+              ) : (
+                <>
+                  <h3 className="text-2xl font-bold text-[#101828] mb-1">
+                    {s?.newVsReturning?.returning ?? 0}%{' '}
+                    <span className="text-sm font-normal text-[#4a5565]">Returning</span>
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-[#4a5565]">
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#12b76a' }} />
+                      {s?.newVsReturning?.returning ?? 0}% Returning
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: 'var(--color-primary)' }} />
+                      {s?.newVsReturning?.new ?? 0}% New
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#f4f3ff' }}>
               <PieChart className="w-6 h-6" style={{ color: '#7f56d9' }} />
@@ -101,21 +137,8 @@ export default function CustomerActivityPage() {
               placeholder="Search customer or phone..."
               className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-          <div className="flex gap-2">
-            <NativeSelect className="w-40">
-              <NativeSelectOption value="">All Categories</NativeSelectOption>
-              <NativeSelectOption value="baby">Baby Products</NativeSelectOption>
-              <NativeSelectOption value="bakery">Bakery</NativeSelectOption>
-              <NativeSelectOption value="beverages">Beverages</NativeSelectOption>
-            </NativeSelect>
-            <NativeSelect className="w-40">
-              <NativeSelectOption value="">All Channels</NativeSelectOption>
-              <NativeSelectOption value="pos">POS (In-store)</NativeSelectOption>
-              <NativeSelectOption value="online">E-commerce (Online)</NativeSelectOption>
-            </NativeSelect>
           </div>
         </div>
 
@@ -131,40 +154,40 @@ export default function CustomerActivityPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e4e7ec]">
-              {filtered.map((customer, idx) => (
-                <tr key={idx} className="hover:bg-[#f9fafb] transition-colors">
-                  <td className="px-5 py-4 text-sm font-medium text-[#101828]">{customer.name}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.phone}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.type}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.orders}</td>
-                  <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{customer.spent}</td>
-                  <td className="px-5 py-4">
-                    <span
-                      className="inline-block px-2 py-1 rounded text-xs font-medium"
-                      style={{
-                        backgroundColor: loyaltyColors[customer.loyalty]?.bg,
-                        color: loyaltyColors[customer.loyalty]?.text,
-                      }}
-                    >
-                      {customer.loyalty}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={6} className="px-5 py-8 text-sm text-[#4a5565] text-center">Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={6} className="px-5 py-8 text-sm text-[#4a5565] text-center">No customer activity for this period</td></tr>
+              ) : (
+                filtered.map((customer, idx) => (
+                  <tr key={idx} className="hover:bg-[#f9fafb] transition-colors">
+                    <td className="px-5 py-4 text-sm font-medium text-[#101828]">{customer.name}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.phone ?? '—'}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.type}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.orderCount}</td>
+                    <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{fmt(customer.spent)}</td>
+                    <td className="px-5 py-4">
+                      <span
+                        className="inline-block px-2 py-1 rounded text-xs font-medium"
+                        style={{
+                          backgroundColor: loyaltyColors[customer.loyaltyTier]?.bg ?? '#f9fafb',
+                          color: loyaltyColors[customer.loyaltyTier]?.text ?? '#4a5565',
+                        }}
+                      >
+                        {customer.loyaltyTier}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        <div className="px-5 py-4 border-t border-[#e4e7ec] flex items-center justify-between">
-          <p className="text-sm text-[#4a5565]">Showing 1 to {filtered.length} of {customerData.length} customers</p>
-          <div className="flex gap-2">
-            <button className="px-3 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm font-medium transition-colors" disabled>
-              Previous
-            </button>
-            <button className="px-3 py-1.5 bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] rounded-lg text-sm font-medium transition-colors" disabled>
-              Next
-            </button>
-          </div>
+        <div className="px-5 py-4 border-t border-[#e4e7ec]">
+          <p className="text-sm text-[#4a5565]">
+            Showing {filtered.length} of {(data?.customers ?? []).length} customers
+          </p>
         </div>
       </div>
     </div>

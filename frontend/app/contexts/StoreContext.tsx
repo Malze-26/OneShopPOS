@@ -28,18 +28,18 @@ const defaults: StoreSettings = {
 };
 
 interface StoreContextValue extends StoreSettings {
-  refresh: () => void;
+  refresh: () => Promise<void>;
 }
 
-const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: () => {} });
+const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: () => Promise.resolve() });
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaults);
 
   // Uses the Axios instance so the OneShop-Tenant-ID header is automatically
   // included when a tenant has been selected (stored in localStorage).
-  const fetchSettings = () => {
-    api.get<{ data: StoreSettings }>('/settings')
+  const fetchSettings = (): Promise<void> => {
+    return api.get<{ data: StoreSettings }>('/settings')
       .then(({ data }) => { if (data.data) setSettings(data.data); })
       .catch(() => { /* keep defaults if no tenant is set yet */ });
   };

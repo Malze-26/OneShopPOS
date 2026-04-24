@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { Request } from 'express';
 
 const LOGO_DIR = path.join(process.cwd(), 'uploads', 'logo');
 
@@ -10,9 +11,12 @@ if (!fs.existsSync(LOGO_DIR)) {
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, LOGO_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `store-logo${ext}`);
+  filename: (req: Request, file, cb) => {
+    // Use the tenant DB name so each tenant has its own file (no cross-tenant contamination).
+    const tenantId = (req.headers['oneshop-tenant-id'] as string | undefined) ?? 'default';
+    const safeTenantId = tenantId.replace(/[^a-z0-9_-]/gi, '_');
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    cb(null, `store-logo-${safeTenantId}${ext}`);
   },
 });
 
