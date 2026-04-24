@@ -39,10 +39,13 @@ export default function ProductCard({
   return (
     <div
       onClick={() => product.stock > 0 && onAdd(product)}
-      className={`relative rounded-[var(--radius-lg)] overflow-hidden cursor-pointer transition-all duration-150 border ${
-        inCart ? "border-[var(--color-primary)] shadow-[0_4px_16px_rgba(27,26,85,0.15)]" : "border-[var(--color-border)]"
+      className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 border ${
+        inCart ? "shadow-[0_4px_16px_rgba(27,26,85,0.15)]" : ""
       } ${addedId === product._id ? "animate-pulse" : ""}`}
-      style={{ opacity: product.stock === 0 ? 0.6 : 1 }}
+      style={{
+        opacity: product.stock === 0 ? 0.6 : 1,
+        borderColor: inCart ? C.brand : C.border,
+      }}
     >
       {/* Card Image Area */}
       <div
@@ -50,26 +53,38 @@ export default function ProductCard({
         style={{ background: `linear-gradient(135deg, ${g1}, ${g2})` }}
       >
         {/* Initial Avatar */}
-        <div className="w-13 h-13 rounded-[var(--radius-md)] bg-[rgba(255,255,255,0.5)] backdrop-blur-sm flex items-center justify-center text-[24px] font-black text-[var(--color-primary)] shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <div
+          className="w-12 h-12 rounded-lg bg-white/50 backdrop-blur-sm flex items-center justify-center text-[24px] font-black shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+          style={{ color: C.brand }}
+        >
           {initial}
         </div>
 
         {/* Category Badge */}
-        <div className="absolute top-2 left-2 px-2 py-[2px] rounded-full text-[9px] font-bold text-[var(--color-secondary)] uppercase tracking-[0.5px] bg-[rgba(255,255,255,0.75)] backdrop-blur-[4px]">
+        <div
+          className="absolute top-2 left-2 px-2 py-[2px] rounded-full text-[9px] font-bold uppercase tracking-[0.5px] bg-white/75 backdrop-blur-[4px]"
+          style={{ color: C.text }}
+        >
           {product.category}
         </div>
 
         {/* Cart Quantity Badge */}
         {inCart && (
-          <div className="absolute top-2 right-2 w-5.5 h-5.5 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-[11px] font-extrabold shadow-[0_2px_6px_rgba(27,26,85,0.3)]">
+          <div
+            className="absolute top-2 right-2 w-5 h-5 rounded-full text-white flex items-center justify-center text-[11px] font-extrabold shadow-[0_2px_6px_rgba(27,26,85,0.3)]"
+            style={{ background: C.brand }}
+          >
             {cartQty}
           </div>
         )}
 
         {/* Out of Stock Overlay */}
         {product.stock === 0 && (
-          <div className="absolute inset-0 bg-[rgba(0,0,0,0.35)] flex items-center justify-center">
-            <span className="text-[10px] font-extrabold bg-[var(--color-danger)] text-white px-3 py-[3px] rounded-full tracking-[0.5px]">
+          <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+            <span
+              className="text-[10px] font-extrabold text-white px-3 py-[3px] rounded-full tracking-[0.5px]"
+              style={{ background: C.danger }}
+            >
               OUT OF STOCK
             </span>
           </div>
@@ -85,23 +100,39 @@ export default function ProductCard({
 
       {/* Card Body */}
       <div className="px-3 pt-2 pb-3">
-        <div className="text-[12px] font-bold text-[var(--color-dark)] mb-1 truncate">
+        <div
+          className="text-[12px] font-bold mb-1 truncate"
+          style={{ color: C.text }}
+        >
           {product.name}
         </div>
         <div className="flex justify-between items-center mb-2">
-          <div className="font-extrabold text-[15px] text-[var(--color-primary)] font-mono">
+          <div
+            className="font-extrabold text-[15px] font-mono"
+            style={{ color: C.brand }}
+          >
             Rs. {product.sellingPrice.toLocaleString()}
-            {product.isWeightBased && <span className="text-[11px] font-normal text-[var(--color-secondary)]"> / kg</span>}
+            {product.isWeightBased && (
+              <span className="text-[11px] font-normal" style={{ color: C.muted }}> / kg</span>
+            )}
           </div>
           {product.isWeightBased && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[var(--color-primary-light)] text-[var(--color-primary)] rounded-full">BY WEIGHT</span>
+            <span
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ background: "#EEF2FF", color: C.text }}
+            >
+              BY WEIGHT
+            </span>
           )}
         </div>
 
         {/* Stock Bar */}
         <div>
           <div className="flex justify-between items-center mb-[3px]">
-            <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--color-secondary)]">
+            <span
+              className="text-[9px] font-semibold uppercase tracking-[0.5px]"
+              style={{ color: C.text }}
+            >
               Stock
             </span>
             <span className="text-[9px] font-bold" style={{ color: stockColor }}>

@@ -1,20 +1,18 @@
-// Centralized color palette and card gradient definitions for consistent theming across the POS dashboard components
 export const C = {
-  brand:      "#1B1A55",
-  brandMid:   "#535C91",
-  brandLight: "#9290C3",
+  brand:      "var(--color-primary)",
+  brandMid:   "var(--color-secondary)",
+  brandLight: "var(--color-primary-light)",
   accent:     "#F4A261",
-  bg:         "#F0F2F8",
-  surface:    "#FFFFFF",
+  bg:         "var(--color-surface)",
+  surface:    "var(--color-white)",
   surface2:   "#F7F8FC",
-  border:     "#E3E6F0",
-  text:       "#111827",
-  muted:      "#6B7280",
-  success:    "#10B981",
-  danger:     "#EF4444",
+  border:     "var(--color-border)",
+  text:       "var(--color-dark)",
+  muted:      "var(--color-secondary)",
+  success:    "var(--color-success)",
+  danger:     "var(--color-danger)",
 };
 
-// Array of gradient color pairs for card backgrounds, providing visually appealing options for different sections of the POS dashboard
 export const CARD_GRADIENTS = [
   ["#E0E7FF","#C7D2FE"], ["#EDE9FE","#DDD6FE"], ["#DBEAFE","#BFDBFE"],
   ["#CFFAFE","#A5F3FC"], ["#D1FAE5","#A7F3D0"], ["#FEF3C7","#FDE68A"],
