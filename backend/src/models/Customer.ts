@@ -16,7 +16,7 @@ export interface ICustomer extends Document {
   comparePassword(candidate: string): Promise<boolean>;
 }
 
-const customerSchema = new Schema<ICustomer>(
+export const customerSchema = new Schema<ICustomer>(
   {
     name: {
       type: String,

@@ -1,11 +1,10 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
-import { Transaction, TransactionStatus } from '../models/Transaction';
+import { TransactionStatus } from '../models/Transaction';
 
 type OrderStatus   = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
 type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
-/** Maps a Transaction status to the order-level status pair used by the frontend. */
 function mapTxnStatus(s: TransactionStatus): { status: OrderStatus; paymentStatus: PaymentStatus } {
   switch (s) {
     case 'success':  return { status: 'delivered', paymentStatus: 'paid' };
@@ -17,7 +16,8 @@ function mapTxnStatus(s: TransactionStatus): { status: OrderStatus; paymentStatu
   }
 }
 
-function txnToOrder(txn: InstanceType<typeof Transaction>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function txnToOrder(txn: any) {
   const { status, paymentStatus } = mapTxnStatus(txn.status as TransactionStatus);
   return {
     _id:           txn._id,
@@ -38,10 +38,10 @@ function txnToOrder(txn: InstanceType<typeof Transaction>) {
 
 // GET /api/orders
 export async function getOrders(req: AuthRequest, res: Response): Promise<void> {
-  const { storeId } = req.user!;
+  const { Transaction } = req.models!;
   const { status, search, page = '1', limit = '20' } = req.query as Record<string, string>;
 
-  const filter: Record<string, unknown> = { storeId };
+  const filter: Record<string, unknown> = {};
 
   if (status) {
     const txnStatusMap: Record<string, string | string[]> = {
@@ -67,10 +67,9 @@ export async function getOrders(req: AuthRequest, res: Response): Promise<void> 
 
 // GET /api/orders/stats
 export async function getOrderStats(req: AuthRequest, res: Response): Promise<void> {
-  const { storeId } = req.user!;
+  const { Transaction } = req.models!;
 
   const [totals] = await Transaction.aggregate([
-    { $match: { storeId } },
     {
       $group: {
         _id:     null,
@@ -90,23 +89,23 @@ export async function getOrderStats(req: AuthRequest, res: Response): Promise<vo
 
 // GET /api/orders/:id
 export async function getOrder(req: AuthRequest, res: Response): Promise<void> {
-  const { storeId } = req.user!;
-  const txn = await Transaction.findOne({ _id: req.params.id, storeId }).populate('createdBy', 'name');
+  const { Transaction } = req.models!;
+  const txn = await Transaction.findById(req.params.id).populate('createdBy', 'name');
   if (!txn) { res.status(404).json({ message: 'Order not found' }); return; }
   res.json({ data: txnToOrder(txn) });
 }
 
 // POST /api/orders — not used; POS writes via POST /api/transactions
-export async function createOrder(req: AuthRequest, res: Response): Promise<void> {
+export async function createOrder(_req: AuthRequest, res: Response): Promise<void> {
   res.status(501).json({ message: 'Create orders via POST /api/transactions' });
 }
 
 // PATCH /api/orders/:id/status
 export async function updateOrderStatus(req: AuthRequest, res: Response): Promise<void> {
-  const { storeId } = req.user!;
+  const { Transaction } = req.models!;
   const { status } = req.body as { status: string };
 
-  const txn = await Transaction.findOne({ _id: req.params.id, storeId });
+  const txn = await Transaction.findById(req.params.id);
   if (!txn) { res.status(404).json({ message: 'Order not found' }); return; }
 
   const statusMap: Record<string, TransactionStatus> = {

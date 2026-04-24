@@ -15,7 +15,7 @@ export interface IPromo extends Document {
   createdBy: mongoose.Types.ObjectId;
 }
 
-const promoSchema = new Schema<IPromo>(
+export const promoSchema = new Schema<IPromo>(
   {
     code: {
       type: String,

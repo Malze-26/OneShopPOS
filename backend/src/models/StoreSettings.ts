@@ -12,7 +12,7 @@ export interface IStoreSettings extends Document {
   primaryColor: string;
 }
 
-const storeSettingsSchema = new Schema<IStoreSettings>(
+export const storeSettingsSchema = new Schema<IStoreSettings>(
   {
     storeId:        { type: String, required: true, unique: true },
     storeName:      { type: String, required: true },

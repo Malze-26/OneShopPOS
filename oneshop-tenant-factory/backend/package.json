@@ -10,7 +10,9 @@
     "seed": "ts-node src/seed.ts",
     "hash-password": "ts-node src/hash-password.ts",
     "provision": "ts-node src/scripts/provisionExistingTenants.ts",
-    "seed:open-door": "ts-node src/scripts/seedOpenDoorFromOneshop.ts"
+    "seed:open-door": "ts-node src/scripts/seedOpenDoorFromOneshop.ts",
+    "update:open-door-settings": "ts-node src/scripts/updateOpenDoorSettings.ts",
+    "seed:tenant-users": "ts-node src/scripts/seedAllTenantUsers.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

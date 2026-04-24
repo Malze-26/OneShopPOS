@@ -45,7 +45,7 @@ const orderItemSchema = new Schema<IOrderItem>(
   { _id: false }
 );
 
-const orderSchema = new Schema<IOrder>(
+export const orderSchema = new Schema<IOrder>(
   {
     orderId: { type: String, required: true, unique: true },
     source:  { type: String, enum: ['physical', 'online'], required: true },

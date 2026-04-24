@@ -1,24 +1,15 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
-import { Category } from '../models/Category';
-import { Product } from '../models/Product';
 import { DEFAULT_CATEGORY_ICON, DEFAULT_CATEGORY_COLOR } from '../constants';
 
 // ── GET /api/categories ────────────────────────────────────────────────────
-
-/**
- * Returns all categories for the authenticated store, sorted alphabetically.
- * Product counts are computed live via aggregation instead of relying on the
- * stored counter, which can drift if products are deleted outside normal flow.
- */
 export async function getCategories(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Category, Product } = req.models!;
 
     const [categories, counts] = await Promise.all([
-      Category.find({ storeId }).sort({ name: 1 }),
+      Category.find({}).sort({ name: 1 }),
       Product.aggregate<{ _id: string; count: number }>([
-        { $match: { storeId } },
         { $group: { _id: '$category', count: { $sum: 1 } } },
       ]),
     ]);
@@ -37,15 +28,10 @@ export async function getCategories(req: AuthRequest, res: Response, next: NextF
 }
 
 // ── GET /api/categories/:id ────────────────────────────────────────────────
-
-/**
- * Returns a single category by ID.
- * Returns 404 if it does not belong to the authenticated store.
- */
 export async function getCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const category = await Category.findOne({ _id: req.params.id, storeId });
+    const { Category } = req.models!;
+    const category = await Category.findById(req.params.id);
 
     if (!category) {
       res.status(404).json({ message: 'Category not found' });
@@ -59,15 +45,9 @@ export async function getCategory(req: AuthRequest, res: Response, next: NextFun
 }
 
 // ── POST /api/categories ───────────────────────────────────────────────────
-
-/**
- * Creates a new category under the authenticated store.
- * Name must be non-empty. Icon and color fall back to defaults if omitted.
- * Returns 409 if a category with the same name already exists in this store
- * (enforced by a unique compound index on name + storeId in the schema).
- */
 export async function createCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Category } = req.models!;
     const storeId = req.user!.storeId;
     const { name, icon, color } = req.body as { name?: string; icon?: string; color?: string };
 
@@ -85,7 +65,6 @@ export async function createCategory(req: AuthRequest, res: Response, next: Next
 
     res.status(201).json({ data: category });
   } catch (err: unknown) {
-    // MongoDB duplicate key error — name + storeId compound index violation
     if ((err as { code?: number }).code === 11000) {
       res.status(409).json({ message: 'Category with this name already exists' });
       return;
@@ -95,19 +74,13 @@ export async function createCategory(req: AuthRequest, res: Response, next: Next
 }
 
 // ── PUT /api/categories/:id ────────────────────────────────────────────────
-
-/**
- * Updates the name, icon, and/or color of an existing category.
- * Runs Mongoose validators on the updated fields.
- * Returns 404 if the category does not belong to the authenticated store.
- */
 export async function updateCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Category } = req.models!;
     const { name, icon, color } = req.body as { name?: string; icon?: string; color?: string };
 
-    const category = await Category.findOneAndUpdate(
-      { _id: req.params.id, storeId },
+    const category = await Category.findByIdAndUpdate(
+      req.params.id,
       { name, icon, color },
       { new: true, runValidators: true }
     );
@@ -124,17 +97,10 @@ export async function updateCategory(req: AuthRequest, res: Response, next: Next
 }
 
 // ── DELETE /api/categories/:id ─────────────────────────────────────────────
-
-/**
- * Deletes a category by ID.
- * Note: existing products referencing this category are NOT reassigned —
- * callers should handle orphaned products if needed.
- * Returns 404 if the category does not belong to the authenticated store.
- */
 export async function deleteCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const category = await Category.findOneAndDelete({ _id: req.params.id, storeId });
+    const { Category } = req.models!;
+    const category = await Category.findByIdAndDelete(req.params.id);
 
     if (!category) {
       res.status(404).json({ message: 'Category not found' });

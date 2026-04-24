@@ -26,6 +26,9 @@
       "PowerShell($base = \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\backend\\\\oneshop-tenant-factory\\\\src\"; @\\(\"controllers\",\"middleware\",\"models\",\"routes\",\"utils\",\"scripts\"\\) | ForEach-Object { New-Item -ItemType Directory -Path \"$base\\\\$_\" -Force | Out-Null }; Write-Host \"Directories created\")",
       "Bash(npx ts-node-dev *)",
       "Bash(curl -s http://localhost:5001/api/health)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory"
     ]
   }
 }

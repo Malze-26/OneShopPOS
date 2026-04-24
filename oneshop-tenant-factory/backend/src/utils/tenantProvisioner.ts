@@ -75,6 +75,7 @@ export const provisionTenantDatabase = async (
       phone: tenant.phoneNumber ?? '',
       email: tenant.email ?? '',
       logoUrl: tenant.logo ?? '',
+      backgroundImageUrl: tenant.backgroundImage ?? '',
       primaryColor: tenant.primaryColor ?? '#155dfc',
       createdAt: new Date(),
       updatedAt: new Date(),

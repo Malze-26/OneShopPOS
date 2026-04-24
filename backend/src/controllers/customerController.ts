@@ -1,15 +1,13 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
-import { Customer } from '../models/Customer';
-import { Order } from '../models/Order';
 
 // GET /api/customers
 export async function getCustomers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Customer } = req.models!;
     const { search, sort } = req.query;
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
 
     if (search) {
       filter.$or = [
@@ -25,7 +23,7 @@ export async function getCustomers(req: AuthRequest, res: Response, next: NextFu
     else if (sort === 'orders') sortQuery = { totalOrders: -1 };
 
     const customers = await Customer.find(filter).sort(sortQuery);
-    const totalCount = await Customer.countDocuments({ storeId });
+    const totalCount = await Customer.countDocuments({});
 
     res.json({ data: customers, total: customers.length, totalCount });
   } catch (err) {
@@ -36,8 +34,8 @@ export async function getCustomers(req: AuthRequest, res: Response, next: NextFu
 // GET /api/customers/:id
 export async function getCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+    const { Customer } = req.models!;
+    const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
       res.status(404).json({ message: 'Customer not found' });
@@ -53,6 +51,7 @@ export async function getCustomer(req: AuthRequest, res: Response, next: NextFun
 // POST /api/customers
 export async function createCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Customer } = req.models!;
     const storeId = req.user!.storeId;
     const { name, email, phone } = req.body;
 
@@ -61,7 +60,6 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
       return;
     }
 
-    // Auto-generate avatar initials
     const avatar = name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     const customer = await Customer.create({ name: name.trim(), email, phone, avatar, storeId });
@@ -74,7 +72,7 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
 // PUT /api/customers/:id
 export async function updateCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Customer } = req.models!;
     const { name, email, phone } = req.body;
 
     if (!name?.trim()) {
@@ -82,13 +80,12 @@ export async function updateCustomer(req: AuthRequest, res: Response, next: Next
       return;
     }
 
-    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+    const customer = await Customer.findById(req.params.id);
     if (!customer) {
       res.status(404).json({ message: 'Customer not found' });
       return;
     }
 
-    // Auto-generate avatar initials if name changed
     const avatar = name.trim() !== customer.name
       ? name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
       : customer.avatar;
@@ -108,15 +105,14 @@ export async function updateCustomer(req: AuthRequest, res: Response, next: Next
 // DELETE /api/customers/:id
 export async function deleteCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+    const { Customer } = req.models!;
+    const customer = await Customer.findByIdAndDelete(req.params.id);
 
     if (!customer) {
       res.status(404).json({ message: 'Customer not found' });
       return;
     }
 
-    await Customer.deleteOne({ _id: req.params.id, storeId });
     res.json({ message: 'Customer deleted successfully' });
   } catch (err) {
     next(err);
@@ -126,16 +122,15 @@ export async function deleteCustomer(req: AuthRequest, res: Response, next: Next
 // GET /api/customers/:id/orders
 export async function getCustomerOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const customer = await Customer.findOne({ _id: req.params.id, storeId });
+    const { Customer, Order } = req.models!;
+    const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
       res.status(404).json({ message: 'Customer not found' });
       return;
     }
 
-    // Match orders by email (preferred) or name
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
     if (customer.email) {
       filter.customerEmail = customer.email;
     } else {
@@ -152,16 +147,15 @@ export async function getCustomerOrders(req: AuthRequest, res: Response, next: N
 // GET /api/customers/stats
 export async function getCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Customer } = req.models!;
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [totalCount, newThisMonth, avgLifetimeValue] = await Promise.all([
-      Customer.countDocuments({ storeId }),
-      Customer.countDocuments({ storeId, createdAt: { $gte: startOfMonth } }),
+      Customer.countDocuments({}),
+      Customer.countDocuments({ createdAt: { $gte: startOfMonth } }),
       Customer.aggregate([
-        { $match: { storeId } },
         { $group: { _id: null, avg: { $avg: '$totalSpent' } } },
       ]),
     ]);

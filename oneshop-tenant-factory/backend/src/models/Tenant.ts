@@ -13,6 +13,7 @@ export interface ITenant extends Document {
   phoneNumber: string;
   email: string;
   logo: string | null;
+  backgroundImage: string | null;
   primaryColor: string;
   subscription: ISubscription;
   status: 'active' | 'inactive' | 'suspended';
@@ -28,6 +29,7 @@ const tenantSchema = new Schema<ITenant>({
   phoneNumber: { type: String, required: [true, 'Phone number is required'] },
   email: { type: String, required: [true, 'Email is required'], unique: true },
   logo: { type: String, default: null },
+  backgroundImage: { type: String, default: null },
   primaryColor: { type: String, default: '#3B82F6' },
   subscription: {
     plan: {

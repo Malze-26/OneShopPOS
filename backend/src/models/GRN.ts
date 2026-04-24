@@ -37,7 +37,7 @@ const grnItemSchema = new Schema<IGRNItem>(
   { _id: false }
 );
 
-const grnSchema = new Schema<IGRN>(
+export const grnSchema = new Schema<IGRN>(
   {
     grnNumber: { type: String, required: true, unique: true },
     supplier: { type: String, trim: true, default: '' },

@@ -14,7 +14,7 @@ export interface ISupplier extends Document {
 
 }
 
-const supplierSchema = new Schema<ISupplier>(
+export const supplierSchema = new Schema<ISupplier>(
   {
     name:          { type: String, required: true, trim: true },
     contactPerson: { type: String, trim: true, default: '' },
