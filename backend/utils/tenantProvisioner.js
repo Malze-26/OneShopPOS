@@ -13,7 +13,25 @@ const POS_COLLECTIONS = [
   'suppliers',
   'transactions',
   'users',
+  'wishlists',
+  'contactmessages',
+  'reviews',
+  'shippingdetails',
+  'returnrefunds',
+  'shippinginfos',
+  'deliveryzones',
+  'faqs',
+  'carts',
 ];
+
+// Converts "Fashion Hub" → "fashion_hub" (max 22 chars)
+// Final db name: tenant_<slug>_<last8ofId> = max 38 bytes (Atlas limit)
+const slugify = (name) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 22);
 
 // Swap the database name in the MongoDB URI
 const getTenantDbUri = (dbName) => {
@@ -31,7 +49,9 @@ const getTenantDbUri = (dbName) => {
  * Returns the database name on success.
  */
 const provisionTenantDatabase = async (tenant) => {
-  const dbName = `tenant_${tenant._id}`;
+  const slug = slugify(tenant.businessName);
+  const shortId = tenant._id.toString().slice(-8);
+  const dbName = `tenant_${slug}_${shortId}`;
   const uri = getTenantDbUri(dbName);
 
   let conn;
@@ -88,4 +108,4 @@ const dropTenantDatabase = async (dbName) => {
   }
 };
 
-module.exports = { provisionTenantDatabase, dropTenantDatabase };
+module.exports = { provisionTenantDatabase, dropTenantDatabase, getTenantDbUri };
