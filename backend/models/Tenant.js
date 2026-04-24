@@ -50,6 +50,10 @@ const tenantSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'suspended'],
     default: 'active',
   },
+  databaseName: {
+    type: String,
+    default: null,
+  },
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

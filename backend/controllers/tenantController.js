@@ -1,5 +1,6 @@
 const Tenant = require('../models/Tenant');
 const User = require('../models/User');
+const { provisionTenantDatabase, dropTenantDatabase } = require('../utils/tenantProvisioner');
 
 // @desc    Get all tenants
 // @route   GET /api/tenants
@@ -74,7 +75,7 @@ exports.createTenant = async (req, res) => {
       });
     }
 
-    // Create tenant
+    // Create tenant record
     const tenant = await Tenant.create({
       businessName,
       businessAddress,
@@ -86,6 +87,21 @@ exports.createTenant = async (req, res) => {
       status,
       ownerId: req.user.id,
     });
+
+    // Provision a dedicated database for this tenant
+    try {
+      const dbName = await provisionTenantDatabase(tenant);
+      tenant.databaseName = dbName;
+      await tenant.save();
+    } catch (provisionErr) {
+      // Roll back: remove the tenant record if DB provisioning fails
+      await tenant.deleteOne();
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to provision tenant database',
+        error: provisionErr.message,
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -149,7 +165,17 @@ exports.deleteTenant = async (req, res) => {
       });
     }
 
+    const dbName = tenant.databaseName;
     await tenant.deleteOne();
+
+    // Drop the tenant's dedicated database
+    if (dbName) {
+      try {
+        await dropTenantDatabase(dbName);
+      } catch (dropErr) {
+        console.error(`Warning: could not drop database ${dbName}:`, dropErr.message);
+      }
+    }
 
     res.json({
       success: true,
