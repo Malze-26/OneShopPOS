@@ -8,7 +8,7 @@ export function proxy(request: NextRequest) {
 
   // Allow public routes and static assets through
   if (
-    PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.includes('.')
@@ -28,7 +28,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|public/).*)'],
 };

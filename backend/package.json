@@ -1,12 +1,11 @@
 {
-  "name": "oneshop-backend",
-  "version": "1.0.0",
-  "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "seed": "ts-node src/seed.ts"
+    "seed": "ts-node src/seed.ts",
+    "dev:tenant": "node server.js",
+    "seed:tenant": "node seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

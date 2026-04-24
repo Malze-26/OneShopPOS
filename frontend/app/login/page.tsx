@@ -1,15 +1,19 @@
-'use client'; //runs in browser, not server
+'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/app/contexts/AuthContext'; //login logic from context provider
-import { useStore } from '@/app/contexts/StoreContext'; //store info from context provider
+import { useAuth } from '@/app/contexts/AuthContext';
+import { useStore } from '@/app/contexts/StoreContext';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-type Role = 'Manager' | 'Cashier' | null;
-// Login page with role selection, email/password form, and error handling
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+type Role = 'Manager' | 'Cashier' | 'Super Admin' | null;
+
 export default function LoginPage() {
   const { login } = useAuth();
   const { storeName, logoUrl } = useStore();
+  const router = useRouter();
   const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
   const logoSrc = logoUrl ? `${apiBase}${logoUrl}` : null;
 
@@ -21,24 +25,48 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-// Handle login form submission
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
-      await login(email, password, rememberMe, selectedRole!);
-    } catch (err: any) {
-      if (!err.response) {
+      if (selectedRole === 'Super Admin') {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setError(data.message || 'Login failed');
+          return;
+        }
+        if (data.user.role !== 'superadmin') {
+          setError('This account is not a Super Admin.');
+          return;
+        }
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem('token', data.token);
+        storage.setItem('user', JSON.stringify(data.user));
+        const expires = rememberMe ? 7 : 1;
+        document.cookie = `token=${data.token}; path=/; max-age=${expires * 86400}; SameSite=Strict`;
+        router.push('/super-admin/dashboard');
+      } else {
+        await login(email, password, rememberMe, selectedRole!);
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      if (!e.response) {
         setError('Cannot reach server. Please check backend is running and API URL is correct.');
       } else {
-        setError(err.response?.data?.message || 'Login failed. Please try again.');
+        setError(e.response?.data?.message || 'Login failed. Please try again.');
       }
     } finally {
       setLoading(false);
     }
   };
-// Reset form and go back to role selection
+
   const handleBack = () => {
     setSelectedRole(null);
     setEmail('');
@@ -46,7 +74,7 @@ export default function LoginPage() {
     setError('');
     setShowPassword(false);
   };
-// Main render with conditional UI for role selection and login form
+
   return (
     <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -71,13 +99,13 @@ export default function LoginPage() {
           <p className="text-sm text-[#4a5565]">Store Management</p>
         </div>
 
-        {/* ── Role Selector ── */}
+        {/* Role Selector */}
         {!selectedRole && (
           <div className="bg-white rounded-2xl shadow-md p-8">
             <h2 className="text-lg font-semibold text-[#101828] mb-1 text-center">Welcome</h2>
             <p className="text-sm text-[#4a5565] mb-6 text-center">Select your role to continue</p>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               {/* Manager */}
               <button
                 onClick={() => setSelectedRole('Manager')}
@@ -120,13 +148,24 @@ export default function LoginPage() {
                 </div>
               </button>
             </div>
+
+            {/* Super Admin */}
+            <button
+              onClick={() => setSelectedRole('Super Admin')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-[#e4e7ec] hover:border-[#151194] hover:bg-[#f0f0ff] transition-all text-sm font-medium text-[#4a5565] hover:text-[#151194]"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+              </svg>
+              Super Admin
+            </button>
           </div>
         )}
 
-        {/* ── Login Form ── */}
+        {/* Login Form */}
         {selectedRole && (
           <div className="bg-white rounded-2xl shadow-md p-8">
-            {/* Back + Role badge */}
             <div className="flex items-center gap-3 mb-5">
               <button
                 onClick={handleBack}
@@ -139,15 +178,18 @@ export default function LoginPage() {
               </button>
               <div>
                 <h2 className="text-base font-semibold text-[#101828]">
-                  {selectedRole === 'Manager' ? 'Manager Sign In' : 'Cashier Sign In'}
+                  {selectedRole === 'Manager' ? 'Manager Sign In' : selectedRole === 'Cashier' ? 'Cashier Sign In' : 'Super Admin Sign In'}
                 </h2>
                 <p className="text-xs text-[#4a5565]">
-                  {selectedRole === 'Manager' ? 'Dashboard & Inventory access' : 'Point of Sale access'}
+                  {selectedRole === 'Manager' ? 'Dashboard & Inventory access' : selectedRole === 'Cashier' ? 'Point of Sale access' : 'Platform administration'}
                 </p>
               </div>
               <span
                 className="ml-auto text-xs font-medium px-2.5 py-1 rounded-full"
-                style={{ background: 'color-mix(in srgb, var(--color-primary) 12%, white)', color: 'var(--color-primary)' }}
+                style={{
+                  background: selectedRole === 'Super Admin' ? '#e0e0ff' : 'color-mix(in srgb, var(--color-primary) 12%, white)',
+                  color: selectedRole === 'Super Admin' ? '#151194' : 'var(--color-primary)',
+                }}
               >
                 {selectedRole}
               </span>
@@ -169,7 +211,7 @@ export default function LoginPage() {
                   required
                   autoFocus
                   className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                  placeholder={selectedRole === 'Manager' ? 'manager@store.com' : 'cashier@store.com'}
+                  placeholder={selectedRole === 'Super Admin' ? 'superadmin@oneshop.lk' : selectedRole === 'Manager' ? 'manager@store.com' : 'cashier@store.com'}
                 />
               </div>
 
@@ -218,7 +260,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 className="w-full text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
-                style={{ background: 'var(--color-primary)' }}
+                style={{ background: selectedRole === 'Super Admin' ? '#151194' : 'var(--color-primary)' }}
               >
                 {loading ? 'Signing in...' : 'Sign in'}
               </button>
