@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from './models/User';
 import Tenant from './models/Tenant';
+import { provisionTenantDatabase } from './utils/tenantProvisioner';
 
 const seedDatabase = async (): Promise<void> => {
   try {
@@ -28,40 +29,47 @@ const seedDatabase = async (): Promise<void> => {
     });
     console.log('✅ Super Admin created');
 
-    await Tenant.create({
-      businessName: 'Fashion Hub',
-      businessAddress: '123 Main Street, Colombo',
-      phoneNumber: '+94771234567',
-      email: 'admin@fashionhub.com',
-      primaryColor: '#8B5CF6',
-      subscription: { plan: 'premium', status: 'active' },
-      status: 'active',
-      ownerId: superAdmin._id,
-    });
+    const tenantsData = [
+      {
+        businessName: 'Fashion Hub',
+        businessAddress: '123 Main Street, Colombo',
+        phoneNumber: '+94771234567',
+        email: 'admin@fashionhub.com',
+        primaryColor: '#8B5CF6',
+        subscription: { plan: 'premium', status: 'active' },
+        status: 'active',
+        ownerId: superAdmin._id,
+      },
+      {
+        businessName: 'Tech Store',
+        businessAddress: '456 Tech Avenue, Kandy',
+        phoneNumber: '+94772345678',
+        email: 'admin@techstore.com',
+        primaryColor: '#3B82F6',
+        subscription: { plan: 'basic', status: 'active' },
+        status: 'active',
+        ownerId: superAdmin._id,
+      },
+      {
+        businessName: 'Book Mart',
+        businessAddress: '789 Book Lane, Galle',
+        phoneNumber: '+94773456789',
+        email: 'admin@bookmart.com',
+        primaryColor: '#10B981',
+        subscription: { plan: 'free', status: 'trial' },
+        status: 'active',
+        ownerId: superAdmin._id,
+      },
+    ];
 
-    await Tenant.create({
-      businessName: 'Tech Store',
-      businessAddress: '456 Tech Avenue, Kandy',
-      phoneNumber: '+94772345678',
-      email: 'admin@techstore.com',
-      primaryColor: '#3B82F6',
-      subscription: { plan: 'basic', status: 'active' },
-      status: 'active',
-      ownerId: superAdmin._id,
-    });
+    for (const data of tenantsData) {
+      const tenant = await Tenant.create(data);
+      const dbName = await provisionTenantDatabase(tenant);
+      tenant.databaseName = dbName;
+      await tenant.save();
+    }
 
-    await Tenant.create({
-      businessName: 'Book Mart',
-      businessAddress: '789 Book Lane, Galle',
-      phoneNumber: '+94773456789',
-      email: 'admin@bookmart.com',
-      primaryColor: '#10B981',
-      subscription: { plan: 'free', status: 'trial' },
-      status: 'active',
-      ownerId: superAdmin._id,
-    });
-
-    console.log('✅ Sample tenants created');
+    console.log('✅ Sample tenants created and databases provisioned');
     console.log('\n📝 Login Credentials:');
     console.log('Email: superadmin@oneshop.lk');
     console.log('Password: SuperAdmin@123');

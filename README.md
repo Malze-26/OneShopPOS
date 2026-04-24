@@ -66,7 +66,7 @@ OneShop_POS/
 |----------------------------|------|------------------------------------------|
 | POS API                    | 5000 | REST API for tenant POS operations       |
 | POS Frontend               | 3000 | Cashier / Manager UI                     |
-| Tenant Factory API         | 6000 | REST API for super admin tenant mgmt     |
+| Tenant Factory API         | 6100 | REST API for super admin tenant mgmt     |
 | Tenant Factory Frontend    | 3001 | Super admin dashboard UI                 |
 
 ---

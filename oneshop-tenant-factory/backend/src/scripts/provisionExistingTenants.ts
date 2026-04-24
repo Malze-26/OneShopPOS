@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' });
+dotenv.config();
 
 import mongoose from 'mongoose';
 import Tenant from '../models/Tenant';
-import { provisionTenantDatabase, dropTenantDatabase } from '../utils/tenantProvisioner';
+import { provisionTenantDatabase } from '../utils/tenantProvisioner';
 
 const run = async (): Promise<void> => {
   await mongoose.connect(process.env.MONGODB_URI!);
@@ -13,11 +13,12 @@ const run = async (): Promise<void> => {
   console.log(`Found ${tenants.length} tenant(s) to provision.\n`);
 
   for (const tenant of tenants) {
+    if (tenant.databaseName) {
+      console.warn(`⚠️  "${tenant.businessName}" already provisioned (${tenant.databaseName}), skipping.`);
+      continue;
+    }
     process.stdout.write(`Provisioning "${tenant.businessName}" ... `);
     try {
-      if (tenant.databaseName) {
-        await dropTenantDatabase(tenant.databaseName);
-      }
       const dbName = await provisionTenantDatabase(tenant);
       tenant.databaseName = dbName;
       await tenant.save();

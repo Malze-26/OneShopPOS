@@ -45,12 +45,18 @@ export const provisionTenantDatabase = async (
 ): Promise<string> => {
   const slug = slugify(tenant.businessName);
   const shortId = tenant._id.toString().slice(-8);
-  const dbName = `tenant_${slug}_${shortId}`;
+  const dbName = `oneshop_${slug}`;
   const uri = getTenantDbUri(dbName);
 
   let conn: mongoose.Connection | undefined;
   try {
     conn = await mongoose.createConnection(uri).asPromise();
+
+    const existing = await conn.db!.collection('storesettings').findOne({ storeId: tenant._id.toString() });
+    if (existing) {
+      console.warn(`⚠️  Database already exists, skipping: ${dbName}`);
+      return dbName;
+    }
 
     for (const collName of POS_COLLECTIONS) {
       try {
@@ -82,7 +88,7 @@ export const provisionTenantDatabase = async (
 };
 
 export const dropTenantDatabase = async (dbName: string): Promise<void> => {
-  if (!dbName || !dbName.startsWith('tenant_')) return;
+  if (!dbName || !dbName.startsWith('oneshop_')) return;
 
   const uri = getTenantDbUri(dbName);
   let conn: mongoose.Connection | undefined;
