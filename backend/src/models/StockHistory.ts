@@ -11,7 +11,7 @@ export interface IStockHistory extends Document {
   storeId: string;
 }
 
-const stockHistorySchema = new Schema<IStockHistory>(
+export const stockHistorySchema = new Schema<IStockHistory>(
   {
     product: {
       type: Schema.Types.ObjectId,

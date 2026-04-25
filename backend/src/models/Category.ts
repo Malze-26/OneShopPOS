@@ -10,7 +10,7 @@ export interface ICategory extends Document {
   productCount: number;
 }
 
-const categorySchema = new Schema<ICategory>(
+export const categorySchema = new Schema<ICategory>(
   {
     name: {
       type: String,

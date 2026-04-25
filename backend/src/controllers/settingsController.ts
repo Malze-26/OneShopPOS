@@ -1,9 +1,13 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuthRequest } from '../types';
-import { StoreSettings } from '../models/StoreSettings';
 
-// GET /api/settings — public
-export async function getSettings(req: Request, res: Response): Promise<void> {
+// GET /api/settings — requires tenant header (set by tenantMiddleware)
+export async function getSettings(req: AuthRequest, res: Response): Promise<void> {
+  if (!req.models) {
+    res.status(400).json({ message: 'OneShop-Tenant-ID header is required' });
+    return;
+  }
+  const { StoreSettings } = req.models;
   const settings = await StoreSettings.findOne();
   if (!settings) {
     res.status(404).json({ message: 'Store settings not found' });
@@ -14,6 +18,7 @@ export async function getSettings(req: Request, res: Response): Promise<void> {
 
 // PATCH /api/settings — Manager only
 export async function updateSettings(req: AuthRequest, res: Response): Promise<void> {
+  const { StoreSettings } = req.models!;
   const { storeId } = req.user!;
   const { storeName, currency, currencyLocale, address, phone, email, primaryColor } = req.body;
 
@@ -42,6 +47,7 @@ export async function updateSettings(req: AuthRequest, res: Response): Promise<v
 
 // POST /api/settings/logo — Manager only
 export async function uploadLogo(req: AuthRequest, res: Response): Promise<void> {
+  const { StoreSettings } = req.models!;
   const { storeId } = req.user!;
 
   if (!req.file) {
@@ -49,7 +55,7 @@ export async function uploadLogo(req: AuthRequest, res: Response): Promise<void>
     return;
   }
 
-  const logoUrl = `/uploads/logo/${req.file.filename}`;
+  const logoUrl = `/uploads/logo/${req.file.filename}?v=${Date.now()}`;
 
   const settings = await StoreSettings.findOneAndUpdate(
     { storeId },

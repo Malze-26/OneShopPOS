@@ -122,12 +122,17 @@ export default function SettingsPage() {
         setUploadingLogo(true);
         const form = new FormData();
         form.append('logo', logoFile);
-        await api.post('/settings/logo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const uploadRes = await api.post('/settings/logo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const serverLogoUrl = uploadRes.data?.data?.logoUrl as string | undefined;
+        if (serverLogoUrl) {
+          const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
+          setLogoPreview(`${apiBase}${serverLogoUrl}`);
+        }
         setLogoFile(null);
         setUploadingLogo(false);
       }
       await api.patch('/settings', { primaryColor });
-      store.refresh();
+      await store.refresh();
       showToast('Appearance saved');
     } catch {
       showToast('Failed to save', false);

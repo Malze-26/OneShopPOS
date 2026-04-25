@@ -17,7 +17,7 @@ export interface ITransaction extends Document {
   updatedAt: Date;
 }
 
-const transactionSchema = new Schema<ITransaction>(
+export const transactionSchema = new Schema<ITransaction>(
   {
     txnId: {
       type: String,

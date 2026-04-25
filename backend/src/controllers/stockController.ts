@@ -1,8 +1,7 @@
 import { Response, NextFunction } from 'express';
+import { Model } from 'mongoose';
 import { AuthRequest } from '../types';
-import { GRN } from '../models/GRN';
-import { Product } from '../models/Product';
-import { StockHistory } from '../models/StockHistory';
+import { IGRN } from '../models/GRN';
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_LIMIT,
@@ -10,8 +9,6 @@ import {
   GRN_NUMBER_PAD_LENGTH,
   SYSTEM_ACTOR,
 } from '../constants';
-
-// ── Types ──────────────────────────────────────────────────────────────────
 
 interface GRNItem {
   productId: string;
@@ -35,39 +32,12 @@ interface ResolvedGRNItem {
   subtotal: number;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Generates the next sequential GRN number for the store in the format:
- *   GRN-YYYY-XXXX  (e.g. GRN-2025-0001)
- * Reads the highest existing GRN number for the current year and increments it.
- */
-async function generateGRNNumber(storeId: string): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `GRN-${year}-`;
-
-  const last = await GRN.findOne({ storeId, grnNumber: { $regex: `^${prefix}` } })
-    .sort({ grnNumber: -1 })
-    .lean();
-
-  const next = last ? parseInt(last.grnNumber.replace(prefix, ''), 10) + 1 : 1;
-  return `${prefix}${String(next).padStart(GRN_NUMBER_PAD_LENGTH, '0')}`;
-}
-
-/**
- * Parses page and limit query params with safe clamping.
- * Page is always >= 1. Limit is clamped between 1 and MAX_PAGE_LIMIT.
- */
 function parsePagination(page: unknown, limit: unknown): { pageNum: number; limitNum: number; skip: number } {
   const pageNum = Math.max(DEFAULT_PAGE, parseInt(String(page), 10) || DEFAULT_PAGE);
   const limitNum = Math.min(MAX_PAGE_LIMIT, Math.max(1, parseInt(String(limit), 10) || DEFAULT_PAGE_LIMIT));
   return { pageNum, limitNum, skip: (pageNum - 1) * limitNum };
 }
 
-/**
- * Builds a MongoDB date range filter from optional from/to query strings.
- * The 'to' date is extended to 23:59:59.999 so the full day is included.
- */
 function buildDateFilter(from?: string, to?: string): Record<string, Date> | null {
   if (!from && !to) return null;
   const dateFilter: Record<string, Date> = {};
@@ -80,22 +50,26 @@ function buildDateFilter(from?: string, to?: string): Record<string, Date> | nul
   return dateFilter;
 }
 
-// ── GET /api/stocks/grns ───────────────────────────────────────────────────
+async function generateGRNNumber(GRN: Model<IGRN>): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `GRN-${year}-`;
 
-/**
- * Returns a paginated list of GRNs for the authenticated store.
- * Supports optional filters:
- *   - search: matches GRN number, supplier name, or reference number
- *   - from / to: date range filter on createdAt
- *   - page / limit: pagination controls (limit capped at 50)
- */
+  const last = await GRN.findOne({ grnNumber: { $regex: `^${prefix}` } })
+    .sort({ grnNumber: -1 })
+    .lean();
+
+  const next = last ? parseInt((last.grnNumber as string).replace(prefix, ''), 10) + 1 : 1;
+  return `${prefix}${String(next).padStart(GRN_NUMBER_PAD_LENGTH, '0')}`;
+}
+
+// ── GET /api/stocks/grns ───────────────────────────────────────────────────
 export async function getGRNs(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { GRN } = req.models!;
     const { search, from, to, page, limit } = req.query;
     const { pageNum, limitNum, skip } = parsePagination(page, limit);
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
 
     if (search) {
       filter.$or = [
@@ -120,17 +94,9 @@ export async function getGRNs(req: AuthRequest, res: Response, next: NextFunctio
 }
 
 // ── POST /api/stocks/grns ──────────────────────────────────────────────────
-
-/**
- * Creates a new Goods Received Note (GRN) and updates stock for each item.
- * For every item:
- *   1. Validates product exists in the store
- *   2. Increments product.stock
- *   3. Creates a StockHistory record referencing the GRN number
- * All items must pass validation before the GRN is saved (fail-fast approach).
- */
 export async function createGRN(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { GRN, Product, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const receivedBy = req.user?.email ?? SYSTEM_ACTOR;
     const { supplier, referenceNumber, notes, items } = req.body as CreateGRNBody;
@@ -140,7 +106,6 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
       return;
     }
 
-    // Validate all items before writing anything to the database
     const resolvedItems: ResolvedGRNItem[] = [];
     for (let i = 0; i < items.length; i++) {
       const { productId, quantityReceived, costPrice } = items[i];
@@ -158,7 +123,7 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
         return;
       }
 
-      const product = await Product.findOne({ _id: productId, storeId });
+      const product = await Product.findById(productId);
       if (!product) {
         res.status(404).json({ message: `Item ${i + 1}: product not found` });
         return;
@@ -176,7 +141,7 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
 
     const totalItems = resolvedItems.reduce((sum, r) => sum + r.quantityReceived, 0);
     const totalCost = resolvedItems.reduce((sum, r) => sum + r.subtotal, 0);
-    const grnNumber = await generateGRNNumber(storeId);
+    const grnNumber = await generateGRNNumber(GRN);
 
     const grn = await GRN.create({
       grnNumber,
@@ -190,7 +155,6 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
       storeId,
     });
 
-    // Update stock and record history for each received item
     for (const item of resolvedItems) {
       await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantityReceived } });
       await StockHistory.create({
@@ -210,15 +174,10 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
 }
 
 // ── GET /api/stocks/grns/:id ───────────────────────────────────────────────
-
-/**
- * Returns a single GRN by ID.
- * Returns 404 if it does not belong to the authenticated store.
- */
 export async function getGRN(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const grn = await GRN.findOne({ _id: req.params.id, storeId }).lean();
+    const { GRN } = req.models!;
+    const grn = await GRN.findById(req.params.id).lean();
 
     if (!grn) {
       res.status(404).json({ message: 'GRN not found' });
@@ -232,23 +191,13 @@ export async function getGRN(req: AuthRequest, res: Response, next: NextFunction
 }
 
 // ── GET /api/stocks/history ────────────────────────────────────────────────
-
-/**
- * Returns paginated stock movement history for the authenticated store.
- * Supports optional filters:
- *   - type: 'add' | 'remove'
- *   - productId: filter by specific product
- *   - from / to: date range filter on createdAt
- *   - page / limit: pagination (limit capped at 50)
- * Product name and SKU are populated for each record.
- */
 export async function getStockHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { StockHistory } = req.models!;
     const { type, productId, from, to, page, limit } = req.query;
     const { pageNum, limitNum, skip } = parsePagination(page, limit);
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
 
     if (type && ['add', 'remove'].includes(type as string)) filter.type = type;
     if (productId) filter.product = productId;

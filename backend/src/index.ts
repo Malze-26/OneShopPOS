@@ -20,6 +20,10 @@ import orderRoutes from './routes/orders';
 import settingsRoutes from './routes/settings';
 import supplierRoutes from './routes/suppliers';
 import reportRoutes from './routes/reports';
+import dashboardRoutes from './routes/dashboard';
+import alertsRoutes from './routes/alerts';
+import tenantRoutes from './routes/tenants';
+import { tenantMiddleware } from './middleware/tenantMiddleware';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -46,11 +50,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// ── Tenant resolution ─────────────────────────────────────────────────────────
+// Runs before every route; populates req.tenantDb and req.models when the
+// OneShop-Tenant-ID header is present.
+app.use(tenantMiddleware);
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Public — no tenant or auth required
+app.use('/api/tenants', tenantRoutes);
+
+// All remaining routes require a valid OneShop-Tenant-ID header
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -63,6 +76,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/alerts', alertsRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -83,7 +98,7 @@ async function start() {
   } else {
     try {
       await mongoose.connect(mongoUri);
-      console.log('✓ Connected to MongoDB');
+      console.log('✓ Connected to MongoDB cluster');
     } catch (err) {
       console.warn('⚠ MongoDB connection error:', err instanceof Error ? err.message : err);
       console.warn('⚠ Continuing without database connection');

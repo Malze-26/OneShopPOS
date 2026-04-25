@@ -1,5 +1,7 @@
 import { Request } from 'express';
 import { JwtPayload } from 'jsonwebtoken';
+import { Connection } from 'mongoose';
+import { TenantModels } from '../db/tenantModels';
 
 /** All roles supported by the system. */
 export type UserRole = 'Manager' | 'Cashier' | 'Sales Representative';
@@ -16,9 +18,12 @@ export interface TokenPayload extends JwtPayload {
 }
 
 /**
- * Extended Express Request that carries the authenticated user.
- * Used across all protected controllers and middleware.
+ * Extended Express Request that carries the authenticated user,
+ * the tenant-specific mongoose Connection, and the model registry for
+ * that tenant's database.
  */
 export interface AuthRequest extends Request {
   user?: TokenPayload;
+  tenantDb?: Connection;
+  models?: TenantModels;
 }

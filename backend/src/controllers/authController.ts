@@ -1,7 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User } from '../models/User';
 import { AuthRequest } from '../types';
 
 function signToken(id: string, email: string, role: string, storeId: string): string {
@@ -16,7 +15,13 @@ function signToken(id: string, email: string, role: string, storeId: string): st
 }
 
 // POST /api/auth/login
-export async function login(req: Request, res: Response): Promise<void> {
+export async function login(req: AuthRequest, res: Response): Promise<void> {
+  if (!req.models) {
+    res.status(400).json({ message: 'OneShop-Tenant-ID header is required' });
+    return;
+  }
+
+  const { User } = req.models;
   const { email, password } = req.body as { email?: string; password?: string };
   const normalizedEmail = email?.trim().toLowerCase();
 
@@ -63,7 +68,8 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 // POST /api/auth/register  (protected - Manager only in production)
-export async function register(req: Request, res: Response): Promise<void> {
+export async function register(req: AuthRequest, res: Response): Promise<void> {
+  const { User } = req.models!;
   const { name, email, password, role, storeId } = req.body as {
     name?: string;
     email?: string;
@@ -88,7 +94,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     email,
     password,
     role: role ?? 'Cashier',
-    storeId: storeId ?? (req as AuthRequest).user?.storeId ?? process.env.DEFAULT_STORE_ID ?? 'STORE-2025-001',
+    storeId: storeId ?? req.user?.storeId ?? process.env.DEFAULT_STORE_ID ?? 'STORE-2025-001',
   });
 
   const token = signToken(user.id as string, user.email, user.role, user.storeId);
@@ -107,6 +113,7 @@ export async function register(req: Request, res: Response): Promise<void> {
 
 // POST /api/auth/change-password  (protected)
 export async function changePassword(req: AuthRequest, res: Response): Promise<void> {
+  const { User } = req.models!;
   const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
 
   if (!currentPassword || !newPassword) {
@@ -139,6 +146,7 @@ export async function changePassword(req: AuthRequest, res: Response): Promise<v
 
 // GET /api/auth/me  (protected)
 export async function getMe(req: AuthRequest, res: Response): Promise<void> {
+  const { User } = req.models!;
   const user = await User.findById(req.user?.id);
   if (!user) {
     res.status(404).json({ message: 'User not found' });
@@ -158,6 +166,7 @@ export async function getMe(req: AuthRequest, res: Response): Promise<void> {
 
 // PATCH /api/auth/profile  (protected)
 export async function updateProfile(req: AuthRequest, res: Response): Promise<void> {
+  const { User } = req.models!;
   const { name, phone } = req.body as { name?: string; phone?: string };
 
   if (!name?.trim()) {
@@ -189,6 +198,7 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
 
 // POST /api/auth/profile/avatar  (protected)
 export async function uploadAvatar(req: AuthRequest, res: Response): Promise<void> {
+  const { User } = req.models!;
   if (!req.file) {
     res.status(400).json({ message: 'No file uploaded' });
     return;

@@ -1,7 +1,5 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
-import { Transaction } from '../models/Transaction';
-import { Customer } from '../models/Customer';
 
 function generateTxnId(): string {
   const num = Math.floor(Math.random() * 90000) + 10000;
@@ -11,10 +9,10 @@ function generateTxnId(): string {
 // GET /api/transactions
 export async function getTransactions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Transaction } = req.models!;
     const { payment, search, startDate, endDate, page = '1', limit = '20' } = req.query;
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
 
     if (payment && payment !== 'All') filter.paymentMethod = payment;
     if (search) filter.txnId = { $regex: search, $options: 'i' };
@@ -40,10 +38,10 @@ export async function getTransactions(req: AuthRequest, res: Response, next: Nex
 // GET /api/transactions/stats
 export async function getTransactionStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Transaction } = req.models!;
 
     const stats = await Transaction.aggregate([
-      { $match: { storeId, status: 'success' } },
+      { $match: { status: 'success' } },
       {
         $group: {
           _id: '$paymentMethod',
@@ -71,6 +69,7 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Transaction, Customer } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
@@ -105,8 +104,8 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 // GET /api/transactions/:id
 export async function getTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const transaction = await Transaction.findOne({ _id: req.params.id, storeId });
+    const { Transaction } = req.models!;
+    const transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) {
       res.status(404).json({ message: 'Transaction not found' });
@@ -121,6 +120,7 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 
 // DELETE /api/transactions/:id/void — Void transaction
 export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
+  const { Transaction } = req.models!;
   const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
     res.status(404).json({ message: 'Transaction not found' });
@@ -137,6 +137,7 @@ export async function voidTransaction(req: AuthRequest, res: Response): Promise<
 
 // PATCH /api/transactions/:id/refund — Refund transaction
 export async function refundTransaction(req: AuthRequest, res: Response): Promise<void> {
+  const { Transaction } = req.models!;
   const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
     res.status(404).json({ message: 'Transaction not found' });

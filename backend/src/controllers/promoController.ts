@@ -1,9 +1,9 @@
-import { Request, Response } from 'express';
-import { Promo } from '../models/Promo';
+import { Response } from 'express';
 import { AuthRequest } from '../types';
 
 // POST /api/promos — Create promo (Manager only)
 export async function createPromo(req: AuthRequest, res: Response): Promise<void> {
+  const { Promo } = req.models!;
   const { code, type, value, minOrderAmount, maxUses, expiresAt } = req.body;
 
   if (!code || !type || !value || !expiresAt) {
@@ -33,12 +33,14 @@ export async function createPromo(req: AuthRequest, res: Response): Promise<void
 
 // GET /api/promos — Get all promos (Manager only)
 export async function getPromos(req: AuthRequest, res: Response): Promise<void> {
-  const promos = await Promo.find({ storeId: req.user?.storeId }).sort({ createdAt: -1 });
+  const { Promo } = req.models!;
+  const promos = await Promo.find({}).sort({ createdAt: -1 });
   res.status(200).json({ data: promos, total: promos.length });
 }
 
 // POST /api/promos/validate — Validate promo code
 export async function validatePromo(req: AuthRequest, res: Response): Promise<void> {
+  const { Promo } = req.models!;
   const { code, orderAmount } = req.body;
 
   if (!code) {
@@ -48,7 +50,6 @@ export async function validatePromo(req: AuthRequest, res: Response): Promise<vo
 
   const promo = await Promo.findOne({
     code: code.toUpperCase(),
-    storeId: req.user?.storeId,
     isActive: true,
     expiresAt: { $gt: new Date() },
   });
@@ -68,7 +69,6 @@ export async function validatePromo(req: AuthRequest, res: Response): Promise<vo
     return;
   }
 
-  // Calculate discount
   let discountAmount = 0;
   if (promo.type === 'percentage') {
     discountAmount = (orderAmount * promo.value) / 100;
@@ -76,7 +76,6 @@ export async function validatePromo(req: AuthRequest, res: Response): Promise<vo
     discountAmount = promo.value;
   }
 
-  // Cap discount at order amount
   discountAmount = Math.min(discountAmount, orderAmount);
 
   res.status(200).json({
@@ -94,6 +93,7 @@ export async function validatePromo(req: AuthRequest, res: Response): Promise<vo
 
 // DELETE /api/promos/:id — Delete promo (Manager only)
 export async function deletePromo(req: AuthRequest, res: Response): Promise<void> {
+  const { Promo } = req.models!;
   const promo = await Promo.findByIdAndDelete(req.params.id);
   if (!promo) {
     res.status(404).json({ message: 'Promo not found' });
@@ -104,6 +104,7 @@ export async function deletePromo(req: AuthRequest, res: Response): Promise<void
 
 // PATCH /api/promos/:id/toggle — Toggle promo active status
 export async function togglePromo(req: AuthRequest, res: Response): Promise<void> {
+  const { Promo } = req.models!;
   const promo = await Promo.findById(req.params.id);
   if (!promo) {
     res.status(404).json({ message: 'Promo not found' });

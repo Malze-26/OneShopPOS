@@ -1,14 +1,13 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
-import { Supplier } from '../models/Supplier';
 
 // GET /api/suppliers
 export async function getSuppliers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Supplier } = req.models!;
     const { search, status, category } = req.query as Record<string, string>;
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
     if (status && status !== 'all') filter.status = status;
     if (category && category !== 'all') filter.categories = category;
     if (search) {
@@ -30,12 +29,12 @@ export async function getSuppliers(req: AuthRequest, res: Response, next: NextFu
 // GET /api/suppliers/stats
 export async function getSupplierStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Supplier } = req.models!;
     const [total, active] = await Promise.all([
-      Supplier.countDocuments({ storeId }),
-      Supplier.countDocuments({ storeId, status: 'active' }),
+      Supplier.countDocuments({}),
+      Supplier.countDocuments({ status: 'active' }),
     ]);
-    const allSuppliers = await Supplier.find({ storeId }).select('categories');
+    const allSuppliers = await Supplier.find({}).select('categories');
     const uniqueCategories = new Set(allSuppliers.flatMap(s => s.categories));
     res.json({ data: { total, active, inactive: total - active, categoriesSupplied: uniqueCategories.size } });
   } catch (err) {
@@ -46,7 +45,8 @@ export async function getSupplierStats(req: AuthRequest, res: Response, next: Ne
 // GET /api/suppliers/:id
 export async function getSupplier(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const supplier = await Supplier.findOne({ _id: req.params.id, storeId: req.user!.storeId });
+    const { Supplier } = req.models!;
+    const supplier = await Supplier.findById(req.params.id);
     if (!supplier) { res.status(404).json({ message: 'Supplier not found' }); return; }
     res.json({ data: supplier });
   } catch (err) {
@@ -57,6 +57,7 @@ export async function getSupplier(req: AuthRequest, res: Response, next: NextFun
 // POST /api/suppliers
 export async function createSupplier(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Supplier } = req.models!;
     const storeId = req.user!.storeId;
     const { name, contactPerson, email, phone, address, categories, notes } = req.body;
     if (!name?.trim()) { res.status(400).json({ message: 'Supplier name is required' }); return; }
@@ -75,9 +76,10 @@ export async function createSupplier(req: AuthRequest, res: Response, next: Next
 // PATCH /api/suppliers/:id
 export async function updateSupplier(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Supplier } = req.models!;
     const { name, contactPerson, email, phone, address, categories, status, notes } = req.body;
-    const supplier = await Supplier.findOneAndUpdate(
-      { _id: req.params.id, storeId: req.user!.storeId },
+    const supplier = await Supplier.findByIdAndUpdate(
+      req.params.id,
       { name, contactPerson, email, phone, address, categories, status, notes },
       { new: true, runValidators: true }
     );
@@ -91,7 +93,8 @@ export async function updateSupplier(req: AuthRequest, res: Response, next: Next
 // DELETE /api/suppliers/:id  (Manager only)
 export async function deleteSupplier(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const supplier = await Supplier.findOneAndDelete({ _id: req.params.id, storeId: req.user!.storeId });
+    const { Supplier } = req.models!;
+    const supplier = await Supplier.findByIdAndDelete(req.params.id);
     if (!supplier) { res.status(404).json({ message: 'Supplier not found' }); return; }
     res.json({ message: 'Supplier deleted' });
   } catch (err) {

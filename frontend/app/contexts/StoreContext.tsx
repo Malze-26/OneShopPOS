@@ -1,18 +1,18 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import api from '@/app/lib/api';
 
-// Store context to provide global store settings like name, currency, and theme color
 interface StoreSettings {
-  storeName: string;    //OneShop
-  currency: string; // LKR
-  currencyLocale: string; // en-LK
+  storeName: string;
+  currency: string;
+  currencyLocale: string;
   address: string;
   phone: string;
   email: string;
   storeId: string;
   logoUrl: string;
-  primaryColor: string; //#155dfc(default blue)
+  primaryColor: string;
 }
 
 const defaults: StoreSettings = {
@@ -28,21 +28,20 @@ const defaults: StoreSettings = {
 };
 
 interface StoreContextValue extends StoreSettings {
-  refresh: () => void;
+  refresh: () => Promise<void>;
 }
 
-const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: () => {} });
+const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: () => Promise.resolve() });
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaults);
 
-  // Fetch store settings from the API and update context state
-  const fetchSettings = () => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    fetch(`${apiBase}/settings`)
-      .then(r => r.json())
-      .then(json => { if (json.data) setSettings(json.data); })
-      .catch(() => { /* keep defaults */ });
+  // Uses the Axios instance so the OneShop-Tenant-ID header is automatically
+  // included when a tenant has been selected (stored in localStorage).
+  const fetchSettings = (): Promise<void> => {
+    return api.get<{ data: StoreSettings }>('/settings')
+      .then(({ data }) => { if (data.data) setSettings(data.data); })
+      .catch(() => { /* keep defaults if no tenant is set yet */ });
   };
 
   useEffect(() => {

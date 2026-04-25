@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  getSalesSummary,
   getSalesByProductReport,
   getDailyZReport,
   getInventoryStatusReport,
@@ -11,6 +12,9 @@ const router = express.Router();
 
 // All report routes require authentication
 router.use(protect);
+
+// Sales Summary Report
+router.get('/sales-summary', getSalesSummary);
 
 // Sales by Product Report
 router.get('/sales-by-product', getSalesByProductReport);

@@ -1,17 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, TrendingUp, AlertTriangle, Siren } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
+import api from '@/app/lib/api';
 
-const productData = [
-  { sku: 'AU-001', name: 'Wireless Headphones', cost: 2500,  retail: 4000, stock: 15, value: 37500, status: 'In Stock' },
-  { sku: 'EL-102', name: 'USB-C Hub',           cost: 5000,  retail: 8500, stock: 2,  value: 10000, status: 'Low Stock' },
-  { sku: 'AU-002', name: 'Bluetooth Speaker',   cost: 2500,  retail: 4000, stock: 0,  value: 0,     status: 'Out of Stock' },
-  { sku: 'AU-003', name: 'Smart Watch',         cost: 2500,  retail: 4000, stock: 8,  value: 20000, status: 'In Stock' },
-];
+interface Product {
+  id: string; sku: string; name: string; category: string;
+  cost: number; retail: number; stock: number; value: number; retailValue: number; status: string;
+}
+interface Summary {
+  totalAssetValue: number; totalRetailValue: number;
+  lowStockCount: number; outOfStockCount: number; totalProducts: number;
+}
+interface ApiResponse { summary: Summary; products: Product[] }
 
 const statusConfig: Record<string, { bg: string; text: string }> = {
   'In Stock':     { bg: '#ecfdf3', text: '#12b76a' },
@@ -20,9 +24,28 @@ const statusConfig: Record<string, { bg: string; text: string }> = {
 };
 
 export default function InventoryStatusPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [data, setData]         = useState<ApiResponse | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [searchTerm, setSearch] = useState('');
+  const [statusFilter, setStatus] = useState('');
+  const [categoryFilter, setCategory] = useState('');
 
-  const filtered = productData.filter(
+  const fetchData = () => {
+    const params = new URLSearchParams();
+    if (statusFilter)   params.set('status',   statusFilter);
+    if (categoryFilter) params.set('category', categoryFilter);
+    api.get<ApiResponse>(`/reports/inventory-status?${params.toString()}`)
+      .then(({ data: d }) => setData(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchData(); }, [statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const products = data?.products ?? [];
+  const summary  = data?.summary;
+
+  const filtered = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -44,22 +67,26 @@ export default function InventoryStatusPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565] mb-1">Total Asset Value</p>
-          <h3 className="text-2xl font-bold text-[#101828] mb-3">Rs. 1,250,000</h3>
+          <h3 className="text-2xl font-bold text-[#101828] mb-3">
+            {loading ? '—' : `Rs. ${(summary?.totalAssetValue ?? 0).toLocaleString()}`}
+          </h3>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#4a5565]">Cost Price</span>
+            <span className="text-xs text-[#4a5565]">Cost Price × Qty</span>
             <span className="text-sm font-semibold flex items-center gap-1" style={{ color: '#12b76a' }}>
-              <TrendingUp className="w-3.5 h-3.5" /> +4.2%
+              <TrendingUp className="w-3.5 h-3.5" /> {summary?.totalProducts ?? 0} products
             </span>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565] mb-1">Est. Retail Value</p>
-          <h3 className="text-2xl font-bold text-[#101828] mb-3">Rs. 1,850,000</h3>
+          <h3 className="text-2xl font-bold text-[#101828] mb-3">
+            {loading ? '—' : `Rs. ${(summary?.totalRetailValue ?? 0).toLocaleString()}`}
+          </h3>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#4a5565]">Selling Price</span>
+            <span className="text-xs text-[#4a5565]">Selling Price × Qty</span>
             <span className="text-sm font-semibold flex items-center gap-1" style={{ color: '#12b76a' }}>
-              <TrendingUp className="w-3.5 h-3.5" /> +12.8%
+              <TrendingUp className="w-3.5 h-3.5" />
             </span>
           </div>
         </div>
@@ -72,7 +99,7 @@ export default function InventoryStatusPage() {
                 <AlertTriangle className="w-5 h-5" style={{ color: '#f79009' }} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#101828]">12 Low Stock</p>
+                <p className="text-sm font-semibold text-[#101828]">{summary?.lowStockCount ?? 0} Low Stock</p>
                 <p className="text-xs text-[#4a5565]">Immediate attention</p>
               </div>
             </div>
@@ -81,7 +108,7 @@ export default function InventoryStatusPage() {
                 <Siren className="w-5 h-5" style={{ color: '#f04438' }} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#101828]">3 Out of Stock</p>
+                <p className="text-sm font-semibold text-[#101828]">{summary?.outOfStockCount ?? 0} Out of Stock</p>
                 <p className="text-xs text-[#4a5565]">Critical status</p>
               </div>
             </div>
@@ -99,20 +126,15 @@ export default function InventoryStatusPage() {
               placeholder="Search product or SKU..."
               className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
-            <NativeSelect className="w-40">
-              <NativeSelectOption value="">All Categories</NativeSelectOption>
-              <NativeSelectOption value="baby">Baby Products</NativeSelectOption>
-              <NativeSelectOption value="bakery">Bakery</NativeSelectOption>
-              <NativeSelectOption value="beverages">Beverages</NativeSelectOption>
-            </NativeSelect>
-            <NativeSelect className="w-40">
-              <NativeSelectOption value="">All Channels</NativeSelectOption>
-              <NativeSelectOption value="pos">POS (In-store)</NativeSelectOption>
-              <NativeSelectOption value="online">E-commerce (Online)</NativeSelectOption>
+            <NativeSelect className="w-40" value={statusFilter} onChange={(e) => setStatus(e.target.value)}>
+              <NativeSelectOption value="">All Statuses</NativeSelectOption>
+              <NativeSelectOption value="In Stock">In Stock</NativeSelectOption>
+              <NativeSelectOption value="Low Stock">Low Stock</NativeSelectOption>
+              <NativeSelectOption value="Out of Stock">Out of Stock</NativeSelectOption>
             </NativeSelect>
           </div>
         </div>
@@ -121,7 +143,8 @@ export default function InventoryStatusPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Stock', 'Value (Rs.)', 'Status', 'Action'].map((h) => (
+                {['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Quantity',
+                  'Cost Value (Rs.)', 'Retail Value (Rs.)', 'Status'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -129,46 +152,42 @@ export default function InventoryStatusPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e4e7ec]">
-              {filtered.map((product) => (
-                <tr key={product.sku} className="hover:bg-[#f9fafb] transition-colors">
-                  <td className="px-5 py-4 text-sm font-medium text-[var(--color-primary)]">{product.sku}</td>
-                  <td className="px-5 py-4 text-sm text-[#101828]">{product.name}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{product.cost.toLocaleString()}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{product.retail.toLocaleString()}</td>
-                  <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{product.stock}</td>
-                  <td className="px-5 py-4 text-sm text-[#4a5565]">{product.value.toLocaleString()}</td>
-                  <td className="px-5 py-4">
-                    <span
-                      className="inline-block px-2 py-1 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: statusConfig[product.status]?.bg,
-                        color: statusConfig[product.status]?.text,
-                      }}
-                    >
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <button className="text-sm font-medium hover:underline" style={{ color: 'var(--color-primary)' }}>
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={8} className="px-5 py-8 text-sm text-[#4a5565] text-center">Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={8} className="px-5 py-8 text-sm text-[#4a5565] text-center">No products found</td></tr>
+              ) : (
+                filtered.map((product) => (
+                  <tr key={product.id} className="hover:bg-[#f9fafb] transition-colors">
+                    <td className="px-5 py-4 text-sm font-medium text-[var(--color-primary)]">{product.sku}</td>
+                    <td className="px-5 py-4 text-sm text-[#101828]">{product.name}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{product.cost.toLocaleString()}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{product.retail.toLocaleString()}</td>
+                    <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{product.stock}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{product.value.toLocaleString()}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{product.retailValue.toLocaleString()}</td>
+                    <td className="px-5 py-4">
+                      <span
+                        className="inline-block px-2 py-1 rounded-full text-xs font-medium"
+                        style={{
+                          backgroundColor: statusConfig[product.status]?.bg,
+                          color: statusConfig[product.status]?.text,
+                        }}
+                      >
+                        {product.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        <div className="px-5 py-4 border-t border-[#e4e7ec] flex items-center justify-between">
-          <p className="text-sm text-[#4a5565]">Showing 1 to {filtered.length} of {productData.length} products</p>
-          <div className="flex gap-2">
-            <button className="px-3 py-1.5 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm font-medium transition-colors" disabled>
-              Previous
-            </button>
-            <button className="px-3 py-1.5 bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] rounded-lg text-sm font-medium transition-colors" disabled>
-              Next
-            </button>
-          </div>
+        <div className="px-5 py-4 border-t border-[#e4e7ec]">
+          <p className="text-sm text-[#4a5565]">
+            Showing {filtered.length} of {products.length} products
+          </p>
         </div>
       </div>
     </div>

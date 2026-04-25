@@ -23,7 +23,7 @@ export interface IProduct extends Document {
   unit: 'kg' | 'item';
 }
 
-const productSchema = new Schema<IProduct>(
+export const productSchema = new Schema<IProduct>(
   {
     name: {
       type: String,

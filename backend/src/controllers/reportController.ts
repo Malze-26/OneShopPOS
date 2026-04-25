@@ -1,16 +1,118 @@
-import { Request, Response } from 'express';
-import { Order } from '../models/Order';
-import { Product } from '../models/Product';
-import { Customer } from '../models/Customer';
-import { Transaction } from '../models/Transaction';
+import { Response } from 'express';
+import { AuthRequest } from '../types';
 import { buildDateFilter, getDateRangeLabel } from '../utils/dateRange';
 
-// ============= Sales by Product Report =============
-export const getSalesByProductReport = async (req: Request, res: Response) => {
+// ============= Sales Summary Report =============
+export const getSalesSummary = async (req: AuthRequest, res: Response) => {
   try {
+    const { Transaction } = req.models!;
     const { preset, startDate, endDate } = req.query;
 
-    // Build date filter using utility - supports presets (today, last-7-days, this-month) or custom dates
+    const dateFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
+    const dateLabel  = getDateRangeLabel(preset as string, startDate as string, endDate as string);
+
+    const [summaryAgg, hourlyAgg, paymentAgg, dailyAgg] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { ...dateFilter } },
+        {
+          $group: {
+            _id: null,
+            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            refundTotal:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            refundCount:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
+            transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
+          },
+        },
+      ]),
+      // Hourly breakdown — only successful
+      Transaction.aggregate([
+        { $match: { ...dateFilter, status: 'success' } },
+        {
+          $group: {
+            _id: { $hour: '$createdAt' },
+            sales: { $sum: '$amount' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      // Payment method breakdown
+      Transaction.aggregate([
+        { $match: { ...dateFilter, status: 'success' } },
+        {
+          $group: {
+            _id: '$paymentMethod',
+            total: { $sum: '$amount' },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      // Daily breakdown for table
+      Transaction.aggregate([
+        { $match: { ...dateFilter, status: 'success' } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            grossSales: { $sum: '$amount' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const s = summaryAgg[0] ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0 };
+    const netSales  = s.grossSales - s.refundTotal;
+    const avgOrder  = s.transactionCount > 0 ? Math.round(s.grossSales / s.transactionCount) : 0;
+
+    // Hourly — fill hours 0–23
+    const hourMap = new Map(hourlyAgg.map((h: { _id: number; sales: number }) => [h._id, h.sales]));
+    const HOURS = ['12 AM','1 AM','2 AM','3 AM','4 AM','5 AM','6 AM','7 AM','8 AM',
+                   '9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM',
+                   '6 PM','7 PM','8 PM','9 PM','10 PM','11 PM'];
+    const hourlySales = HOURS.map((label, i) => ({ time: label, sales: hourMap.get(i) ?? 0 }));
+
+    // Payment methods as percentages
+    const paymentTotal = paymentAgg.reduce((s: number, p: { total: number }) => s + p.total, 0);
+    const paymentMethods = paymentAgg.map((p: { _id: string; total: number; count: number }) => ({
+      name: p._id,
+      amount: p.total,
+      count: p.count,
+      percentage: paymentTotal > 0 ? Math.round((p.total / paymentTotal) * 100) : 0,
+    }));
+
+    // Daily rows
+    const salesBreakdown = dailyAgg.map((d: { _id: string; grossSales: number; count: number }) => ({
+      date: new Date(d._id).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      grossSales: d.grossSales,
+      count: d.count,
+    }));
+
+    res.json({
+      dateRange: dateLabel,
+      summary: {
+        grossSales:       s.grossSales,
+        refundsCount:     s.refundCount,
+        refundTotal:      s.refundTotal,
+        netSales,
+        transactionCount: s.transactionCount,
+        avgOrderValue:    avgOrder,
+      },
+      hourlySales,
+      paymentMethods,
+      salesBreakdown,
+    });
+  } catch (error) {
+    console.error('Error fetching sales summary:', error);
+    res.status(500).json({ error: 'Failed to fetch sales summary' });
+  }
+};
+
+// ============= Sales by Product Report =============
+export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const { Order } = req.models!;
+    const { preset, startDate, endDate } = req.query;
+
     const dateMatchFilter = buildDateFilter(
       preset as string,
       startDate as string,
@@ -18,7 +120,6 @@ export const getSalesByProductReport = async (req: Request, res: Response) => {
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Aggregate sales by product
     const salesData = await Order.aggregate([
       {
         $match: {
@@ -40,7 +141,6 @@ export const getSalesByProductReport = async (req: Request, res: Response) => {
       { $limit: 100 },
     ]);
 
-    // Get top grossing item
     const topGrossingItem = await Order.aggregate([
       {
         $match: {
@@ -60,7 +160,6 @@ export const getSalesByProductReport = async (req: Request, res: Response) => {
       { $limit: 1 },
     ]);
 
-    // Get total units sold
     const totalUnitsSold = await Order.aggregate([
       {
         $match: {
@@ -72,7 +171,6 @@ export const getSalesByProductReport = async (req: Request, res: Response) => {
       { $group: { _id: null, total: { $sum: '$items.quantity' } } },
     ]);
 
-    // Get top category by revenue
     const topCategoryByRevenue = await Order.aggregate([
       {
         $match: {
@@ -124,11 +222,11 @@ export const getSalesByProductReport = async (req: Request, res: Response) => {
 };
 
 // ============= Daily Z Report =============
-export const getDailyZReport = async (req: Request, res: Response) => {
+export const getDailyZReport = async (req: AuthRequest, res: Response) => {
   try {
+    const { Order, Transaction } = req.models!;
     const { preset, startDate, endDate } = req.query;
 
-    // Build date filter using utility
     const dateMatchFilter = buildDateFilter(
       preset as string,
       startDate as string,
@@ -136,7 +234,6 @@ export const getDailyZReport = async (req: Request, res: Response) => {
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Get gross sales and total transactions
     const salesSummary = await Order.aggregate([
       {
         $match: {
@@ -163,7 +260,6 @@ export const getDailyZReport = async (req: Request, res: Response) => {
       },
     ]);
 
-    // Get payment method breakdown
     const paymentBreakdown = await Transaction.aggregate([
       {
         $match: {
@@ -210,36 +306,25 @@ export const getDailyZReport = async (req: Request, res: Response) => {
 };
 
 // ============= Inventory Status Report =============
-export const getInventoryStatusReport = async (req: Request, res: Response) => {
+export const getInventoryStatusReport = async (req: AuthRequest, res: Response) => {
   try {
+    const { Product } = req.models!;
     const { category, status, sortBy } = req.query;
 
-    // Build aggregation pipeline for inventory report
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pipeline: any[] = [
-      // Match products (optional category filter)
       {
         $match: category ? { category: category as string } : {},
       },
-      // Add calculated fields for inventory metrics
       {
         $addFields: {
-          assetValue: {
-            $multiply: ['$stock', '$costPrice'],
-          },
-          retailValue: {
-            $multiply: ['$stock', '$sellingPrice'],
-          },
+          assetValue:  { $multiply: ['$stock', '$costPrice'] },
+          retailValue: { $multiply: ['$stock', '$sellingPrice'] },
           stockStatus: {
             $cond: [
               { $eq: ['$stock', 0] },
               'Out of Stock',
-              {
-                $cond: [
-                  { $lte: ['$stock', '$lowStockThreshold'] },
-                  'Low Stock',
-                  'In Stock',
-                ],
-              },
+              { $cond: [{ $lte: ['$stock', '$lowStockThreshold'] }, 'Low Stock', 'In Stock'] },
             ],
           },
           margin: {
@@ -248,12 +333,7 @@ export const getInventoryStatusReport = async (req: Request, res: Response) => {
               0,
               {
                 $multiply: [
-                  {
-                    $divide: [
-                      { $subtract: ['$sellingPrice', '$costPrice'] },
-                      '$costPrice',
-                    ],
-                  },
+                  { $divide: [{ $subtract: ['$sellingPrice', '$costPrice'] }, '$costPrice'] },
                   100,
                 ],
               },
@@ -261,54 +341,30 @@ export const getInventoryStatusReport = async (req: Request, res: Response) => {
           },
         },
       },
-      // Optional status filter
-      ...(status
-        ? [
-            {
-              $match: { stockStatus: status as string },
-            },
-          ]
-        : []),
-      // Sort by specified field
+      ...(status ? [{ $match: { stockStatus: status as string } }] : []),
       {
         $sort:
-          sortBy === 'value'
-            ? { assetValue: -1 }
-            : sortBy === 'stock'
-              ? { stock: -1 }
-              : sortBy === 'margin'
-                ? { margin: -1 }
-                : { _id: -1 },
+          sortBy === 'value'  ? { assetValue: -1 }
+          : sortBy === 'stock'  ? { stock: -1 }
+          : sortBy === 'margin' ? { margin: -1 }
+          : { _id: -1 },
       },
     ];
 
-    // Execute main query for product details
     const products = await Product.aggregate(pipeline);
 
-    // Calculate summary statistics using separate aggregation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const summaryPipeline: any[] = [
-      {
-        $match: category ? { category: category as string } : {},
-      },
+      { $match: category ? { category: category as string } : {} },
       {
         $addFields: {
-          assetValue: {
-            $multiply: ['$stock', '$costPrice'],
-          },
-          retailValue: {
-            $multiply: ['$stock', '$sellingPrice'],
-          },
+          assetValue:  { $multiply: ['$stock', '$costPrice'] },
+          retailValue: { $multiply: ['$stock', '$sellingPrice'] },
           stockStatus: {
             $cond: [
               { $eq: ['$stock', 0] },
               'Out of Stock',
-              {
-                $cond: [
-                  { $lte: ['$stock', '$lowStockThreshold'] },
-                  'Low Stock',
-                  'In Stock',
-                ],
-              },
+              { $cond: [{ $lte: ['$stock', '$lowStockThreshold'] }, 'Low Stock', 'In Stock'] },
             ],
           },
         },
@@ -316,44 +372,23 @@ export const getInventoryStatusReport = async (req: Request, res: Response) => {
       {
         $group: {
           _id: null,
-          totalAssetValue: { $sum: '$assetValue' },
+          totalAssetValue:  { $sum: '$assetValue' },
           totalRetailValue: { $sum: '$retailValue' },
-          lowStockCount: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $gt: ['$stock', 0] },
-                    { $lte: ['$stock', '$lowStockThreshold'] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          outOfStockCount: {
-            $sum: {
-              $cond: [{ $eq: ['$stock', 0] }, 1, 0],
-            },
-          },
-          totalProducts: { $sum: 1 },
-          totalUnits: { $sum: '$stock' },
+          lowStockCount:    { $sum: { $cond: [{ $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] }, 1, 0] } },
+          outOfStockCount:  { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
+          totalProducts:    { $sum: 1 },
+          totalUnits:       { $sum: '$stock' },
         },
       },
     ];
 
     const summary = await Product.aggregate(summaryPipeline);
     const summaryData = summary[0] || {
-      totalAssetValue: 0,
-      totalRetailValue: 0,
-      lowStockCount: 0,
-      outOfStockCount: 0,
-      totalProducts: 0,
-      totalUnits: 0,
+      totalAssetValue: 0, totalRetailValue: 0, lowStockCount: 0,
+      outOfStockCount: 0, totalProducts: 0, totalUnits: 0,
     };
 
-    // Format product items with all relevant details
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const inventoryItems = products.map((product: any) => ({
       id: product._id,
       sku: product.sku,
@@ -373,17 +408,13 @@ export const getInventoryStatusReport = async (req: Request, res: Response) => {
 
     res.json({
       summary: {
-        totalAssetValue: Number(summaryData.totalAssetValue.toFixed(2)),
+        totalAssetValue:  Number(summaryData.totalAssetValue.toFixed(2)),
         totalRetailValue: Number(summaryData.totalRetailValue.toFixed(2)),
-        lowStockCount: summaryData.lowStockCount,
-        outOfStockCount: summaryData.outOfStockCount,
-        totalProducts: summaryData.totalProducts,
-        totalUnits: summaryData.totalUnits,
-        potentialMargin: Number(
-          (
-            summaryData.totalRetailValue - summaryData.totalAssetValue
-          ).toFixed(2)
-        ),
+        lowStockCount:    summaryData.lowStockCount,
+        outOfStockCount:  summaryData.outOfStockCount,
+        totalProducts:    summaryData.totalProducts,
+        totalUnits:       summaryData.totalUnits,
+        potentialMargin:  Number((summaryData.totalRetailValue - summaryData.totalAssetValue).toFixed(2)),
       },
       products: inventoryItems,
     });
@@ -394,11 +425,11 @@ export const getInventoryStatusReport = async (req: Request, res: Response) => {
 };
 
 // ============= Customer Activity Report =============
-export const getCustomerActivityReport = async (req: Request, res: Response) => {
+export const getCustomerActivityReport = async (req: AuthRequest, res: Response) => {
   try {
+    const { Order, Customer } = req.models!;
     const { preset, startDate, endDate } = req.query;
 
-    // Build date filter using utility
     const dateMatchFilter = buildDateFilter(
       preset as string,
       startDate as string,
@@ -406,26 +437,14 @@ export const getCustomerActivityReport = async (req: Request, res: Response) => 
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Get unique customers in the period
     const uniqueCustomers = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
-        },
-      },
+      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
       { $group: { _id: '$customerName' } },
       { $count: 'total' },
     ]);
 
-    // Get top spender
     const topSpender = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
-        },
-      },
+      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
       {
         $group: {
           _id: '$customerName',
@@ -437,24 +456,13 @@ export const getCustomerActivityReport = async (req: Request, res: Response) => 
       { $limit: 1 },
     ]);
 
-    // Get new vs returning customers
-    const allCustomers = await Customer.find().lean();
+    await Customer.find({}).lean();
     const newVsReturning = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
-        },
-      },
-      {
-        $group: {
-          _id: '$customerName',
-          orderCount: { $sum: 1 },
-        },
-      },
+      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
+      { $group: { _id: '$customerName', orderCount: { $sum: 1 } } },
       {
         $facet: {
-          new: [{ $match: { orderCount: 1 } }, { $count: 'count' }],
+          new:       [{ $match: { orderCount: 1 } }, { $count: 'count' }],
           returning: [{ $match: { orderCount: { $gt: 1 } } }, { $count: 'count' }],
         },
       },
@@ -465,14 +473,8 @@ export const getCustomerActivityReport = async (req: Request, res: Response) => 
     const totalNewReturning = newCount + returningCount;
     const returningPercentage = totalNewReturning > 0 ? Math.round((returningCount / totalNewReturning) * 100) : 0;
 
-    // Get customer list with details
     const customerList = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
-        },
-      },
+      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
       {
         $group: {
           _id: '$customerName',
@@ -484,22 +486,14 @@ export const getCustomerActivityReport = async (req: Request, res: Response) => 
       },
       {
         $addFields: {
-          type: {
-            $cond: [{ $eq: ['$totalOrders', 1] }, 'New', 'Returning'],
-          },
+          type: { $cond: [{ $eq: ['$totalOrders', 1] }, 'New', 'Returning'] },
           loyaltyTier: {
             $cond: [
-              { $gte: ['$totalSpent', 100000] },
-              'Platinum',
-              {
-                $cond: [
-                  { $gte: ['$totalSpent', 50000] },
-                  'Gold',
-                  {
-                    $cond: [{ $gte: ['$totalSpent', 20000] }, 'Silver', 'Bronze'],
-                  },
-                ],
-              },
+              { $gte: ['$totalSpent', 100000] }, 'Platinum',
+              { $cond: [
+                { $gte: ['$totalSpent', 50000] }, 'Gold',
+                { $cond: [{ $gte: ['$totalSpent', 20000] }, 'Silver', 'Bronze'] },
+              ] },
             ],
           },
         },
@@ -508,14 +502,9 @@ export const getCustomerActivityReport = async (req: Request, res: Response) => 
       { $limit: 50 },
       {
         $project: {
-          name: '$_id',
-          phone: 1,
-          type: 1,
-          orderCount: '$totalOrders',
-          spent: '$totalSpent',
-          loyaltyTier: 1,
-          lastOrder: 1,
-          _id: 0,
+          name: '$_id', phone: 1, type: 1,
+          orderCount: '$totalOrders', spent: '$totalSpent',
+          loyaltyTier: 1, lastOrder: 1, _id: 0,
         },
       },
     ]);

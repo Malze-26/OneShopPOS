@@ -2,9 +2,6 @@ import { Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { AuthRequest } from '../types';
-import { Product } from '../models/Product';
-import { StockHistory } from '../models/StockHistory';
-import { Category } from '../models/Category';
 import {
   DEFAULT_CATEGORY_NAME,
   DEFAULT_LOW_STOCK_THRESHOLD,
@@ -13,8 +10,6 @@ import {
   STOCK_HISTORY_RECENT_LIMIT,
   SYSTEM_ACTOR,
 } from '../constants';
-
-// ── Types ──────────────────────────────────────────────────────────────────
 
 interface CSVRow {
   name: string;
@@ -33,20 +28,12 @@ interface StockAdjustBody {
 }
 
 // ── GET /api/products ──────────────────────────────────────────────────────
-
-/**
- * Returns all products for the authenticated store.
- * Supports optional query filters:
- *   - search: matches product name or SKU (case-insensitive)
- *   - category: exact category name
- *   - status: 'in_stock' | 'low_stock' | 'out_of_stock' (applied in-memory — status is a virtual field)
- */
 export async function getProducts(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Product } = req.models!;
     const { search, category, status } = req.query;
-    const storeId = req.user!.storeId;
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
 
     if (search) {
       filter.$or = [
@@ -68,15 +55,10 @@ export async function getProducts(req: AuthRequest, res: Response, next: NextFun
 }
 
 // ── GET /api/products/:id ──────────────────────────────────────────────────
-
-/**
- * Returns a single product by ID along with its recent stock history.
- * Returns 404 if the product does not belong to the authenticated store.
- */
 export async function getProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
-    const product = await Product.findOne({ _id: req.params.id, storeId });
+    const { Product, StockHistory } = req.models!;
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
@@ -94,18 +76,12 @@ export async function getProduct(req: AuthRequest, res: Response, next: NextFunc
 }
 
 // ── POST /api/products ─────────────────────────────────────────────────────
-
-/**
- * Creates a new product under the authenticated store.
- * Also increments the category's product count and records initial stock history
- * if the opening stock is greater than zero.
- */
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Product, Category, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user!.id;
 
-    // Explicit field pick prevents unintended fields from being stored
     const {
       name,
       sku,
@@ -143,7 +119,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
     });
 
     await Category.findOneAndUpdate(
-      { name: category, storeId },
+      { name: category },
       { $inc: { productCount: 1 } }
     );
 
@@ -165,15 +141,9 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 }
 
 // ── PUT /api/products/:id ──────────────────────────────────────────────────
-
-/**
- * Updates an existing product.
- * Runs Mongoose validators on the updated fields.
- * Returns 404 if the product does not belong to the authenticated store.
- */
 export async function updateProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Product } = req.models!;
 
     const {
       name,
@@ -193,8 +163,8 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       category?: string;
     };
 
-    const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, storeId },
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
       { name, sku, description, sellingPrice, costPrice, lowStockThreshold, category },
       { new: true, runValidators: true }
     );
@@ -211,17 +181,11 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
 }
 
 // ── DELETE /api/products/:id ───────────────────────────────────────────────
-
-/**
- * Deletes a product and cleans up its associated stock history.
- * Also decrements the category's product count.
- * Returns 404 if the product does not belong to the authenticated store.
- */
 export async function deleteProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Product, Category, StockHistory } = req.models!;
 
-    const product = await Product.findOneAndDelete({ _id: req.params.id, storeId });
+    const product = await Product.findByIdAndDelete(req.params.id);
 
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
@@ -229,7 +193,7 @@ export async function deleteProduct(req: AuthRequest, res: Response, next: NextF
     }
 
     await Category.findOneAndUpdate(
-      { name: product.category, storeId },
+      { name: product.category },
       { $inc: { productCount: -1 } }
     );
 
@@ -242,17 +206,9 @@ export async function deleteProduct(req: AuthRequest, res: Response, next: NextF
 }
 
 // ── POST /api/products/:id/adjust-stock ───────────────────────────────────
-
-/**
- * Manually adjusts the stock level of a product (add or remove).
- * Validates that:
- *   - type is 'add' or 'remove'
- *   - quantity is a positive integer
- *   - resulting stock does not go below zero
- * Records every adjustment in StockHistory for audit purposes.
- */
 export async function adjustStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Product, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const { type, quantity, reason } = req.body as StockAdjustBody;
 
@@ -265,7 +221,7 @@ export async function adjustStock(req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
-    const product = await Product.findOne({ _id: req.params.id, storeId });
+    const product = await Product.findById(req.params.id);
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
       return;
@@ -297,14 +253,9 @@ export async function adjustStock(req: AuthRequest, res: Response, next: NextFun
 }
 
 // ── POST /api/products/bulk/import-csv ────────────────────────────────────
-
-/**
- * Bulk-creates products from a pre-parsed CSV row array.
- * Validates each row individually and reports per-row errors without
- * stopping the entire import. Returns a summary of imported vs failed rows.
- */
 export async function importCSV(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const { Product } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user!.id;
     const rows: CSVRow[] = req.body.rows;
@@ -360,14 +311,9 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
 }
 
 // ── POST /api/products/:id/images ─────────────────────────────────────────
-
-/**
- * Appends one or more uploaded image files to a product's image list.
- * Cleans up uploaded files from disk if the product is not found.
- */
 export async function uploadProductImages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Product } = req.models!;
     const files = req.files as Express.Multer.File[] | undefined;
 
     if (!files || files.length === 0) {
@@ -375,7 +321,7 @@ export async function uploadProductImages(req: AuthRequest, res: Response, next:
       return;
     }
 
-    const product = await Product.findOne({ _id: req.params.id, storeId });
+    const product = await Product.findById(req.params.id);
     if (!product) {
       files.forEach((f) => { try { fs.unlinkSync(f.path); } catch { /* ignore */ } });
       res.status(404).json({ message: 'Product not found' });
@@ -393,18 +339,13 @@ export async function uploadProductImages(req: AuthRequest, res: Response, next:
 }
 
 // ── DELETE /api/products/:id/images/:filename ──────────────────────────────
-
-/**
- * Removes a single image from a product and deletes the file from disk.
- * Silently skips the disk deletion if the file no longer exists.
- */
 export async function deleteProductImage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { Product } = req.models!;
     const { filename } = req.params;
     const imagePath = `/uploads/products/${filename}`;
 
-    const product = await Product.findOne({ _id: req.params.id, storeId });
+    const product = await Product.findById(req.params.id);
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
       return;

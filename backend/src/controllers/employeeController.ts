@@ -1,9 +1,5 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
-import { User } from '../models/User';
-import { Transaction } from '../models/Transaction';
-
-// ── Types ──────────────────────────────────────────────────────────────────
 
 interface TxnStat {
   _id: string;
@@ -11,9 +7,6 @@ interface TxnStat {
   transactions: number;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-/** Derives a two-letter uppercase avatar string from a full name. */
 function getInitials(name: string): string {
   return name
     .split(' ')
@@ -23,30 +16,18 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-/** Formats a Date to a short local date+time string for Sri Lanka. */
 function formatLastActive(date?: Date): string {
   if (!date) return 'Never';
   return date.toLocaleString('en-LK', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 // ── GET /api/employees ─────────────────────────────────────────────────────
-
-/**
- * Returns all employees for the authenticated store with their transaction stats.
- * Supports optional query filters:
- *   - search: matches name, email, or phone (case-insensitive)
- *   - role: 'Manager' | 'Cashier' | 'Sales Representative'
- *   - status: 'Active' | 'Inactive'
- *
- * Transaction revenue and count are fetched in a single aggregation and merged
- * in-memory to avoid N+1 queries.
- */
 export async function getEmployees(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { User, Transaction } = req.models!;
     const { search, role, status } = req.query;
 
-    const filter: Record<string, unknown> = { storeId };
+    const filter: Record<string, unknown> = {};
 
     if (role && role !== 'All Roles') filter.role = role;
     if (status === 'Active') filter.isActive = true;
@@ -62,7 +43,7 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
     const [users, txnStats] = await Promise.all([
       User.find(filter).sort({ createdAt: 1 }),
       Transaction.aggregate<TxnStat>([
-        { $match: { storeId, status: 'success' } },
+        { $match: { status: 'success' } },
         {
           $group: {
             _id: '$createdBy',
@@ -98,18 +79,12 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
 }
 
 // ── PUT /api/employees/:id/deactivate ─────────────────────────────────────
-
-/**
- * Deactivates an employee account (sets isActive to false).
- * A deactivated employee cannot log in.
- * Returns 404 if the employee does not belong to the authenticated store.
- */
 export async function deactivateEmployee(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { User } = req.models!;
 
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id, storeId },
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
       { isActive: false },
       { new: true }
     );
@@ -126,17 +101,12 @@ export async function deactivateEmployee(req: AuthRequest, res: Response, next: 
 }
 
 // ── PUT /api/employees/:id/activate ───────────────────────────────────────
-
-/**
- * Re-activates a previously deactivated employee account.
- * Returns 404 if the employee does not belong to the authenticated store.
- */
 export async function activateEmployee(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const storeId = req.user!.storeId;
+    const { User } = req.models!;
 
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id, storeId },
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
       { isActive: true },
       { new: true }
     );
