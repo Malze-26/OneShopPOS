@@ -50,6 +50,7 @@ export default function EmployeesPage() {
   const [search, setSearch]               = useState('');
   const [roleFilter, setRoleFilter]       = useState('All Roles');
   const [statusFilter, setStatusFilter]   = useState('All Status');
+  const [preset, setPreset]               = useState('this-month');
 
   // Add Employee modal
   const [showModal, setShowModal]         = useState(false);
@@ -71,6 +72,7 @@ export default function EmployeesPage() {
       if (search)                         params.search = search;
       if (roleFilter !== 'All Roles')     params.role   = roleFilter;
       if (statusFilter !== 'All Status')  params.status = statusFilter;
+      if (preset)                         params.preset = preset;
       const res = await api.get('/employees', { params });
       setEmployees(res.data.data ?? []);
     } catch {
@@ -78,12 +80,12 @@ export default function EmployeesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, statusFilter]);
+  }, [search, roleFilter, statusFilter, preset]);
 
   useEffect(() => {
     const t = setTimeout(fetchEmployees, search ? 300 : 0);
     return () => clearTimeout(t);
-  }, [fetchEmployees, search]);
+  }, [fetchEmployees, search, preset]);
 
   const inactiveCount = employees.filter((e) => e.status === 'inactive').length;
 
@@ -157,6 +159,28 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+
+      {/* Date Range Selector */}
+      <div className="flex items-center gap-2 mb-4 bg-white p-1 rounded-xl border border-[#e4e7ec] w-fit shadow-sm">
+        {[
+          { id: 'today', label: 'Today' },
+          { id: 'last-7-days', label: 'Last 7 Days' },
+          { id: 'this-month', label: 'This Month' },
+          { id: 'all-time', label: 'All Time' },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setPreset(item.id)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+              preset === item.id
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'text-[#4a5565] hover:bg-[#f5f8ff] hover:text-[var(--color-primary)]'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec] mb-6">

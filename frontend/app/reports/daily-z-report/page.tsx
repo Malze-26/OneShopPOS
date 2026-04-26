@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
@@ -12,15 +13,19 @@ interface ApiResponse { dateRange: string; summary: ZSummary; paymentBreakdown: 
 
 export default function DailyZReportPage() {
   const { currency } = useStore();
+  const searchParams = useSearchParams();
+  const preset = searchParams.get('preset') || 'today';
+
   const [data, setData]       = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<ApiResponse>('/reports/daily-z-report?preset=today')
+    setLoading(true);
+    api.get<ApiResponse>(`/reports/daily-z-report?preset=${preset}`)
       .then(({ data: d }) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [preset]);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
   const s   = data?.summary;

@@ -5,6 +5,8 @@ import { Search, ShoppingCart, Star, Shapes } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
+import { useSearchParams } from 'next/navigation';
+import api from '@/app/lib/api';
 
 interface SummaryData {
   totalUnitsSold: number;
@@ -28,6 +30,11 @@ export default function SalesByProductPage() {
   const [productData, setProductData] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const searchParams = useSearchParams();
+  const preset = searchParams.get('preset') || 'today';
 
   useEffect(() => {
     const fetchSalesData = async () => {
@@ -35,13 +42,8 @@ export default function SalesByProductPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch('/api/reports/sales-by-product', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch sales data');
-
-        const data = await response.json();
+        const response = await api.get(`/reports/sales-by-product?preset=${preset}`);
+        const data = response.data;
         setSummaryData(data.summary);
         setProductData(data.products ?? []);
       } catch {
@@ -52,41 +54,41 @@ export default function SalesByProductPage() {
     };
 
     fetchSalesData();
-  }, []);
+  }, [preset]);
 
   const summaryCards = summaryData
     ? [
-        {
-          title: 'Total Units Sold',
-          value: summaryData.totalUnitsSold.toLocaleString(),
-          subtext: 'units this period',
-          icon: ShoppingCart,
-          iconBg: 'var(--color-primary-light)',
-          iconColor: 'var(--color-primary)',
-        },
-        {
-          title: 'Top Grossing Item',
-          value: summaryData.topGrossingItem || 'N/A',
-          subtext: `Rs. ${(summaryData.topGrossingAmount ?? 0).toLocaleString()}`,
-          icon: Star,
-          iconBg: '#fffaeb',
-          iconColor: '#f79009',
-        },
-        {
-          title: 'Top Category',
-          value: summaryData.topCategory || 'N/A',
-          subtext: `Rs. ${(summaryData.topCategoryRevenue ?? 0).toLocaleString()}`,
-          icon: Shapes,
-          iconBg: '#f4f3ff',
-          iconColor: '#7f56d9',
-        },
-      ]
+      {
+        title: 'Total Units Sold',
+        value: summaryData.totalUnitsSold.toLocaleString(),
+        subtext: 'units this period',
+        icon: ShoppingCart,
+        iconBg: 'var(--color-primary-light)',
+        iconColor: 'var(--color-primary)',
+      },
+      {
+        title: 'Top Grossing Item',
+        value: summaryData.topGrossingItem || 'N/A',
+        subtext: `Rs. ${(summaryData.topGrossingAmount ?? 0).toLocaleString()}`,
+        icon: Star,
+        iconBg: '#fffaeb',
+        iconColor: '#f79009',
+      },
+      {
+        title: 'Top Category',
+        value: summaryData.topCategory || 'N/A',
+        subtext: `Rs. ${(summaryData.topCategoryRevenue ?? 0).toLocaleString()}`,
+        icon: Shapes,
+        iconBg: '#f4f3ff',
+        iconColor: '#7f56d9',
+      },
+    ]
     : [];
 
   const filtered = productData.filter(
     (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()),
+      (p?.name?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? '') ||
+      (p?.sku?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? ''),
   );
 
   return (
@@ -162,7 +164,7 @@ export default function SalesByProductPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['SKU', 'Product Name', 'Category', 'Qty Sold', 'Net Sales'].map((h) => (
+                {['SKU', 'Product Name', 'Category', 'Unit Price', 'Stock', 'Qty Sold', 'Net Sales'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -172,7 +174,7 @@ export default function SalesByProductPage() {
             <tbody className="divide-y divide-[#e4e7ec]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#4a5565]">Loading...</td>
+                  <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#4a5565]">Loading...</td>
                 </tr>
               ) : filtered.length > 0 ? (
                 filtered.map((product) => (
@@ -180,13 +182,15 @@ export default function SalesByProductPage() {
                     <td className="px-5 py-4 text-sm font-medium" style={{ color: 'var(--color-primary)' }}>{product.sku}</td>
                     <td className="px-5 py-4 text-sm text-[#101828]">{product.name}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{product.category}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">Rs. {product.unitPrice?.toLocaleString() ?? 0}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{product.stock ?? 0}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{product.qty}</td>
                     <td className="px-5 py-4 text-sm font-semibold text-[#101828]">Rs. {product.sales.toLocaleString()}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#4a5565]">No products found</td>
+                  <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#4a5565]">No products found</td>
                 </tr>
               )}
             </tbody>

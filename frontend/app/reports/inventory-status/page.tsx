@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Search, TrendingUp, AlertTriangle, Siren } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
+import { useSearchParams } from 'next/navigation';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
@@ -24,6 +25,9 @@ const statusConfig: Record<string, { bg: string; text: string }> = {
 };
 
 export default function InventoryStatusPage() {
+  const searchParams = useSearchParams();
+  const preset = searchParams.get('preset') || 'today';
+
   const [data, setData]         = useState<ApiResponse | null>(null);
   const [loading, setLoading]   = useState(true);
   const [searchTerm, setSearch] = useState('');
@@ -40,15 +44,15 @@ export default function InventoryStatusPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, [statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [statusFilter, categoryFilter, preset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const products = data?.products ?? [];
   const summary  = data?.summary;
 
   const filtered = products.filter(
     (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()),
+      (p?.name?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? '') ||
+      (p?.sku?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? ''),
   );
 
   return (

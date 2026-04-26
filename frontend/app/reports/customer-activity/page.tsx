@@ -6,6 +6,7 @@ import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { useSearchParams } from 'next/navigation';
 
 interface CustomerRow {
   name: string; phone: string; type: string;
@@ -18,32 +19,36 @@ interface Summary {
 interface ApiResponse { dateRange: string; summary: Summary; customers: CustomerRow[] }
 
 const loyaltyColors: Record<string, { bg: string; text: string }> = {
-  Gold:     { bg: '#fffaeb', text: '#f79009' },
-  Silver:   { bg: '#f9fafb', text: '#4a5565' },
+  Gold: { bg: '#fffaeb', text: '#f79009' },
+  Silver: { bg: '#f9fafb', text: '#4a5565' },
   Platinum: { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
-  Bronze:   { bg: '#fef3f2', text: '#b45309' },
+  Bronze: { bg: '#fef3f2', text: '#b45309' },
 };
 
 export default function CustomerActivityPage() {
   const { currency } = useStore();
-  const [data, setData]         = useState<ApiResponse | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const searchParams = useSearchParams();
+  const preset = searchParams.get('preset') || 'today';
+
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearch] = useState('');
 
   useEffect(() => {
-    api.get<ApiResponse>('/reports/customer-activity?preset=today')
+    setLoading(true);
+    api.get<ApiResponse>(`/reports/customer-activity?preset=${preset}`)
       .then(({ data: d }) => setData(d))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
-  }, []);
+  }, [preset]);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
-  const s   = data?.summary;
+  const s = data?.summary;
 
   const filtered = (data?.customers ?? []).filter(
     (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.phone ?? '').includes(searchTerm),
+      (c?.name?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? '') ||
+      (c?.phone ?? '').includes(searchTerm ?? ''),
   );
 
   return (
@@ -146,7 +151,7 @@ export default function CustomerActivityPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['Customer Name', 'Phone', 'Type', 'Orders', 'Total Spent', 'Loyalty'].map((h) => (
+                {['Customer Name', 'Email', 'Phone', 'Type', 'Orders', 'Total Spent', 'Loyalty', 'Last Order'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -155,13 +160,14 @@ export default function CustomerActivityPage() {
             </thead>
             <tbody className="divide-y divide-[#e4e7ec]">
               {loading ? (
-                <tr><td colSpan={6} className="px-5 py-8 text-sm text-[#4a5565] text-center">Loading...</td></tr>
+                <tr><td colSpan={8} className="px-5 py-8 text-sm text-[#4a5565] text-center">Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-5 py-8 text-sm text-[#4a5565] text-center">No customer activity for this period</td></tr>
+                <tr><td colSpan={8} className="px-5 py-8 text-sm text-[#4a5565] text-center">No customer activity for this period</td></tr>
               ) : (
                 filtered.map((customer, idx) => (
                   <tr key={idx} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-5 py-4 text-sm font-medium text-[#101828]">{customer.name}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.email ?? '—'}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.phone ?? '—'}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.type}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.orderCount}</td>
@@ -176,6 +182,9 @@ export default function CustomerActivityPage() {
                       >
                         {customer.loyaltyTier}
                       </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">
+                      {customer.lastOrder ? new Date(customer.lastOrder).toLocaleDateString() : '—'}
                     </td>
                   </tr>
                 ))

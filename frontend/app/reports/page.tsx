@@ -6,6 +6,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import { Download } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { ReportsTabs } from '../components/ReportsTabs';
 import { ReportsDateToolbar } from '../components/ReportsDateToolbar';
 import { useStore } from '@/app/contexts/StoreContext';
@@ -30,15 +31,19 @@ const CHANNEL_COLORS = ['var(--color-primary)', '#7c3aed'];
 
 export default function ReportsPage() {
   const { currency } = useStore();
+  const searchParams = useSearchParams();
+  const preset = searchParams.get('preset') || 'today';
+
   const [data, setData]       = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<ApiResponse>('/reports/sales-summary?preset=today')
+    setLoading(true);
+    api.get<ApiResponse>(`/reports/sales-summary?preset=${preset}`)
       .then(({ data: d }) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [preset]);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
 

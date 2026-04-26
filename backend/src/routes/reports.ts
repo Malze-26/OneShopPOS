@@ -7,11 +7,13 @@ import {
   getCustomerActivityReport,
 } from '../controllers/reportController';
 import { protect } from '../middleware/authMiddleware';
+import { requireTenant } from '../middleware/tenantMiddleware';
 
 const router = express.Router();
 
-// All report routes require authentication
+// All report routes require authentication and tenant context
 router.use(protect);
+router.use(requireTenant);
 
 // Sales Summary Report
 router.get('/sales-summary', getSalesSummary);

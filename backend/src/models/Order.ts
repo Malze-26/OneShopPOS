@@ -31,6 +31,8 @@ export interface IOrder extends Document {
   notes?: string;
   storeId: string;
   createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const orderItemSchema = new Schema<IOrderItem>(

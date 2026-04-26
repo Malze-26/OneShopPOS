@@ -9,7 +9,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     const { preset, startDate, endDate } = req.query;
 
     const dateFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
-    const dateLabel  = getDateRangeLabel(preset as string, startDate as string, endDate as string);
+    const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
     const [summaryAgg, hourlyAgg, paymentAgg, dailyAgg] = await Promise.all([
       Transaction.aggregate([
@@ -17,9 +17,9 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
-            refundTotal:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
-            refundCount:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
+            grossSales: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            refundTotal: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            refundCount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
             transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
           },
         },
@@ -61,14 +61,14 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     ]);
 
     const s = summaryAgg[0] ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0 };
-    const netSales  = s.grossSales - s.refundTotal;
-    const avgOrder  = s.transactionCount > 0 ? Math.round(s.grossSales / s.transactionCount) : 0;
+    const netSales = s.grossSales - s.refundTotal;
+    const avgOrder = s.transactionCount > 0 ? Math.round(s.grossSales / s.transactionCount) : 0;
 
     // Hourly — fill hours 0–23
     const hourMap = new Map(hourlyAgg.map((h: { _id: number; sales: number }) => [h._id, h.sales]));
-    const HOURS = ['12 AM','1 AM','2 AM','3 AM','4 AM','5 AM','6 AM','7 AM','8 AM',
-                   '9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM',
-                   '6 PM','7 PM','8 PM','9 PM','10 PM','11 PM'];
+    const HOURS = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM',
+      '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM',
+      '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'];
     const hourlySales = HOURS.map((label, i) => ({ time: label, sales: hourMap.get(i) ?? 0 }));
 
     // Payment methods as percentages
@@ -90,12 +90,12 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     res.json({
       dateRange: dateLabel,
       summary: {
-        grossSales:       s.grossSales,
-        refundsCount:     s.refundCount,
-        refundTotal:      s.refundTotal,
+        grossSales: s.grossSales,
+        refundsCount: s.refundCount,
+        refundTotal: s.refundTotal,
         netSales,
         transactionCount: s.transactionCount,
-        avgOrderValue:    avgOrder,
+        avgOrderValue: avgOrder,
       },
       hourlySales,
       paymentMethods,
@@ -110,7 +110,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 // ============= Sales by Product Report =============
 export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { Order } = req.models!;
+    const { Transaction, Order, Product } = req.models!;
     const { preset, startDate, endDate } = req.query;
 
     const dateMatchFilter = buildDateFilter(
@@ -120,99 +120,136 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    const salesData = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
+    // Start from Transaction (filtered by date + success), then join to Order for product items
+    const [salesData, topGrossingItem, totalUnitsSoldAgg, topCategoryByRevenue] = await Promise.all([
+      // Product-level sales data
+      Transaction.aggregate([
+        { $match: { ...dateMatchFilter, status: 'success' } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'order',
+          },
         },
-      },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.product',
-          totalQty: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-          productName: { $first: '$items.productName' },
-          sku: { $first: '$items.sku' },
+        { $unwind: '$order' },
+        { $unwind: '$order.items' },
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'order.items.product',
+            foreignField: '_id',
+            as: 'productInfo',
+          },
         },
-      },
-      { $sort: { totalQty: -1 } },
-      { $limit: 100 },
-    ]);
+        { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: '$order.items.product',
+            totalQty: { $sum: '$order.items.quantity' },
+            totalRevenue: { $sum: { $multiply: ['$order.items.quantity', '$order.items.unitPrice'] } },
+            avgUnitPrice: { $avg: '$order.items.unitPrice' },
+            productName: { $first: '$order.items.productName' },
+            sku: { $first: '$order.items.sku' },
+            category: { $first: '$productInfo.category' },
+          },
+        },
+        { $sort: { totalQty: -1 } },
+        { $limit: 100 },
+      ]),
 
-    const topGrossingItem = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
+      // Top grossing item
+      Transaction.aggregate([
+        { $match: { ...dateMatchFilter, status: 'success' } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'order',
+          },
         },
-      },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.product',
-          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-          productName: { $first: '$items.productName' },
+        { $unwind: '$order' },
+        { $unwind: '$order.items' },
+        {
+          $group: {
+            _id: '$order.items.product',
+            totalRevenue: { $sum: { $multiply: ['$order.items.quantity', '$order.items.unitPrice'] } },
+            productName: { $first: '$order.items.productName' },
+          },
         },
-      },
-      { $sort: { totalRevenue: -1 } },
-      { $limit: 1 },
-    ]);
+        { $sort: { totalRevenue: -1 } },
+        { $limit: 1 },
+      ]),
 
-    const totalUnitsSold = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
+      // Total units sold
+      Transaction.aggregate([
+        { $match: { ...dateMatchFilter, status: 'success' } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'order',
+          },
         },
-      },
-      { $unwind: '$items' },
-      { $group: { _id: null, total: { $sum: '$items.quantity' } } },
-    ]);
+        { $unwind: '$order' },
+        { $unwind: '$order.items' },
+        { $group: { _id: null, total: { $sum: '$order.items.quantity' } } },
+      ]),
 
-    const topCategoryByRevenue = await Order.aggregate([
-      {
-        $match: {
-          ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
+      // Top category by revenue
+      Transaction.aggregate([
+        { $match: { ...dateMatchFilter, status: 'success' } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'order',
+          },
         },
-      },
-      { $unwind: '$items' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'items.product',
-          foreignField: '_id',
-          as: 'productDetails',
+        { $unwind: '$order' },
+        { $unwind: '$order.items' },
+        {
+          $lookup: {
+            from: 'products',
+            localField: 'order.items.product',
+            foreignField: '_id',
+            as: 'productDetails',
+          },
         },
-      },
-      { $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true } },
-      {
-        $group: {
-          _id: '$productDetails.category',
-          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+        { $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: '$productDetails.category',
+            totalRevenue: { $sum: { $multiply: ['$order.items.quantity', '$order.items.unitPrice'] } },
+          },
         },
-      },
-      { $match: { _id: { $ne: null } } },
-      { $sort: { totalRevenue: -1 } },
-      { $limit: 1 },
+        { $match: { _id: { $ne: null } } },
+        { $sort: { totalRevenue: -1 } },
+        { $limit: 1 },
+      ]),
     ]);
 
     res.json({
       dateRange: dateLabel,
       summary: {
-        totalUnitsSold: totalUnitsSold[0]?.total || 0,
+        totalUnitsSold: totalUnitsSoldAgg[0]?.total || 0,
         topGrossingItem: topGrossingItem[0]?.productName || 'N/A',
         topGrossingAmount: topGrossingItem[0]?.totalRevenue || 0,
         topCategory: topCategoryByRevenue[0]?._id || 'N/A',
         topCategoryRevenue: topCategoryByRevenue[0]?.totalRevenue || 0,
       },
-      products: salesData.map((item) => ({
-        sku: item.sku,
-        name: item.productName,
-        qty: item.totalQty,
-        sales: item.totalRevenue,
+      products: salesData.map((item: any) => ({
+        sku: item.sku || 'N/A',
+        name: item.productName || 'Unknown Product',
+        category: item.category || 'Uncategorized',
+        qty: item.totalQty || 0,
+        sales: item.totalRevenue || 0,
+        unitPrice: item.avgUnitPrice || 0,
+        stock: item.productInfo?.stock || 0,
       })),
     });
   } catch (error) {
@@ -234,26 +271,25 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    const salesSummary = await Order.aggregate([
+    const salesSummary = await Transaction.aggregate([
       {
         $match: {
           ...dateMatchFilter,
-          status: { $ne: 'cancelled' },
         },
       },
       {
         $group: {
           _id: null,
-          grossSales: { $sum: '$total' },
-          transactionCount: { $sum: 1 },
+          grossSales: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+          transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
           refundAmount: {
             $sum: {
-              $cond: [{ $eq: ['$status', 'refunded'] }, '$total', 0],
+              $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0],
             },
           },
           voidAmount: {
             $sum: {
-              $cond: [{ $eq: ['$status', 'cancelled'] }, '$total', 0],
+              $cond: [{ $eq: ['$status', 'voided'] }, '$amount', 0],
             },
           },
         },
@@ -318,7 +354,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
       },
       {
         $addFields: {
-          assetValue:  { $multiply: ['$stock', '$costPrice'] },
+          assetValue: { $multiply: ['$stock', '$costPrice'] },
           retailValue: { $multiply: ['$stock', '$sellingPrice'] },
           stockStatus: {
             $cond: [
@@ -344,10 +380,10 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
       ...(status ? [{ $match: { stockStatus: status as string } }] : []),
       {
         $sort:
-          sortBy === 'value'  ? { assetValue: -1 }
-          : sortBy === 'stock'  ? { stock: -1 }
-          : sortBy === 'margin' ? { margin: -1 }
-          : { _id: -1 },
+          sortBy === 'value' ? { assetValue: -1 }
+            : sortBy === 'stock' ? { stock: -1 }
+              : sortBy === 'margin' ? { margin: -1 }
+                : { _id: -1 },
       },
     ];
 
@@ -358,7 +394,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
       { $match: category ? { category: category as string } : {} },
       {
         $addFields: {
-          assetValue:  { $multiply: ['$stock', '$costPrice'] },
+          assetValue: { $multiply: ['$stock', '$costPrice'] },
           retailValue: { $multiply: ['$stock', '$sellingPrice'] },
           stockStatus: {
             $cond: [
@@ -372,12 +408,12 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
       {
         $group: {
           _id: null,
-          totalAssetValue:  { $sum: '$assetValue' },
+          totalAssetValue: { $sum: '$assetValue' },
           totalRetailValue: { $sum: '$retailValue' },
-          lowStockCount:    { $sum: { $cond: [{ $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] }, 1, 0] } },
-          outOfStockCount:  { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
-          totalProducts:    { $sum: 1 },
-          totalUnits:       { $sum: '$stock' },
+          lowStockCount: { $sum: { $cond: [{ $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] }, 1, 0] } },
+          outOfStockCount: { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
+          totalProducts: { $sum: 1 },
+          totalUnits: { $sum: '$stock' },
         },
       },
     ];
@@ -408,13 +444,13 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
 
     res.json({
       summary: {
-        totalAssetValue:  Number(summaryData.totalAssetValue.toFixed(2)),
+        totalAssetValue: Number(summaryData.totalAssetValue.toFixed(2)),
         totalRetailValue: Number(summaryData.totalRetailValue.toFixed(2)),
-        lowStockCount:    summaryData.lowStockCount,
-        outOfStockCount:  summaryData.outOfStockCount,
-        totalProducts:    summaryData.totalProducts,
-        totalUnits:       summaryData.totalUnits,
-        potentialMargin:  Number((summaryData.totalRetailValue - summaryData.totalAssetValue).toFixed(2)),
+        lowStockCount: summaryData.lowStockCount,
+        outOfStockCount: summaryData.outOfStockCount,
+        totalProducts: summaryData.totalProducts,
+        totalUnits: summaryData.totalUnits,
+        potentialMargin: Number((summaryData.totalRetailValue - summaryData.totalAssetValue).toFixed(2)),
       },
       products: inventoryItems,
     });
@@ -427,7 +463,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
 // ============= Customer Activity Report =============
 export const getCustomerActivityReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { Order, Customer } = req.models!;
+    const { Order, Customer, Transaction } = req.models!;
     const { preset, startDate, endDate } = req.query;
 
     const dateMatchFilter = buildDateFilter(
@@ -437,18 +473,18 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    const uniqueCustomers = await Order.aggregate([
-      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
-      { $group: { _id: '$customerName' } },
+    const uniqueCustomers = await Transaction.aggregate([
+      { $match: { ...dateMatchFilter, status: 'success' } },
+      { $group: { _id: '$customer' } },
       { $count: 'total' },
     ]);
 
-    const topSpender = await Order.aggregate([
-      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
+    const topSpender = await Transaction.aggregate([
+      { $match: { ...dateMatchFilter, status: 'success' } },
       {
         $group: {
-          _id: '$customerName',
-          totalSpent: { $sum: '$total' },
+          _id: '$customer',
+          totalSpent: { $sum: '$amount' },
           orderCount: { $sum: 1 },
         },
       },
@@ -456,13 +492,12 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
       { $limit: 1 },
     ]);
 
-    await Customer.find({}).lean();
-    const newVsReturning = await Order.aggregate([
-      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
-      { $group: { _id: '$customerName', orderCount: { $sum: 1 } } },
+    const newVsReturning = await Transaction.aggregate([
+      { $match: { ...dateMatchFilter, status: 'success' } },
+      { $group: { _id: '$customer', orderCount: { $sum: 1 } } },
       {
         $facet: {
-          new:       [{ $match: { orderCount: 1 } }, { $count: 'count' }],
+          new: [{ $match: { orderCount: 1 } }, { $count: 'count' }],
           returning: [{ $match: { orderCount: { $gt: 1 } } }, { $count: 'count' }],
         },
       },
@@ -473,47 +508,48 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
     const totalNewReturning = newCount + returningCount;
     const returningPercentage = totalNewReturning > 0 ? Math.round((returningCount / totalNewReturning) * 100) : 0;
 
-    const customerList = await Order.aggregate([
-      { $match: { ...dateMatchFilter, status: { $ne: 'cancelled' } } },
+    const customerStats = await Transaction.aggregate([
+      { $match: { ...dateMatchFilter, status: 'success' } },
       {
         $group: {
-          _id: '$customerName',
-          phone: { $first: '$customerPhone' },
-          totalOrders: { $sum: 1 },
-          totalSpent: { $sum: '$total' },
+          _id: '$customer',
+          orderCount: { $sum: 1 },
+          spent: { $sum: '$amount' },
           lastOrder: { $max: '$createdAt' },
         },
       },
       {
-        $addFields: {
-          type: { $cond: [{ $eq: ['$totalOrders', 1] }, 'New', 'Returning'] },
-          loyaltyTier: {
-            $cond: [
-              { $gte: ['$totalSpent', 100000] }, 'Platinum',
-              { $cond: [
-                { $gte: ['$totalSpent', 50000] }, 'Gold',
-                { $cond: [{ $gte: ['$totalSpent', 20000] }, 'Silver', 'Bronze'] },
-              ] },
-            ],
-          },
+        $lookup: {
+          from: 'customers',
+          localField: '_id',
+          foreignField: 'name',
+          as: 'profile',
         },
       },
-      { $sort: { totalSpent: -1 } },
-      { $limit: 50 },
-      {
-        $project: {
-          name: '$_id', phone: 1, type: 1,
-          orderCount: '$totalOrders', spent: '$totalSpent',
-          loyaltyTier: 1, lastOrder: 1, _id: 0,
-        },
-      },
+      { $unwind: { path: '$profile', preserveNullAndEmptyArrays: true } },
+      { $sort: { spent: -1 } },
+      { $limit: 100 },
     ]);
+
+    const customerList = customerStats.map(c => {
+      const spent = c.spent || 0;
+      return {
+        name: c._id || 'Anonymous Customer',
+        email: c.profile?.email || 'N/A',
+        phone: c.profile?.phone || 'N/A',
+        type: c.orderCount <= 1 ? 'New' : 'Returning',
+        orderCount: c.orderCount || 0,
+        spent: spent,
+        loyaltyTier: (c.profile?.totalSpent || spent) >= 100000 ? 'Platinum' : (c.profile?.totalSpent || spent) >= 50000 ? 'Gold' : (c.profile?.totalSpent || spent) >= 20000 ? 'Silver' : 'Bronze',
+        lastOrder: c.lastOrder
+      };
+    });
 
     res.json({
       dateRange: dateLabel,
       summary: {
         uniqueCustomers: uniqueCustomers[0]?.total || 0,
-        topSpender: topSpender[0]?.customerName || 'N/A',
+        topSpender: topSpender[0]?._id || 'N/A',
         topSpenderAmount: topSpender[0]?.totalSpent || 0,
         newVsReturning: {
           returning: returningPercentage,
