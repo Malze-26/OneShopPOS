@@ -474,6 +474,42 @@ async function seed() {
     { name: 'EH Ginger Beer 400ml',             sku: 'SDW-005', category: 'Soft Drinks & Water',   sellingPrice: 120,  costPrice: 85,   stock: 50,  lowStockThreshold: 15, description: 'Elephant House ginger beer' },
     { name: 'Sparkling Water 500ml',            sku: 'SDW-006', category: 'Soft Drinks & Water',   sellingPrice: 180,  costPrice: 130,  stock: 40,  lowStockThreshold: 12, description: 'Carbonated mineral water' },
     { name: 'Nestlé Pure Life Water 1L',        sku: 'SDW-007', category: 'Soft Drinks & Water',   sellingPrice: 100,  costPrice: 68,   stock: 100, lowStockThreshold: 25, description: 'Purified bottled water' },
+    // ── Meat ─────────────────────────────────────────────────────────────────
+    { name: 'Lamb Chops 500g',                  sku: 'MT-001',  category: 'Meat',                  sellingPrice: 1450, costPrice: 1100, stock: 12,  lowStockThreshold: 5,  description: 'Fresh lamb chops, bone-in' },
+    { name: 'Minced Beef 500g',                 sku: 'MT-002',  category: 'Meat',                  sellingPrice: 980,  costPrice: 740,  stock: 18,  lowStockThreshold: 6,  description: 'Freshly minced beef' },
+    { name: 'Mutton Curry Cut 500g',            sku: 'MT-003',  category: 'Meat',                  sellingPrice: 1200, costPrice: 920,  stock: 10,  lowStockThreshold: 4,  description: 'Bone-in mutton cut for curries' },
+    // ── Snacks ───────────────────────────────────────────────────────────────
+    { name: 'Popcorn Salted 100g',              sku: 'SNK-GEN-001', category: 'Snacks',            sellingPrice: 150,  costPrice: 100,  stock: 50,  lowStockThreshold: 15, description: 'Ready-to-eat salted popcorn' },
+    { name: 'Mixed Nuts 200g',                  sku: 'SNK-GEN-002', category: 'Snacks',            sellingPrice: 480,  costPrice: 360,  stock: 30,  lowStockThreshold: 10, description: 'Roasted mixed nuts — cashew, almond, peanut' },
+    { name: 'Rice Crackers 150g',               sku: 'SNK-GEN-003', category: 'Snacks',            sellingPrice: 220,  costPrice: 160,  stock: 40,  lowStockThreshold: 12, description: 'Lightly salted rice crackers' },
+    // ── Grains & Pulses ───────────────────────────────────────────────────────
+    { name: 'Red Lentils 500g',                 sku: 'GPL-001', category: 'Grains & Pulses',       sellingPrice: 280,  costPrice: 200,  stock: 60,  lowStockThreshold: 15, description: 'Split red lentils (masoor dhal)' },
+    { name: 'Chickpeas 500g',                   sku: 'GPL-002', category: 'Grains & Pulses',       sellingPrice: 320,  costPrice: 235,  stock: 45,  lowStockThreshold: 12, description: 'Dried whole chickpeas (kadala)' },
+    { name: 'Green Mung Beans 500g',            sku: 'GPL-003', category: 'Grains & Pulses',       sellingPrice: 260,  costPrice: 190,  stock: 50,  lowStockThreshold: 12, description: 'Whole green mung beans (mung dhal)' },
+    { name: 'Black-Eyed Peas 500g',             sku: 'GPL-004', category: 'Grains & Pulses',       sellingPrice: 290,  costPrice: 210,  stock: 35,  lowStockThreshold: 10, description: 'Dried black-eyed peas' },
+    // ── Cooking Essentials ────────────────────────────────────────────────────
+    { name: 'Sunflower Oil 1L',                 sku: 'CKE-001', category: 'Cooking Essentials',    sellingPrice: 580,  costPrice: 440,  stock: 40,  lowStockThreshold: 10, description: 'Refined sunflower cooking oil' },
+    { name: 'Iodised Salt 1kg',                 sku: 'CKE-002', category: 'Cooking Essentials',    sellingPrice: 120,  costPrice: 80,   stock: 80,  lowStockThreshold: 20, description: 'Fine iodised table salt' },
+    { name: 'White Sugar 1kg',                  sku: 'CKE-003', category: 'Cooking Essentials',    sellingPrice: 230,  costPrice: 165,  stock: 70,  lowStockThreshold: 20, description: 'Refined white granulated sugar' },
+    { name: 'Coconut Oil 500ml',                sku: 'CKE-004', category: 'Cooking Essentials',    sellingPrice: 420,  costPrice: 310,  stock: 35,  lowStockThreshold: 10, description: 'Pure virgin coconut oil' },
+    // ── Dairy ─────────────────────────────────────────────────────────────────
+    { name: 'Greek Yogurt 200g',                sku: 'DRY-001', category: 'Dairy',                 sellingPrice: 280,  costPrice: 200,  stock: 20,  lowStockThreshold: 6,  description: 'Thick strained Greek-style yogurt' },
+    { name: 'Cream Cheese 200g',                sku: 'DRY-002', category: 'Dairy',                 sellingPrice: 450,  costPrice: 330,  stock: 15,  lowStockThreshold: 5,  description: 'Soft spreadable cream cheese' },
+    { name: 'Condensed Milk 400g',              sku: 'DRY-003', category: 'Dairy',                 sellingPrice: 320,  costPrice: 235,  stock: 30,  lowStockThreshold: 8,  description: 'Sweetened condensed milk' },
+    // ── Beverages ─────────────────────────────────────────────────────────────
+    { name: 'Coconut Water 330ml',              sku: 'BVG-001', category: 'Beverages',             sellingPrice: 180,  costPrice: 130,  stock: 45,  lowStockThreshold: 12, description: 'Natural coconut water, no added sugar' },
+    { name: 'Aloe Vera Drink 500ml',            sku: 'BVG-002', category: 'Beverages',             sellingPrice: 220,  costPrice: 160,  stock: 35,  lowStockThreshold: 10, description: 'Aloe vera flavoured health drink' },
+    { name: 'Energy Drink 250ml',               sku: 'BVG-003', category: 'Beverages',             sellingPrice: 350,  costPrice: 260,  stock: 40,  lowStockThreshold: 12, description: 'Caffeinated energy drink' },
+    // ── Household ─────────────────────────────────────────────────────────────
+    { name: 'Garbage Bags 30L (10pk)',          sku: 'HHS-001', category: 'Household',             sellingPrice: 180,  costPrice: 120,  stock: 50,  lowStockThreshold: 12, description: 'Heavy-duty black garbage bags' },
+    { name: 'Mosquito Coils (10pk)',            sku: 'HHS-002', category: 'Household',             sellingPrice: 130,  costPrice: 85,   stock: 60,  lowStockThreshold: 15, description: 'Slow-burn mosquito repellent coils' },
+    { name: 'LED Bulb 9W',                      sku: 'HHS-003', category: 'Household',             sellingPrice: 280,  costPrice: 200,  stock: 30,  lowStockThreshold: 8,  description: 'Energy-saving LED bulb E27 base' },
+    { name: 'Dish Sponge 3pk',                  sku: 'HHS-004', category: 'Household',             sellingPrice: 120,  costPrice: 80,   stock: 55,  lowStockThreshold: 15, description: 'Scrub sponge for dishes and surfaces' },
+    // ── Stationery ────────────────────────────────────────────────────────────
+    { name: 'Ballpoint Pens (10pk)',            sku: 'STN-001', category: 'Stationery',            sellingPrice: 150,  costPrice: 100,  stock: 40,  lowStockThreshold: 10, description: 'Blue ink ballpoint pens' },
+    { name: 'A4 Notebook 200 pages',            sku: 'STN-002', category: 'Stationery',            sellingPrice: 220,  costPrice: 155,  stock: 30,  lowStockThreshold: 8,  description: 'Ruled A4 notepad, 200 pages' },
+    { name: 'Correction Fluid 20ml',            sku: 'STN-003', category: 'Stationery',            sellingPrice: 90,   costPrice: 60,   stock: 35,  lowStockThreshold: 10, description: 'Fast-dry white correction fluid' },
+    { name: 'Stapler + 1000 Staples',          sku: 'STN-004', category: 'Stationery',            sellingPrice: 350,  costPrice: 250,  stock: 20,  lowStockThreshold: 5,  description: 'Desktop stapler with staple refills' },
   ];
 
   // Get admin _id via raw DB query to avoid any Mongoose type issues
