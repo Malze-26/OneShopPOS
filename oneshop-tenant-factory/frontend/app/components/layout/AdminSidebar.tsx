@@ -74,7 +74,7 @@ export default function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="p-4 border-t" style={{ borderColor: '#0d0a62' }}>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition w-full"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-white text-opacity-70 hover:bg-white hover:bg-opacity-10 transition w-full"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="font-medium">Logout</span>}

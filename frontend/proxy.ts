@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/pos/login', '/pos/register', '/super-admin/login'];
+const PUBLIC_PATHS = ['/login', '/pos/login', '/pos/register'];
 
-export default function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Allow public routes and static assets through
   if (
     PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
     pathname.startsWith('/_next') ||

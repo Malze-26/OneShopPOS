@@ -127,7 +127,6 @@ export const deleteTenant = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const dbName = tenant.databaseName;
     await tenant.deleteOne();
 
     if (dbName) {
