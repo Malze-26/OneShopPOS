@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, User, Star, PieChart } from 'lucide-react';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
+import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
 import { useSearchParams } from 'next/navigation';
@@ -33,14 +34,26 @@ export default function CustomerActivityPage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearch] = useState('');
+  const [customerType, setCustomerType] = useState('all');
+  const [channel, setChannel] = useState('all');
 
   useEffect(() => {
     setLoading(true);
-    api.get<ApiResponse>(`/reports/customer-activity?preset=${preset}`)
+    const params = new URLSearchParams();
+    params.set('preset', preset);
+    if (customerType !== 'all') params.set('customerType', customerType);
+    if (channel !== 'all') params.set('channel', channel);
+    
+    const start = searchParams.get('startDate');
+    const end = searchParams.get('endDate');
+    if (start) params.set('startDate', start);
+    if (end) params.set('endDate', end);
+
+    api.get<ApiResponse>(`/reports/customer-activity?${params.toString()}`)
       .then(({ data: d }) => setData(d))
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, [preset]);
+  }, [preset, searchParams, customerType, channel]);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
   const s = data?.summary;
@@ -135,15 +148,37 @@ export default function CustomerActivityPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-[#e4e7ec] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-[#e4e7ec] flex flex-wrap gap-3 items-center justify-between">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5565]" />
-            <input
-              type="text"
-              placeholder="Search customer or phone..."
-              className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-              value={searchTerm}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5565]" />
+              <input
+                type="text"
+                placeholder="Search customer or phone..."
+                className="w-full pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                value={searchTerm}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <NativeSelect 
+              value={customerType} 
+              onChange={(e) => setCustomerType(e.target.value)}
+              className="w-44"
+            >
+              <NativeSelectOption value="all">All Customers</NativeSelectOption>
+              <NativeSelectOption value="new">New Customers</NativeSelectOption>
+              <NativeSelectOption value="returning">Returning Customers</NativeSelectOption>
+            </NativeSelect>
+
+            <NativeSelect 
+              value={channel} 
+              onChange={(e) => setChannel(e.target.value)}
+              className="w-44"
+            >
+              <NativeSelectOption value="all">All Channels</NativeSelectOption>
+              <NativeSelectOption value="pos">POS (In-store)</NativeSelectOption>
+              <NativeSelectOption value="online">E-commerce (Online)</NativeSelectOption>
+            </NativeSelect>
           </div>
         </div>
 

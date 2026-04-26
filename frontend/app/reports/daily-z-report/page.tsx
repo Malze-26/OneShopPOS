@@ -21,11 +21,18 @@ export default function DailyZReportPage() {
 
   useEffect(() => {
     setLoading(true);
-    api.get<ApiResponse>(`/reports/daily-z-report?preset=${preset}`)
+    const params = new URLSearchParams();
+    params.set('preset', preset);
+    const start = searchParams.get('startDate');
+    const end = searchParams.get('endDate');
+    if (start) params.set('startDate', start);
+    if (end) params.set('endDate', end);
+
+    api.get<ApiResponse>(`/reports/daily-z-report?${params.toString()}`)
       .then(({ data: d }) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [preset]);
+  }, [preset, searchParams]);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
   const s   = data?.summary;

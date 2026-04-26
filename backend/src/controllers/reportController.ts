@@ -464,7 +464,9 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
 export const getCustomerActivityReport = async (req: AuthRequest, res: Response) => {
   try {
     const { Order, Customer, Transaction } = req.models!;
-    const { preset, startDate, endDate } = req.query;
+    const { preset, startDate, endDate, channel, customerType } = req.query;
+
+    const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
 
     const dateMatchFilter = buildDateFilter(
       preset as string,
@@ -511,6 +513,16 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
     const customerStats = await Transaction.aggregate([
       { $match: { ...dateMatchFilter, status: 'success' } },
       {
+        $lookup: {
+          from: 'orders',
+          localField: 'orderId',
+          foreignField: 'orderId',
+          as: 'orderInfo',
+        },
+      },
+      { $unwind: { path: '$orderInfo', preserveNullAndEmptyArrays: true } },
+      ...(sourceFilter ? [{ $match: { 'orderInfo.source': sourceFilter } }] : []),
+      {
         $group: {
           _id: '$customer',
           orderCount: { $sum: 1 },
@@ -527,6 +539,9 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
         },
       },
       { $unwind: { path: '$profile', preserveNullAndEmptyArrays: true } },
+      // Apply Customer Type filter
+      ...(customerType === 'new' ? [{ $match: { 'profile.totalOrders': { $lte: 1 } } }] : []),
+      ...(customerType === 'returning' ? [{ $match: { 'profile.totalOrders': { $gt: 1 } } }] : []),
       { $sort: { spent: -1 } },
       { $limit: 100 },
     ]);
@@ -537,7 +552,7 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
         name: c._id || 'Anonymous Customer',
         email: c.profile?.email || 'N/A',
         phone: c.profile?.phone || 'N/A',
-        type: c.orderCount <= 1 ? 'New' : 'Returning',
+        type: (c.profile?.totalOrders || 1) <= 1 ? 'New' : 'Returning',
         orderCount: c.orderCount || 0,
         spent: spent,
         loyaltyTier: (c.profile?.totalSpent || spent) >= 100000 ? 'Platinum' : (c.profile?.totalSpent || spent) >= 50000 ? 'Gold' : (c.profile?.totalSpent || spent) >= 20000 ? 'Silver' : 'Bronze',

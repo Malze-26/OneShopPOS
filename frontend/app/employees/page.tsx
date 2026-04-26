@@ -51,6 +51,9 @@ export default function EmployeesPage() {
   const [roleFilter, setRoleFilter]       = useState('All Roles');
   const [statusFilter, setStatusFilter]   = useState('All Status');
   const [preset, setPreset]               = useState('this-month');
+  const [startDate, setStartDate]         = useState('');
+  const [endDate, setEndDate]             = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Add Employee modal
   const [showModal, setShowModal]         = useState(false);
@@ -73,6 +76,8 @@ export default function EmployeesPage() {
       if (roleFilter !== 'All Roles')     params.role   = roleFilter;
       if (statusFilter !== 'All Status')  params.status = statusFilter;
       if (preset)                         params.preset = preset;
+      if (startDate)                      params.startDate = startDate;
+      if (endDate)                        params.endDate = endDate;
       const res = await api.get('/employees', { params });
       setEmployees(res.data.data ?? []);
     } catch {
@@ -85,7 +90,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     const t = setTimeout(fetchEmployees, search ? 300 : 0);
     return () => clearTimeout(t);
-  }, [fetchEmployees, search, preset]);
+  }, [fetchEmployees, search, preset, startDate, endDate]);
 
   const inactiveCount = employees.filter((e) => e.status === 'inactive').length;
 
@@ -161,25 +166,87 @@ export default function EmployeesPage() {
       )}
 
       {/* Date Range Selector */}
-      <div className="flex items-center gap-2 mb-4 bg-white p-1 rounded-xl border border-[#e4e7ec] w-fit shadow-sm">
-        {[
-          { id: 'today', label: 'Today' },
-          { id: 'last-7-days', label: 'Last 7 Days' },
-          { id: 'this-month', label: 'This Month' },
-          { id: 'all-time', label: 'All Time' },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setPreset(item.id)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-              preset === item.id
-                ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                : 'text-[#4a5565] hover:bg-[#f5f8ff] hover:text-[var(--color-primary)]'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 mb-4 relative">
+        <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-[#e4e7ec] w-fit shadow-sm">
+          {[
+            { id: 'today', label: 'Today' },
+            { id: 'last-7-days', label: 'Last 7 Days' },
+            { id: 'this-month', label: 'This Month' },
+            { id: 'custom', label: 'Custom' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id === 'custom') {
+                  setShowDatePicker(!showDatePicker);
+                } else {
+                  setPreset(item.id);
+                  setStartDate('');
+                  setEndDate('');
+                  setShowDatePicker(false);
+                }
+              }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                preset === item.id
+                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  : 'text-[#4a5565] hover:bg-[#f5f8ff] hover:text-[var(--color-primary)]'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Selected custom range label */}
+        {preset === 'custom' && startDate && endDate && !showDatePicker && (
+          <span className="text-xs font-medium text-[#4a5565] bg-[#f2f4f7] px-3 py-1.5 rounded-full border border-[#e4e7ec]">
+            {startDate} to {endDate}
+          </span>
+        )}
+
+        {/* Date Picker Popover */}
+        {showDatePicker && (
+          <div className="absolute top-12 left-0 z-50 bg-white p-4 rounded-xl shadow-xl border border-[#e4e7ec] w-72">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-semibold text-[#101828]">Select Range</h3>
+              <button onClick={() => setShowDatePicker(false)} className="text-[#667085] hover:text-[#101828]">
+                <span className="text-lg">×</span>
+              </button>
+            </div>
+            
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-[#475467] mb-1">Start Date</label>
+                <input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#475467] mb-1">End Date</label>
+                <input 
+                  type="date" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setPreset('custom');
+                setShowDatePicker(false);
+              }}
+              disabled={!startDate || !endDate}
+              className="w-full bg-[var(--color-primary)] text-white py-2 rounded-lg text-sm font-semibold hover:bg-opacity-90 transition-all disabled:opacity-50"
+            >
+              Apply Range
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

@@ -36,15 +36,22 @@ export default function InventoryStatusPage() {
 
   const fetchData = () => {
     const params = new URLSearchParams();
+    params.set('preset', preset);
     if (statusFilter)   params.set('status',   statusFilter);
     if (categoryFilter) params.set('category', categoryFilter);
+    
+    const start = searchParams.get('startDate');
+    const end = searchParams.get('endDate');
+    if (start) params.set('startDate', start);
+    if (end) params.set('endDate', end);
+
     api.get<ApiResponse>(`/reports/inventory-status?${params.toString()}`)
       .then(({ data: d }) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, [statusFilter, categoryFilter, preset]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [statusFilter, categoryFilter, preset, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const products = data?.products ?? [];
   const summary  = data?.summary;

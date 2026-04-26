@@ -32,6 +32,8 @@ export default function SalesByProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [channelFilter, setChannelFilter] = useState('');
 
   const searchParams = useSearchParams();
   const preset = searchParams.get('preset') || 'today';
@@ -42,7 +44,17 @@ export default function SalesByProductPage() {
         setLoading(true);
         setError(null);
 
-        const response = await api.get(`/reports/sales-by-product?preset=${preset}`);
+        const params = new URLSearchParams();
+        params.set('preset', preset);
+        if (categoryFilter) params.set('category', categoryFilter);
+        if (channelFilter) params.set('channel', channelFilter);
+        
+        const start = searchParams.get('startDate');
+        const end = searchParams.get('endDate');
+        if (start) params.set('startDate', start);
+        if (end) params.set('endDate', end);
+
+        const response = await api.get(`/reports/sales-by-product?${params.toString()}`);
         const data = response.data;
         setSummaryData(data.summary);
         setProductData(data.products ?? []);
@@ -54,7 +66,7 @@ export default function SalesByProductPage() {
     };
 
     fetchSalesData();
-  }, [preset]);
+  }, [preset, categoryFilter, channelFilter, searchParams]);
 
   const summaryCards = summaryData
     ? [
@@ -146,13 +158,23 @@ export default function SalesByProductPage() {
             />
           </div>
           <div className="flex gap-2">
-            <NativeSelect className="w-40">
+            <NativeSelect 
+              className="w-40"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
               <NativeSelectOption value="">All Categories</NativeSelectOption>
-              <NativeSelectOption value="baby">Baby Products</NativeSelectOption>
-              <NativeSelectOption value="bakery">Bakery</NativeSelectOption>
-              <NativeSelectOption value="beverages">Beverages</NativeSelectOption>
+              <NativeSelectOption value="Vegetables">Vegetables</NativeSelectOption>
+              <NativeSelectOption value="Fruits">Fruits</NativeSelectOption>
+              <NativeSelectOption value="Bakery">Bakery</NativeSelectOption>
+              <NativeSelectOption value="Beverages">Beverages</NativeSelectOption>
+              <NativeSelectOption value="Snacks">Snacks</NativeSelectOption>
             </NativeSelect>
-            <NativeSelect className="w-40">
+            <NativeSelect 
+              className="w-40"
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+            >
               <NativeSelectOption value="">All Channels</NativeSelectOption>
               <NativeSelectOption value="pos">POS (In-store)</NativeSelectOption>
               <NativeSelectOption value="online">E-commerce (Online)</NativeSelectOption>
