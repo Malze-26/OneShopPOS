@@ -142,8 +142,8 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 
     // Dynamic Chart Data: Hourly for single day, Daily for multi-day
     const isSingleDay = preset === 'today' || preset === 'yesterday' || (startDate && startDate === endDate);
-    const chartData = isSingleDay 
-      ? hourlySales 
+    const chartData = isSingleDay
+      ? hourlySales
       : salesBreakdown.map(d => ({ time: d.date, sales: d.grossSales }));
 
     res.json({

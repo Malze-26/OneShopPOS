@@ -27,16 +27,16 @@ export interface TenantModels {
 
 export function getModels(conn: Connection): TenantModels {
   return {
-    User:          conn.models['User']          ?? conn.model<IUser>('User', userSchema),
-    Product:       conn.models['Product']       ?? conn.model<IProduct>('Product', productSchema),
-    Category:      conn.models['Category']      ?? conn.model<ICategory>('Category', categorySchema),
-    Customer:      conn.models['Customer']      ?? conn.model<ICustomer>('Customer', customerSchema),
-    Transaction:   conn.models['Transaction']   ?? conn.model<ITransaction>('Transaction', transactionSchema),
-    StockHistory:  conn.models['StockHistory']  ?? conn.model<IStockHistory>('StockHistory', stockHistorySchema),
+    User: conn.models['User'] ?? conn.model<IUser>('User', userSchema),
+    Product: conn.models['Product'] ?? conn.model<IProduct>('Product', productSchema),
+    Category: conn.models['Category'] ?? conn.model<ICategory>('Category', categorySchema),
+    Customer: conn.models['Customer'] ?? conn.model<ICustomer>('Customer', customerSchema),
+    Transaction: conn.models['Transaction'] ?? conn.model<ITransaction>('Transaction', transactionSchema),
+    StockHistory: conn.models['StockHistory'] ?? conn.model<IStockHistory>('StockHistory', stockHistorySchema),
     StoreSettings: conn.models['StoreSettings'] ?? conn.model<IStoreSettings>('StoreSettings', storeSettingsSchema),
-    Order:         conn.models['Order']         ?? conn.model<IOrder>('Order', orderSchema),
-    Promo:         conn.models['Promo']         ?? conn.model<IPromo>('Promo', promoSchema),
-    Supplier:      conn.models['Supplier']      ?? conn.model<ISupplier>('Supplier', supplierSchema),
-    GRN:           conn.models['GRN']           ?? conn.model<IGRN>('GRN', grnSchema),
+    Order: conn.models['Order'] ?? conn.model<IOrder>('Order', orderSchema),
+    Promo: conn.models['Promo'] ?? conn.model<IPromo>('Promo', promoSchema),
+    Supplier: conn.models['Supplier'] ?? conn.model<ISupplier>('Supplier', supplierSchema),
+    GRN: conn.models['GRN'] ?? conn.model<IGRN>('GRN', grnSchema),
   };
 }
