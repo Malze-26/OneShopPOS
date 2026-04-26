@@ -18,13 +18,13 @@ interface Employee {
 }
 
 const roleConfig: Record<string, { bg: string; text: string }> = {
-  Manager:               { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
-  Cashier:               { bg: '#ecfdf3', text: '#12b76a' },
-  'Sales Representative':{ bg: '#fff7ed', text: '#ea580c' },
+  Manager: { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
+  Cashier: { bg: '#ecfdf3', text: '#12b76a' },
+  'Sales Representative': { bg: '#fff7ed', text: '#ea580c' },
 };
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
-  active:   { label: 'Active',   bg: '#ecfdf3', text: '#12b76a' },
+  active: { label: 'Active', bg: '#ecfdf3', text: '#12b76a' },
   inactive: { label: 'Inactive', bg: '#f2f4f7', text: '#4a5565' },
 };
 
@@ -44,40 +44,40 @@ const emptyForm: FormState = {
 };
 
 export default function EmployeesPage() {
-  const [employees, setEmployees]         = useState<Employee[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState<string | null>(null);
-  const [search, setSearch]               = useState('');
-  const [roleFilter, setRoleFilter]       = useState('All Roles');
-  const [statusFilter, setStatusFilter]   = useState('All Status');
-  const [preset, setPreset]               = useState('this-month');
-  const [startDate, setStartDate]         = useState('');
-  const [endDate, setEndDate]             = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All Roles');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [preset, setPreset] = useState('this-month');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Add Employee modal
-  const [showModal, setShowModal]         = useState(false);
-  const [form, setForm]                   = useState<FormState>(emptyForm);
-  const [showPw, setShowPw]               = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [formError, setFormError]         = useState('');
-  const [saving, setSaving]               = useState(false);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // Deactivate confirmation
   const [deactivateTarget, setDeactivateTarget] = useState<Employee | null>(null);
-  const [deactivating, setDeactivating]         = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, string> = {};
-      if (search)                         params.search = search;
-      if (roleFilter !== 'All Roles')     params.role   = roleFilter;
-      if (statusFilter !== 'All Status')  params.status = statusFilter;
-      if (preset)                         params.preset = preset;
-      if (startDate)                      params.startDate = startDate;
-      if (endDate)                        params.endDate = endDate;
+      if (search) params.search = search;
+      if (roleFilter !== 'All Roles') params.role = roleFilter;
+      if (statusFilter !== 'All Status') params.status = statusFilter;
+      if (preset) params.preset = preset;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
       const res = await api.get('/employees', { params });
       setEmployees(res.data.data ?? []);
     } catch {
@@ -139,7 +139,7 @@ export default function EmployeesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-       
+
           <p className="text-sm text-[#4a5565]">Manage store staff and cashiers</p>
         </div>
         <button
@@ -186,11 +186,10 @@ export default function EmployeesPage() {
                   setShowDatePicker(false);
                 }
               }}
-              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                preset === item.id
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${preset === item.id
                   ? 'bg-[var(--color-primary)] text-white shadow-sm'
                   : 'text-[#4a5565] hover:bg-[#f5f8ff] hover:text-[var(--color-primary)]'
-              }`}
+                }`}
             >
               {item.label}
             </button>
@@ -213,12 +212,12 @@ export default function EmployeesPage() {
                 <span className="text-lg">×</span>
               </button>
             </div>
-            
+
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-[#475467] mb-1">Start Date</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
@@ -226,8 +225,8 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-[#475467] mb-1">End Date</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"

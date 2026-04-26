@@ -19,8 +19,8 @@ interface Summary {
 interface ApiResponse { summary: Summary; products: Product[] }
 
 const statusConfig: Record<string, { bg: string; text: string }> = {
-  'In Stock':     { bg: '#ecfdf3', text: '#12b76a' },
-  'Low Stock':    { bg: '#fffaeb', text: '#f79009' },
+  'In Stock': { bg: '#ecfdf3', text: '#12b76a' },
+  'Low Stock': { bg: '#fffaeb', text: '#f79009' },
   'Out of Stock': { bg: '#fef3f2', text: '#f04438' },
 };
 
@@ -28,8 +28,8 @@ export default function InventoryStatusPage() {
   const searchParams = useSearchParams();
   const preset = searchParams.get('preset') || 'today';
 
-  const [data, setData]         = useState<ApiResponse | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearch] = useState('');
   const [statusFilter, setStatus] = useState('');
   const [categoryFilter, setCategory] = useState('');
@@ -37,9 +37,9 @@ export default function InventoryStatusPage() {
   const fetchData = () => {
     const params = new URLSearchParams();
     params.set('preset', preset);
-    if (statusFilter)   params.set('status',   statusFilter);
+    if (statusFilter) params.set('status', statusFilter);
     if (categoryFilter) params.set('category', categoryFilter);
-    
+
     const start = searchParams.get('startDate');
     const end = searchParams.get('endDate');
     if (start) params.set('startDate', start);
@@ -47,14 +47,14 @@ export default function InventoryStatusPage() {
 
     api.get<ApiResponse>(`/reports/inventory-status?${params.toString()}`)
       .then(({ data: d }) => setData(d))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); }, [statusFilter, categoryFilter, preset, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const products = data?.products ?? [];
-  const summary  = data?.summary;
+  const summary = data?.summary;
 
   const filtered = products.filter(
     (p) =>
@@ -156,10 +156,10 @@ export default function InventoryStatusPage() {
               <tr>
                 {['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Quantity',
                   'Cost Value (Rs.)', 'Retail Value (Rs.)', 'Status'].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
+                      {h}
+                    </th>
+                  ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e4e7ec]">

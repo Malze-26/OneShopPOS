@@ -48,7 +48,7 @@ export default function SalesByProductPage() {
         params.set('preset', preset);
         if (categoryFilter) params.set('category', categoryFilter);
         if (channelFilter) params.set('channel', channelFilter);
-        
+
         const start = searchParams.get('startDate');
         const end = searchParams.get('endDate');
         if (start) params.set('startDate', start);
@@ -158,7 +158,7 @@ export default function SalesByProductPage() {
             />
           </div>
           <div className="flex gap-2">
-            <NativeSelect 
+            <NativeSelect
               className="w-40"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
@@ -170,7 +170,7 @@ export default function SalesByProductPage() {
               <NativeSelectOption value="Beverages">Beverages</NativeSelectOption>
               <NativeSelectOption value="Snacks">Snacks</NativeSelectOption>
             </NativeSelect>
-            <NativeSelect 
+            <NativeSelect
               className="w-40"
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}

@@ -16,7 +16,7 @@ export function ReportsDateToolbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentPreset = searchParams.get('preset') || 'today';
-  
+
   const [showPicker, setShowPicker] = useState(false);
   const [tempStart, setTempStart] = useState(searchParams.get('startDate') || '');
   const [tempEnd, setTempEnd] = useState(searchParams.get('endDate') || '');
@@ -90,12 +90,12 @@ export function ReportsDateToolbar() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          
+
           <div className="space-y-3 mb-4">
             <div>
               <label className="block text-xs font-medium text-[#475467] mb-1">Start Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={tempStart}
                 onChange={(e) => setTempStart(e.target.value)}
                 className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
@@ -103,8 +103,8 @@ export function ReportsDateToolbar() {
             </div>
             <div>
               <label className="block text-xs font-medium text-[#475467] mb-1">End Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={tempEnd}
                 onChange={(e) => setTempEnd(e.target.value)}
                 className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"

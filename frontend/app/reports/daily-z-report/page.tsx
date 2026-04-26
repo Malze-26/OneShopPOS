@@ -7,8 +7,8 @@ import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
 
-interface PaymentRow  { method: string; amount: number; txCount: number }
-interface ZSummary    { grossSales: number; totalTransactions: number; refunds: number; voids: number }
+interface PaymentRow { method: string; amount: number; txCount: number }
+interface ZSummary { grossSales: number; totalTransactions: number; refunds: number; voids: number }
 interface ApiResponse { dateRange: string; summary: ZSummary; paymentBreakdown: PaymentRow[] }
 
 export default function DailyZReportPage() {
@@ -16,7 +16,7 @@ export default function DailyZReportPage() {
   const searchParams = useSearchParams();
   const preset = searchParams.get('preset') || 'today';
 
-  const [data, setData]       = useState<ApiResponse | null>(null);
+  const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,12 +30,12 @@ export default function DailyZReportPage() {
 
     api.get<ApiResponse>(`/reports/daily-z-report?${params.toString()}`)
       .then(({ data: d }) => setData(d))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [preset, searchParams]);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
-  const s   = data?.summary;
+  const s = data?.summary;
 
   return (
     <div className="p-6 max-w-[1400px]">

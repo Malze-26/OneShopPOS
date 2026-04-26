@@ -6,14 +6,29 @@ import { buildDateFilter, getDateRangeLabel } from '../utils/dateRange';
 export const getSalesSummary = async (req: AuthRequest, res: Response) => {
   try {
     const { Transaction } = req.models!;
-    const { preset, startDate, endDate } = req.query;
+    const { preset, startDate, endDate, channel } = req.query;
+
+    const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
 
     const dateFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
+    // Common match for top-level stats if channel filtered
+    const baseMatch = { ...dateFilter };
+
     const [summaryAgg, hourlyAgg, paymentAgg, dailyAgg] = await Promise.all([
       Transaction.aggregate([
-        { $match: { ...dateFilter } },
+        { $match: baseMatch },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'orderInfo',
+          },
+        },
+        { $unwind: { path: '$orderInfo', preserveNullAndEmptyArrays: true } },
+        ...(sourceFilter ? [{ $match: { 'orderInfo.source': sourceFilter } }] : []),
         {
           $group: {
             _id: null,
@@ -24,9 +39,19 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
           },
         },
       ]),
-      // Hourly breakdown — only successful
+      // Hourly breakdown
       Transaction.aggregate([
         { $match: { ...dateFilter, status: 'success' } },
+        {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'orderInfo',
+          },
+        },
+        { $unwind: { path: '$orderInfo', preserveNullAndEmptyArrays: true } },
+        ...(sourceFilter ? [{ $match: { 'orderInfo.source': sourceFilter } }] : []),
         {
           $group: {
             _id: { $hour: '$createdAt' },
@@ -39,6 +64,16 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       Transaction.aggregate([
         { $match: { ...dateFilter, status: 'success' } },
         {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'orderInfo',
+          },
+        },
+        { $unwind: { path: '$orderInfo', preserveNullAndEmptyArrays: true } },
+        ...(sourceFilter ? [{ $match: { 'orderInfo.source': sourceFilter } }] : []),
+        {
           $group: {
             _id: '$paymentMethod',
             total: { $sum: '$amount' },
@@ -50,8 +85,21 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       Transaction.aggregate([
         { $match: { ...dateFilter, status: 'success' } },
         {
+          $lookup: {
+            from: 'orders',
+            localField: 'orderId',
+            foreignField: 'orderId',
+            as: 'orderInfo',
+          },
+        },
+        { $unwind: { path: '$orderInfo', preserveNullAndEmptyArrays: true } },
+        ...(sourceFilter ? [{ $match: { 'orderInfo.source': sourceFilter } }] : []),
+        {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            posSales: { $sum: { $cond: [{ $eq: ['$orderInfo.source', 'physical'] }, '$amount', 0] } },
+            onlineSales: { $sum: { $cond: [{ $eq: ['$orderInfo.source', 'online'] }, '$amount', 0] } },
+            discounts: { $sum: { $ifNull: ['$orderInfo.discount', 0] } },
             grossSales: { $sum: '$amount' },
             count: { $sum: 1 },
           },
@@ -71,8 +119,8 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'];
     const hourlySales = HOURS.map((label, i) => ({ time: label, sales: hourMap.get(i) ?? 0 }));
 
-    // Payment methods as percentages
-    const paymentTotal = paymentAgg.reduce((s: number, p: { total: number }) => s + p.total, 0);
+    // Payment methods
+    const paymentTotal = paymentAgg.reduce((sum: number, p: { total: number }) => sum + p.total, 0);
     const paymentMethods = paymentAgg.map((p: { _id: string; total: number; count: number }) => ({
       name: p._id,
       amount: p.total,
@@ -81,11 +129,22 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     }));
 
     // Daily rows
-    const salesBreakdown = dailyAgg.map((d: { _id: string; grossSales: number; count: number }) => ({
+    const salesBreakdown = dailyAgg.map((d: any) => ({
       date: new Date(d._id).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      posSales: d.posSales || 0,
+      onlineSales: d.onlineSales || 0,
+      discounts: d.discounts || 0,
+      tax: 0, // Not in current schema, placeholder
       grossSales: d.grossSales,
+      netSales: d.grossSales - (d.discounts || 0),
       count: d.count,
     }));
+
+    // Dynamic Chart Data: Hourly for single day, Daily for multi-day
+    const isSingleDay = preset === 'today' || preset === 'yesterday' || (startDate && startDate === endDate);
+    const chartData = isSingleDay 
+      ? hourlySales 
+      : salesBreakdown.map(d => ({ time: d.date, sales: d.grossSales }));
 
     res.json({
       dateRange: dateLabel,
@@ -100,6 +159,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       hourlySales,
       paymentMethods,
       salesBreakdown,
+      chartData,
     });
   } catch (error) {
     console.error('Error fetching sales summary:', error);

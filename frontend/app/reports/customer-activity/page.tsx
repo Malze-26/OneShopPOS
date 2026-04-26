@@ -43,7 +43,7 @@ export default function CustomerActivityPage() {
     params.set('preset', preset);
     if (customerType !== 'all') params.set('customerType', customerType);
     if (channel !== 'all') params.set('channel', channel);
-    
+
     const start = searchParams.get('startDate');
     const end = searchParams.get('endDate');
     if (start) params.set('startDate', start);
@@ -160,8 +160,8 @@ export default function CustomerActivityPage() {
               />
             </div>
 
-            <NativeSelect 
-              value={customerType} 
+            <NativeSelect
+              value={customerType}
               onChange={(e) => setCustomerType(e.target.value)}
               className="w-44"
             >
@@ -170,8 +170,8 @@ export default function CustomerActivityPage() {
               <NativeSelectOption value="returning">Returning Customers</NativeSelectOption>
             </NativeSelect>
 
-            <NativeSelect 
-              value={channel} 
+            <NativeSelect
+              value={channel}
               onChange={(e) => setChannel(e.target.value)}
               className="w-44"
             >
