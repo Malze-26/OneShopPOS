@@ -44,7 +44,7 @@ export default function CheckoutModal({
   const canPay = method !== "cash" || cashAmt >= total;
 
   const methodLabel =
-    method === "cash" ? "Cash" : method === "card" ? "Card" : "Bank Transfer";
+    method === "cash" ? "Cash" : "Card";
 
     // Handle payment confirmation: construct transaction data, attempt to save to server if online, otherwise save offline. Update UI state accordingly.
   const handleConfirm = async () => {

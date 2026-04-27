@@ -3,7 +3,7 @@ export interface Transaction {
   txnId: string;
   orderId: string;
   customer: string;
-  paymentMethod: "Cash" | "Card" | "Bank Transfer";
+  paymentMethod: "Cash" | "Card";
   amount: number;
   status: "success" | "pending" | "failed" | "voided";
   createdAt: string;

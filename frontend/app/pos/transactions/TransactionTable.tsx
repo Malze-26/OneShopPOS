@@ -15,18 +15,11 @@ const PAYMENT_ICONS: Record<string, React.ReactNode> = {
       <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
     </svg>
   ),
-  "Bank Transfer": (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4A261" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-    </svg>
-  ),
 };
 
 const PAYMENT_BADGE_CLASS: Record<string, string> = {
   Cash:            "bg-emerald-100 text-emerald-800",
   Card:            "bg-violet-100 text-violet-900",
-  "Bank Transfer": "bg-amber-100 text-amber-800",
 };
 
 interface TransactionTableProps {
@@ -81,7 +74,7 @@ export default function TransactionTable({
           />
         </div>
         <div className="flex gap-2">
-          {["All", "Cash", "Card", "Bank Transfer"].map((f) => (
+          {["All", "Cash", "Card"].map((f) => (
             <button
               key={f}
               onClick={() => { onFilter(f); onPageChange(1); }}
