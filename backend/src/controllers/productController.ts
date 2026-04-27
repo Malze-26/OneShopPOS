@@ -54,6 +54,17 @@ export async function getProducts(req: AuthRequest, res: Response, next: NextFun
   }
 }
 
+// ── GET /api/products/stats ────────────────────────────────────────────────
+export async function getProductStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { Product } = req.models!;
+    const total = await Product.countDocuments();
+    res.json({ total });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ── GET /api/products/:id ──────────────────────────────────────────────────
 export async function getProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -151,6 +162,7 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       description,
       sellingPrice,
       costPrice,
+      stock,
       lowStockThreshold,
       category,
     } = req.body as {
@@ -159,13 +171,14 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       description?: string;
       sellingPrice?: number;
       costPrice?: number;
+      stock?: number;
       lowStockThreshold?: number;
       category?: string;
     };
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, sku, description, sellingPrice, costPrice, lowStockThreshold, category },
+      { name, sku, description, sellingPrice, costPrice, stock, lowStockThreshold, category },
       { new: true, runValidators: true }
     );
 

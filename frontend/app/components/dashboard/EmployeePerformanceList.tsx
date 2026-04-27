@@ -1,6 +1,7 @@
 'use client';
 
 import { EmployeePerf } from './types';
+import { avatarSrc } from '@/app/lib/avatarUtils';
 
 interface EmployeePerformanceListProps {
   employees: EmployeePerf[];
@@ -32,8 +33,10 @@ export function EmployeePerformanceList({ employees, currency }: EmployeePerform
               style={{ width: `${employee.performance}%`, zIndex: 0 }}
             />
             <div className="flex items-center gap-3 relative z-10">
-              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-medium">{employee.avatar}</span>
+              <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {avatarSrc(employee.avatar)
+                  ? <img src={avatarSrc(employee.avatar)} alt={employee.name} className="w-full h-full object-cover" />
+                  : <span className="text-white text-xs font-medium">{employee.avatar}</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-[#101828] truncate">{employee.name}</div>

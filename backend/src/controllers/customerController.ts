@@ -144,6 +144,50 @@ export async function getCustomerOrders(req: AuthRequest, res: Response, next: N
   }
 }
 
+// POST /api/customers/recalc  — recompute totalSpent / totalOrders / lastPurchase from Orders
+export async function recalcCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { Customer, Order } = req.models!;
+    const customers = await Customer.find({}).lean();
+    let updated = 0;
+
+    for (const c of customers) {
+      if (!c.email) continue;
+
+      const [agg] = await Order.aggregate<{
+        totalSpent: number;
+        totalOrders: number;
+        lastPurchase: Date | null;
+      }>([
+        { $match: { customerEmail: c.email } },
+        {
+          $group: {
+            _id: null,
+            totalSpent:   { $sum: '$total' },
+            totalOrders:  { $sum: 1 },
+            lastPurchase: { $max: '$createdAt' },
+          },
+        },
+      ]);
+
+      if (!agg) continue;
+
+      await Customer.findByIdAndUpdate(c._id, {
+        $set: {
+          totalSpent:   agg.totalSpent,
+          totalOrders:  agg.totalOrders,
+          lastPurchase: agg.lastPurchase,
+        },
+      });
+      updated++;
+    }
+
+    res.json({ message: `Recalculated stats for ${updated} customers` });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/customers/stats
 export async function getCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {

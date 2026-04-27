@@ -1,9 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type OrderSource = 'physical' | 'online';
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-export type PaymentMethod = 'Cash' | 'Card' | 'Bank Transfer' | 'Online';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'success';
+export type PaymentMethod = 'Cash' | 'Card' | 'Bank Transfer' | 'Online' | 'payhere' | 'cash-on-delivery';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'success';
 
 export interface IOrderItem {
   product: mongoose.Types.ObjectId;
@@ -31,6 +31,7 @@ export interface IOrder extends Document {
   notes?: string;
   storeId: string;
   createdBy: mongoose.Types.ObjectId;
+  confirmedBy?: mongoose.Types.ObjectId;
 }
 
 const orderItemSchema = new Schema<IOrderItem>(
@@ -59,15 +60,16 @@ export const orderSchema = new Schema<IOrder>(
     discount: { type: Number, default: 0, min: 0 },
     total:    { type: Number, required: true, min: 0 },
 
-    status:        { type: String, enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'], default: 'pending' },
-    paymentMethod: { type: String, enum: ['Cash', 'Card', 'Bank Transfer', 'Online'], required: true },
-    paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
+    status:        { type: String, enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'success'], default: 'pending' },
+    paymentMethod: { type: String, enum: ['Cash', 'Card', 'Bank Transfer', 'Online', 'payhere', 'cash-on-delivery'], required: true },
+    paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded', 'success'], default: 'pending' },
 
     deliveryAddress: { type: String, trim: true },
     notes:           { type: String, trim: true },
 
-    storeId:   { type: String, required: true, default: 'STORE-2025-001' },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    storeId:     { type: String, required: true, default: 'STORE-2025-001' },
+    createdBy:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    confirmedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

@@ -13,7 +13,7 @@ interface NoSalesAlert {
   id: string; product: string; sku: string; lastSale: string | null; daysAgo: number;
 }
 interface InactiveStaff {
-  id: string; name: string; lastLogin: string; daysInactive: number;
+  id: string; name: string; role: string; lastLogin: string; daysInactive: number;
 }
 interface HighRefund {
   id: string; refundId: string; orderId: string; customer: string; amount: number; reason: string;
@@ -69,7 +69,7 @@ export default function AlertsPage() {
         <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec]">
           <div className="flex items-center gap-2 mb-1">
             <UserX className="w-4 h-4 text-[#f79009]" />
-            <p className="text-xs text-[#4a5565] font-semibold">Inactive Cashiers</p>
+            <p className="text-xs text-[#4a5565] font-semibold">Inactive Employees</p>
           </div>
           <h3 className="text-2xl font-bold text-[#f79009]">{inactiveStaff.length}</h3>
         </div>
@@ -176,7 +176,7 @@ export default function AlertsPage() {
           <div className="px-5 py-4 bg-[#fffaeb] border-b border-[#e4e7ec] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <UserX className="w-5 h-5 text-[#f79009]" />
-              <h2 className="text-base font-semibold text-[#101828]">Inactive Cashier Alerts</h2>
+              <h2 className="text-base font-semibold text-[#101828]">Inactive Employee Alerts</h2>
               <span className="px-2 py-0.5 bg-[#f79009] text-white text-xs font-medium rounded-full">
                 {inactiveStaff.length}
               </span>
@@ -187,7 +187,7 @@ export default function AlertsPage() {
           </div>
           <div className="p-5 space-y-3">
             {inactiveStaff.length === 0 ? (
-              <p className="text-sm text-[#4a5565] text-center py-4">All cashiers are active</p>
+              <p className="text-sm text-[#4a5565] text-center py-4">All employees are active</p>
             ) : (
               inactiveStaff.map((cashier) => (
                 <div key={cashier.id} className="p-4 bg-[#f9fafb] border border-[#e4e7ec] rounded-lg flex items-center justify-between">
@@ -200,7 +200,7 @@ export default function AlertsPage() {
                     <div>
                       <div className="text-sm font-medium text-[#101828]">{cashier.name}</div>
                       <div className="text-xs text-[#4a5565]">
-                        Last login: {cashier.lastLogin} ({cashier.daysInactive} days inactive)
+                        {cashier.role} · Last login: {cashier.lastLogin} · {cashier.daysInactive} days active
                       </div>
                     </div>
                   </div>

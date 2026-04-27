@@ -40,7 +40,9 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
       ];
     }
 
-    const [users, txnStats] = await Promise.all([
+    const { Order } = req.models!;
+
+    const [users, txnStats, orderStats] = await Promise.all([
       User.find(filter).sort({ createdAt: 1 }),
       Transaction.aggregate<TxnStat>([
         { $match: { status: 'success' } },
@@ -52,12 +54,25 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
           },
         },
       ]),
+      Order.aggregate<TxnStat>([
+        { $match: { source: 'online', status: { $in: ['confirmed', 'processing', 'shipped', 'delivered'] }, confirmedBy: { $exists: true } } },
+        {
+          $group: {
+            _id: '$confirmedBy',
+            revenue: { $sum: '$total' },
+            transactions: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
-    const statsMap = new Map(txnStats.map((s) => [String(s._id), s]));
+    const txnMap   = new Map(txnStats.map((s) => [String(s._id), s]));
+    const orderMap = new Map(orderStats.map((s) => [String(s._id), s]));
 
     const employees = users.map((u) => {
-      const stats = statsMap.get(String(u._id));
+      const stats = u.role === 'Manager'
+        ? orderMap.get(String(u._id))
+        : txnMap.get(String(u._id));
       return {
         id: u._id,
         name: u.name,

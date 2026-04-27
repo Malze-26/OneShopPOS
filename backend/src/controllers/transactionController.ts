@@ -83,17 +83,47 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       createdBy: userId,
     });
 
-    // Award loyalty points: 1 point per Rs. 100 spent
+    // Recalculate customer stats from real Orders and award loyalty points
     if (req.body.customerId && req.body.customerId !== 'guest') {
-      const pointsEarned = Math.floor(req.body.amount / 100);
-      await Customer.findByIdAndUpdate(req.body.customerId, {
-        $inc: {
-          loyaltyPoints: pointsEarned,
-          totalOrders: 1,
-          totalSpent: req.body.amount,
-        },
-        lastPurchase: new Date(),
-      });
+      const { Order } = req.models!;
+      const customer = await Customer.findById(req.body.customerId);
+      if (customer) {
+        const pointsEarned = Math.floor(req.body.amount / 100);
+
+        if (customer.email) {
+          // Recalculate from the Orders collection — single source of truth
+          const [agg] = await Order.aggregate<{
+            totalSpent: number;
+            totalOrders: number;
+            lastPurchase: Date | null;
+          }>([
+            { $match: { customerEmail: customer.email } },
+            {
+              $group: {
+                _id: null,
+                totalSpent:   { $sum: '$total' },
+                totalOrders:  { $sum: 1 },
+                lastPurchase: { $max: '$createdAt' },
+              },
+            },
+          ]);
+
+          await Customer.findByIdAndUpdate(req.body.customerId, {
+            $set: {
+              totalSpent:  agg?.totalSpent  ?? 0,
+              totalOrders: agg?.totalOrders ?? 0,
+              lastPurchase: agg?.lastPurchase ?? new Date(),
+            },
+            $inc: { loyaltyPoints: pointsEarned },
+          });
+        } else {
+          // No email to join on — fall back to incrementing
+          await Customer.findByIdAndUpdate(req.body.customerId, {
+            $inc: { loyaltyPoints: pointsEarned, totalOrders: 1, totalSpent: req.body.amount },
+            $set: { lastPurchase: new Date() },
+          });
+        }
+      }
     }
 
     res.status(201).json({ data: transaction });
