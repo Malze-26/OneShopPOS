@@ -121,7 +121,7 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 
 // DELETE /api/transactions/:id/void — Void transaction
 export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction } = req.models!;
+  const { Transaction, Order, Product, StockHistory } = req.models!;
   const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
     res.status(404).json({ message: 'Transaction not found' });
@@ -131,6 +131,25 @@ export async function voidTransaction(req: AuthRequest, res: Response): Promise<
     res.status(400).json({ message: 'Transaction already voided' });
     return;
   }
+
+  // Restore inventory by finding the order and incrementing stock for each item
+  const order = await Order.findOne({ orderId: transaction.orderId });
+  if (order) {
+    for (const item of order.items) {
+      // Increment product stock back
+      await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+      // Log the restoration in StockHistory
+      await StockHistory.create({
+        product:  item.product,
+        type:     'add',
+        quantity: item.quantity,
+        reason:   `Transaction voided: ${transaction.txnId}`,
+        by:       req.user!.id,
+        storeId:  transaction.storeId,
+      });
+    }
+  }
+
   transaction.status = 'voided';
   await transaction.save();
   res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
