@@ -17,6 +17,7 @@ import TopBar from "./components/TopBar";
 interface Product {
   _id: string;
   name: string;
+  sku: string;
   sellingPrice: number;
   category: string;
   stock: number;
@@ -50,7 +51,7 @@ export default function POSDashboard() {
   const isOnline = useOnlineStatus();
 
   const [activeCategory, setActiveCategory] = useState("All");
-  const [cart, setCart] = useState<{ id: string; name: string; price: number; qty: number; unit: string; weight: number | null; }[]>([]);
+  const [cart, setCart] = useState<{ id: string; name: string; sku: string; price: number; qty: number; unit: string; weight: number | null; }[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -213,7 +214,7 @@ export default function POSDashboard() {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === product._id);
       if (existing) return prev.map((i) => i.id === product._id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { id: product._id, name: product.name, price: product.sellingPrice, qty: 1, unit: "item", weight: null }];
+      return [...prev, { id: product._id, name: product.name, sku: product.sku, price: product.sellingPrice, qty: 1, unit: "item", weight: null }];
     });
     setAddedId(product._id);
     setTimeout(() => setAddedId(null), 350);
@@ -479,6 +480,7 @@ export default function POSDashboard() {
               return [...prev, {
                 id: weightProduct._id,
                 name: `${weightProduct.name} (${weight}kg)`,
+                sku: weightProduct.sku,
                 price: totalPrice,
                 qty: 1,
                 unit: "kg",

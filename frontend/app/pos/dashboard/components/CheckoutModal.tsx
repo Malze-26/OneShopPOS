@@ -6,12 +6,12 @@ import { savePendingTransaction } from "@/app/lib/offlineDB";
 import { fmt, genId } from "../constants/pos";
 
 interface CheckoutState {
-  items: { id: string; name: string; price: number; qty: number; unit: string }[];
+  items: { id: string; name: string; sku: string; price: number; qty: number; unit: string }[];
   customer: { _id: string; name: string } | null;
   discount: number;
   discountCode: string;
   loyaltyDiscount: number;
-loyaltyPointsUsed: number;
+  loyaltyPointsUsed: number;
 }
 
 interface CheckoutModalProps {
@@ -56,17 +56,38 @@ export default function CheckoutModal({
       amount: total,
       status: "success",
     };
-// Attempt to save transaction to server if online, otherwise save to IndexedDB for later sync. Update UI state to show success and whether it was saved offline.
     if (isOnline) {
+      let txnOk = false;
       try {
         await api.post("/transactions", transactionData);
+        txnOk = true;
         setSavedOffline(false);
-        setStep("success");
       } catch {
         await savePendingTransaction(transactionData);
         setSavedOffline(true);
-        setStep("success");
       }
+      if (txnOk) {
+        const orderData = {
+          orderId,
+          source: 'physical',
+          customerName: state.customer?.name || 'Guest Customer',
+          items: state.items.map(item => ({
+            product:     item.id,
+            productName: item.name,
+            sku:         item.sku,
+            quantity:    item.qty,
+            unitPrice:   item.unit === 'kg' ? item.price / item.qty : item.price,
+            subtotal:    item.unit === 'kg' ? item.price : item.price * item.qty,
+          })),
+          subtotal,
+          discount: state.discount + state.loyaltyDiscount,
+          total,
+          paymentMethod: methodLabel,
+          paymentStatus: 'paid',
+        };
+        try { await api.post("/orders", orderData); } catch { /* silent */ }
+      }
+      setStep("success");
     } else {
       await savePendingTransaction(transactionData);
       setSavedOffline(true);

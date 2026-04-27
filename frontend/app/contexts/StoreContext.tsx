@@ -51,7 +51,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Update CSS variable for primary color whenever it changes
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--color-primary', settings.primaryColor);
+      const color = '#' + settings.primaryColor.replace(/^#+/, '');
+      document.documentElement.style.setProperty('--color-primary', color);
     }
   }, [settings.primaryColor]);
 
