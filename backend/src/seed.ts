@@ -16,7 +16,6 @@ import { Category } from './models/Category';
 import { Product } from './models/Product';
 import { Customer } from './models/Customer';
 import { Order } from './models/Order';
-import { Transaction } from './models/Transaction';
 import { StoreSettings } from './models/StoreSettings';
 import { Supplier } from './models/Supplier';
 
@@ -1183,33 +1182,12 @@ async function seed() {
   ];
 
   for (const o of orderDocs) {
-    let order = await Order.findOne({ orderId: o.orderId });
-    if (!order) {
-      await Order.collection.insertOne(o);
-      order = await Order.findOne({ orderId: o.orderId });
+    const exists = await Order.findOne({ orderId: o.orderId });
+    if (!exists) {
+      await Order.collection.insertOne(o); // bypass Mongoose auto-timestamp to preserve createdAt
       console.log(`✓ Order created: ${o.orderId} – ${o.customerName}`);
     } else {
-      console.log(`  Order ${o.orderId} already exists`);
-    }
-
-    if (order && order.status === 'delivered' && order.paymentStatus === 'paid') {
-      const txnExists = await Transaction.findOne({ orderId: order.orderId });
-      if (!txnExists) {
-        await Transaction.create({
-          txnId: `TXN-${order.orderId.split('-')[2]}`,
-          orderId: order.orderId,
-          customer: order.customerName,
-          paymentMethod: order.paymentMethod === 'Bank Transfer' || order.paymentMethod === 'Online' ? 'Card' : order.paymentMethod,
-          amount: order.total,
-          status: 'success',
-          storeId: STORE_ID,
-          createdBy: adminId,
-          createdAt: order.createdAt,
-        });
-        console.log(`  ✓ Transaction created for ${order.orderId}`);
-      } else {
-        console.log(`  Transaction for ${order.orderId} already exists`);
-      }
+      console.log(`  Order ${o.orderId} already exists – skipping`);
     }
   }
 

@@ -133,7 +133,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api
 
 ### `oneshop-tenant-factory/frontend/.env.local`
 ```
-NEXT_PUBLIC_API_URL=http://localhost:6000/api
+NEXT_PUBLIC_API_URL=http://localhost:6100/api
 ```
 
 ---

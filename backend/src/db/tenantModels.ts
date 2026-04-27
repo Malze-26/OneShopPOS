@@ -10,6 +10,7 @@ import { IOrder, orderSchema } from '../models/Order';
 import { IPromo, promoSchema } from '../models/Promo';
 import { ISupplier, supplierSchema } from '../models/Supplier';
 import { IGRN, grnSchema } from '../models/GRN';
+import { IShift, shiftSchema } from '../models/Shift';
 
 export interface TenantModels {
   User: Model<IUser>;
@@ -23,6 +24,7 @@ export interface TenantModels {
   Promo: Model<IPromo>;
   Supplier: Model<ISupplier>;
   GRN: Model<IGRN>;
+  Shift: Model<IShift>;
 }
 
 export function getModels(conn: Connection): TenantModels {
@@ -38,5 +40,6 @@ export function getModels(conn: Connection): TenantModels {
     Promo: conn.models['Promo'] ?? conn.model<IPromo>('Promo', promoSchema),
     Supplier: conn.models['Supplier'] ?? conn.model<ISupplier>('Supplier', supplierSchema),
     GRN: conn.models['GRN'] ?? conn.model<IGRN>('GRN', grnSchema),
+    Shift: conn.models['Shift'] ?? conn.model<IShift>('Shift', shiftSchema),
   };
 }

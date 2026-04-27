@@ -7,7 +7,7 @@ import {
   getTransactionStats,
 } from '../controllers/transactionController';
 import { AuthRequest } from '../types';
-import { voidTransaction, refundTransaction } from '../controllers/transactionController';
+import { voidTransaction } from '../controllers/transactionController';
 
 
 const router = Router();
@@ -24,6 +24,5 @@ router.get('/:id', asyncHandler(getTransaction));
 router.post('/', asyncHandler(createTransaction));
 
 router.patch('/:id/void', asyncHandler(voidTransaction));
-router.patch('/:id/refund', asyncHandler(refundTransaction));
 
 export default router;

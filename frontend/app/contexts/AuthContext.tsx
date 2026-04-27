@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('token', data.token);
       storage.setItem('user', JSON.stringify(data.user));
-// Set a cookie for server-side authentication (if needed)
+      // Set a cookie for server-side authentication (if needed)
       Cookies.set('token', data.token, {
         expires: rememberMe ? 7 : undefined,
         sameSite: 'Strict',

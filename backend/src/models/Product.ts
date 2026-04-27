@@ -21,6 +21,8 @@ export interface IProduct extends Document {
   createdBy: mongoose.Types.ObjectId;
   isWeightBased: boolean;
   unit: 'kg' | 'item';
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const productSchema = new Schema<IProduct>(

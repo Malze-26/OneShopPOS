@@ -8,13 +8,12 @@ interface Transaction {
   txnId: string;
   amount: number;
   paymentMethod: string;
-  status: "success" | "pending" | "failed" | "refunded" | "voided";
+  status: "success" | "pending" | "failed" | "voided";
   createdAt: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
   success:  "bg-emerald-100 text-emerald-700",
-  refunded: "bg-amber-100 text-amber-700",
   voided:   "bg-gray-100 text-gray-500",
   pending:  "bg-yellow-100 text-yellow-700",
   failed:   "bg-red-100 text-red-600",

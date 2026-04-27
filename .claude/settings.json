@@ -26,10 +26,17 @@
       "PowerShell($base = \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\backend\\\\oneshop-tenant-factory\\\\src\"; @\\(\"controllers\",\"middleware\",\"models\",\"routes\",\"utils\",\"scripts\"\\) | ForEach-Object { New-Item -ItemType Directory -Path \"$base\\\\$_\" -Force | Out-Null }; Write-Host \"Directories created\")",
       "Bash(npx ts-node-dev *)",
       "Bash(curl -s http://localhost:5001/api/health)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(sed -n '514,540p' src/seed.ts)",
+      "Bash(sed -n '1100,1165p' src/seed.ts)",
+      "Bash(node scripts/update-open-door-logo.mjs)",
+      "Bash(node scripts/update-tech-store-logo.mjs)",
+      "Bash(node scripts/update-fashion-hub-logo.mjs)",
+      "Bash(node scripts/update-store-details.mjs)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory"
+      "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",
+      "\\tmp"
     ]
   }
 }

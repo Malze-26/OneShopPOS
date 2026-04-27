@@ -12,8 +12,8 @@ import { useFmt, useStore } from '@/app/contexts/StoreContext';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type OrderSource    = 'physical' | 'online';
-type OrderStatus    = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-type PaymentStatus  = 'pending' | 'paid' | 'failed' | 'refunded';
+type OrderStatus    = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type PaymentStatus  = 'pending' | 'paid' | 'failed';
 
 interface OrderItem {
   productName: string;
@@ -59,17 +59,15 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: R
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
-  refunded:   { label: 'Refunded',   color: 'bg-[#fef3f2] text-[#f04438]', icon: RotateCcw },
 };
 
 const PAYMENT_STATUS_COLOR: Record<PaymentStatus, string> = {
   pending:  'bg-[#fff8e1] text-[#f59e0b]',
   paid:     'bg-[#e8f5e9] text-[#12b76a]',
   failed:   'bg-[#fef3f2] text-[#f04438]',
-  refunded: 'bg-[#fef3f2] text-[#f04438]',
 };
 
-const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -103,8 +101,9 @@ function OrderModal({ order, onClose, onStatusChange }: {
   onStatusChange: (id: string, status: OrderStatus) => void;
 }) {
   const fmt = useFmt();
-  const cfg = STATUS_CONFIG[order.status];
+  const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
   const StatusIcon = cfg.icon;
+  const payColor = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/30" onClick={onClose}>
@@ -116,7 +115,7 @@ function OrderModal({ order, onClose, onStatusChange }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e4e7ec]">
           <div>
             <h2 className="text-lg font-semibold text-[#101828]">{order.orderId}</h2>
-            <p className="text-sm text-[#4a5565]">{fmtDate(order.createdAt)}</p>
+            <p className="text-sm text-[#4a5565]">{order.createdAt ? fmtDate(order.createdAt) : '-'}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[#f9fafb] rounded-lg transition-colors">
             <X className="w-5 h-5 text-[#4a5565]" />
@@ -136,8 +135,8 @@ function OrderModal({ order, onClose, onStatusChange }: {
               <StatusIcon className="w-3 h-3" />
               {cfg.label}
             </span>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${PAYMENT_STATUS_COLOR[order.paymentStatus]}`}>
-              {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)} · {order.paymentMethod}
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${payColor}`}>
+              {order.paymentStatus ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1) : '-'} · {order.paymentMethod ?? '-'}
             </span>
           </div>
 
@@ -165,18 +164,18 @@ function OrderModal({ order, onClose, onStatusChange }: {
           {/* Items */}
           <div>
             <h3 className="text-sm font-semibold text-[#101828] mb-3">Items</h3>
-            {order.items.length === 0 ? (
-              <p className="text-sm text-[#4a5565]">Item details are not stored for POS transactions.</p>
+            {!order.items?.length ? (
+              <p className="text-sm text-[#4a5565]">No item details available.</p>
             ) : (
               <div className="space-y-2">
                 {order.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-[#f2f4f7] last:border-0">
                     <div>
                       <p className="text-sm font-medium text-[#101828]">{item.productName}</p>
-                      <p className="text-xs text-[#4a5565]">{item.sku} · {fmt(item.unitPrice)} each</p>
+                      <p className="text-xs text-[#4a5565]">{item.sku} · {fmt(item.unitPrice ?? 0)} each</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-[#101828]">{fmt(item.subtotal)}</p>
+                      <p className="text-sm font-medium text-[#101828]">{fmt(item.subtotal ?? 0)}</p>
                       <p className="text-xs text-[#4a5565]">x{item.quantity}</p>
                     </div>
                   </div>
@@ -188,15 +187,15 @@ function OrderModal({ order, onClose, onStatusChange }: {
           {/* Totals */}
           <div className="bg-[#f9fafb] rounded-xl p-4 space-y-2">
             <div className="flex justify-between text-sm text-[#4a5565]">
-              <span>Subtotal</span><span>{fmt(order.subtotal)}</span>
+              <span>Subtotal</span><span>{fmt(order.subtotal ?? 0)}</span>
             </div>
-            {order.discount > 0 && (
+            {(order.discount ?? 0) > 0 && (
               <div className="flex justify-between text-sm text-[#12b76a]">
-                <span>Discount</span><span>−{fmt(order.discount)}</span>
+                <span>Discount</span><span>−{fmt(order.discount ?? 0)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-bold text-[#101828] pt-2 border-t border-[#e4e7ec]">
-              <span>Total</span><span>{fmt(order.total)}</span>
+              <span>Total</span><span>{fmt(order.total ?? 0)}</span>
             </div>
           </div>
 
@@ -205,7 +204,7 @@ function OrderModal({ order, onClose, onStatusChange }: {
             <div>
               <h3 className="text-sm font-semibold text-[#101828] mb-2">Update Status</h3>
               <div className="flex flex-wrap gap-2">
-                {ORDER_STATUSES.filter(s => s !== order.status && !['refunded'].includes(s)).map(s => (
+                {ORDER_STATUSES.filter(s => s !== order.status && !['refunded', 'confirmed'].includes(s)).map(s => (
                   <button
                     key={s}
                     onClick={() => onStatusChange(order._id, s)}
@@ -242,6 +241,7 @@ export default function OrdersPage() {
   const [sourceFilter, setSource] = useState<'all' | OrderSource>('all');
   const [statusFilter, setStatus] = useState('all');
   const [selected, setSelected]   = useState<Order | null>(null);
+  const [confirming, setConfirming] = useState<Set<string>>(new Set());
   const [total, setTotal]         = useState(0);
   const [page, setPage]           = useState(1);
   const PAGE_SIZE = 20;
@@ -271,6 +271,18 @@ export default function OrdersPage() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleConfirm = async (id: string) => {
+    setConfirming(prev => new Set(prev).add(id));
+    try {
+      await api.patch(`/orders/${id}/confirm`);
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: 'confirmed' } : o));
+      if (selected?._id === id) setSelected(prev => prev ? { ...prev, status: 'confirmed' } : null);
+      fetchStats();
+    } catch { /* silent */ } finally {
+      setConfirming(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
+  };
 
   const handleStatusChange = async (id: string, status: OrderStatus) => {
     try {
@@ -365,12 +377,13 @@ export default function OrdersPage() {
               ) : orders.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-[#4a5565]">No orders found</td></tr>
               ) : orders.map(order => {
-                const cfg = STATUS_CONFIG[order.status];
+                const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
                 const StatusIcon = cfg.icon;
+                const payColor = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-[var(--color-primary)] font-medium whitespace-nowrap">
-                      {order.orderId}
+                      {order.orderId ?? '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -381,14 +394,14 @@ export default function OrdersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-[#101828]">{order.customerName}</p>
+                      <p className="font-medium text-[#101828]">{order.customerName ?? '-'}</p>
                       {order.customerEmail && <p className="text-xs text-[#4a5565]">{order.customerEmail}</p>}
                     </td>
-                    <td className="px-4 py-3 text-[#4a5565]">{order.paymentMethod}</td>
-                    <td className="px-4 py-3 font-semibold text-[#101828] whitespace-nowrap">{fmt(order.total)}</td>
+                    <td className="px-4 py-3 text-[#4a5565]">{order.paymentMethod ?? '-'}</td>
+                    <td className="px-4 py-3 font-semibold text-[#101828] whitespace-nowrap">{fmt(order.total ?? 0)}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PAYMENT_STATUS_COLOR[order.paymentStatus]}`}>
-                        {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${payColor}`}>
+                        {order.paymentStatus ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1) : '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -400,16 +413,28 @@ export default function OrdersPage() {
                     <td className="px-4 py-3 text-[#4a5565] whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(order.createdAt).toLocaleDateString(currencyLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString(currencyLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => setSelected(order)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg transition-colors text-xs font-medium"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() => handleConfirm(order._id)}
+                            disabled={confirming.has(order._id)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-[#12b76a] hover:bg-[#e8f5e9] rounded-lg transition-colors text-xs font-medium disabled:opacity-50"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            {confirming.has(order._id) ? '...' : 'Confirm'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setSelected(order)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg transition-colors text-xs font-medium"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

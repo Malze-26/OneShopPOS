@@ -29,7 +29,10 @@ export async function updateSettings(req: AuthRequest, res: Response): Promise<v
   if (address !== undefined)  update.address        = address;
   if (phone !== undefined)    update.phone          = phone;
   if (email !== undefined)    update.email          = email;
-  if (primaryColor)           update.primaryColor   = primaryColor;
+  if (primaryColor) {
+    const clean = '#' + String(primaryColor).replace(/^#+/, '');
+    if (/^#[0-9a-fA-F]{6}$/.test(clean)) update.primaryColor = clean;
+  }
 
   const settings = await StoreSettings.findOneAndUpdate(
     { storeId },
