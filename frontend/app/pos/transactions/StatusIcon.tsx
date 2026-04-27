@@ -2,7 +2,6 @@ import { Transaction } from "./types";
 
 const STATUS_CIRCLE_BG: Record<string, string> = {
   success:  "fill-emerald-100",
-  refunded: "fill-amber-100",
   voided:   "fill-gray-100",
   pending:  "fill-yellow-100",
   failed:   "fill-red-100",
@@ -10,7 +9,6 @@ const STATUS_CIRCLE_BG: Record<string, string> = {
 
 const STATUS_CIRCLE_STROKE: Record<string, string> = {
   success:  "stroke-emerald-500",
-  refunded: "stroke-amber-500",
   voided:   "stroke-gray-400",
   pending:  "stroke-yellow-500",
   failed:   "stroke-red-400",
@@ -25,9 +23,6 @@ export default function StatusIcon({ status }: { status: Transaction["status"] }
       <circle cx="12" cy="12" r="11" className={bg} />
       {status === "success" && (
         <polyline points="7 12 10.5 15.5 17 9" className={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-      {status === "refunded" && (
-        <path d="M10 9H6V5M6 9a6 6 0 106 6" className={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       )}
       {status === "voided" && (
         <>

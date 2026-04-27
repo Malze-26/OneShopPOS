@@ -12,8 +12,8 @@ import { useFmt, useStore } from '@/app/contexts/StoreContext';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type OrderSource    = 'physical' | 'online';
-type OrderStatus    = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-type PaymentStatus  = 'pending' | 'paid' | 'failed' | 'refunded';
+type OrderStatus    = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type PaymentStatus  = 'pending' | 'paid' | 'failed';
 
 interface OrderItem {
   productName: string;
@@ -59,17 +59,15 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: R
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
-  refunded:   { label: 'Refunded',   color: 'bg-[#fef3f2] text-[#f04438]', icon: RotateCcw },
 };
 
 const PAYMENT_STATUS_COLOR: Record<PaymentStatus, string> = {
   pending:  'bg-[#fff8e1] text-[#f59e0b]',
   paid:     'bg-[#e8f5e9] text-[#12b76a]',
   failed:   'bg-[#fef3f2] text-[#f04438]',
-  refunded: 'bg-[#fef3f2] text-[#f04438]',
 };
 
-const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });

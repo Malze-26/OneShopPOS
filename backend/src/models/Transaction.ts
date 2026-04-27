@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type PaymentMethod = 'Cash' | 'Card';
-export type TransactionStatus = 'success' | 'pending' | 'failed' | 'refunded' | 'voided';
+export type TransactionStatus = 'success' | 'pending' | 'failed' | 'voided';
 
 export interface ITransaction extends Document {
   txnId: string;
@@ -49,7 +49,7 @@ export const transactionSchema = new Schema<ITransaction>(
     },
     status: {
       type: String,
-      enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
+      enum: ['success', 'pending', 'failed', 'voided'],
       default: 'success',
     },
     storeId: {

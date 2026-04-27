@@ -5,7 +5,7 @@ export interface Transaction {
   customer: string;
   paymentMethod: "Cash" | "Card" | "Bank Transfer";
   amount: number;
-  status: "success" | "pending" | "failed" | "refunded" | "voided";
+  status: "success" | "pending" | "failed" | "voided";
   createdAt: string;
 }
 
