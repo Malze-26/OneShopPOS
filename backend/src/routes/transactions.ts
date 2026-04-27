@@ -24,6 +24,5 @@ router.get('/:id', asyncHandler(getTransaction));
 router.post('/', asyncHandler(createTransaction));
 
 router.patch('/:id/void', asyncHandler(voidTransaction));
-router.patch('/:id/refund', asyncHandler(refundTransaction));
 
 export default router;
