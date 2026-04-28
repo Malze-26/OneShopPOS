@@ -68,11 +68,39 @@ export default function EmployeeDetailsPage() {
       (e?.email?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? '')
   );
 
+  const exportToCsv = () => {
+    if (!data?.employees || filtered.length === 0) return;
+
+    const headers = ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'];
+    
+    const rows = filtered.map(emp => [
+      `"${emp.name.replace(/"/g, '""')}"`,
+      `"${(emp.email || '').replace(/"/g, '""')}"`,
+      `"${emp.role.replace(/"/g, '""')}"`,
+      emp.orderCount,
+      emp.totalSales,
+      `"${emp.lastActive ? new Date(emp.lastActive).toLocaleString() : '—'}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const safeDateRange = data.dateRange.replace(/[^a-z0-9-]/gi, '_');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `employee_details_${safeDateRange}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar />
+        <ReportsDateToolbar onExport={exportToCsv} />
       </div>
 
       <div className="mb-6">
@@ -82,59 +110,6 @@ export default function EmployeeDetailsPage() {
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-sm text-[#4a5565] mb-1">Active Employees</p>
-              <h3 className="text-2xl font-bold text-[#101828] mb-1">{loading ? '—' : (s?.activeEmployees ?? 0)}</h3>
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
-              <User className="w-6 h-6" style={{ color: 'var(--color-primary)' }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-sm text-[#4a5565] mb-1">Top Performer</p>
-              {loading ? (
-                <p className="text-sm text-[#4a5565]">—</p>
-              ) : s?.topPerformer && s.topPerformer !== 'N/A' ? (
-                <>
-                  <h3 className="text-lg font-bold text-[#101828] mb-1">{s.topPerformer}</h3>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>{fmt(s.topPerformerSales)}</p>
-                </>
-              ) : (
-                <p className="text-sm text-[#4a5565]">No data yet</p>
-              )}
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fffaeb' }}>
-              <Star className="w-6 h-6" style={{ color: '#f79009' }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-sm text-[#4a5565] mb-1">Avg Sales / Employee</p>
-              {loading ? (
-                <p className="text-sm text-[#4a5565]">—</p>
-              ) : (
-                <h3 className="text-2xl font-bold text-[#101828] mb-1">
-                  {fmt(s?.avgSalesPerEmployee ?? 0)}
-                </h3>
-              )}
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#f4f3ff' }}>
-              <Activity className="w-6 h-6" style={{ color: '#7f56d9' }} />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-[#e4e7ec] shadow-sm overflow-hidden">

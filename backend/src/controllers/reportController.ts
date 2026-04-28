@@ -535,8 +535,17 @@ export const getEmployeeActivityReport = async (req: AuthRequest, res: Response)
 
     // Build the user match filter
     const userMatch: any = { isActive: true };
+    
+    // Always exclude Manager unless specifically requested
     if (role && role !== 'all') {
       userMatch.role = role;
+    } else {
+      userMatch.role = { $ne: 'Manager' };
+    }
+
+    // Filter employees by their registration date (createdAt)
+    if (preset !== 'all-time' && dateMatchFilter.createdAt) {
+      userMatch.createdAt = dateMatchFilter.createdAt;
     }
 
     const employeeStats = await User.aggregate([
@@ -564,12 +573,12 @@ export const getEmployeeActivityReport = async (req: AuthRequest, res: Response)
           lastActive: { $max: '$transactions.createdAt' },
         },
       },
-      { $match: { orderCount: { $gt: 0 } } },
       { $project: { transactions: 0, password: 0 } },
       { $sort: { totalSales: -1, name: 1 } },
     ]);
 
-    const activeEmployees = employeeStats.length;
+    // Active employees count ONLY includes those who processed at least 1 order
+    const activeEmployees = employeeStats.filter(e => e.orderCount > 0).length;
     let topPerformer = 'N/A';
     let topPerformerSales = 0;
     let totalSalesAll = 0;
