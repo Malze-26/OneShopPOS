@@ -66,7 +66,7 @@ export default function InventoryStatusPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar />
+        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} />
       </div>
 
       <div className="mb-6">
@@ -141,6 +141,32 @@ export default function InventoryStatusPage() {
             />
           </div>
           <div className="flex gap-2">
+            <NativeSelect
+              className="w-40"
+              value={categoryFilter}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <NativeSelectOption value="">All Categories</NativeSelectOption>
+              <NativeSelectOption value="Vegetables">Vegetables</NativeSelectOption>
+              <NativeSelectOption value="Fruits">Fruits</NativeSelectOption>
+              <NativeSelectOption value="Bakery">Bakery</NativeSelectOption>
+              <NativeSelectOption value="Beverages">Beverages</NativeSelectOption>
+              <NativeSelectOption value="Snacks">Snacks</NativeSelectOption>
+              <NativeSelectOption value="Dairy">Dairy</NativeSelectOption>
+              <NativeSelectOption value="Meat">Meat</NativeSelectOption>
+              <NativeSelectOption value="Other">Other</NativeSelectOption>
+              <NativeSelectOption value="Frozen">Frozen</NativeSelectOption>
+              <NativeSelectOption value="Electronics">Electronics</NativeSelectOption>
+              <NativeSelectOption value="Clothing">Clothing</NativeSelectOption>
+              <NativeSelectOption value="Home Goods">Home Goods</NativeSelectOption>
+              <NativeSelectOption value="Beauty">Beauty</NativeSelectOption>
+              <NativeSelectOption value="Pet Supplies">Pet Supplies</NativeSelectOption>
+              <NativeSelectOption value="Cleaning Supplies">Cleaning Supplies</NativeSelectOption>
+              <NativeSelectOption value="Food Staples">Food Staples</NativeSelectOption>
+
+
+
+            </NativeSelect>
             <NativeSelect className="w-40" value={statusFilter} onChange={(e) => setStatus(e.target.value)}>
               <NativeSelectOption value="">All Statuses</NativeSelectOption>
               <NativeSelectOption value="In Stock">In Stock</NativeSelectOption>

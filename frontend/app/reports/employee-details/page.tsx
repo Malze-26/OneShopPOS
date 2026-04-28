@@ -100,7 +100,7 @@ export default function EmployeeDetailsPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar onExport={exportToCsv} />
+        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} onExport={exportToCsv} />
       </div>
 
       <div className="mb-6">

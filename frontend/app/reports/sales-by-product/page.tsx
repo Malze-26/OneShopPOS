@@ -197,12 +197,23 @@ export default function SalesByProductPage() {
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              <NativeSelectOption value="">All Categories</NativeSelectOption>
+<NativeSelectOption value="">All Categories</NativeSelectOption>
               <NativeSelectOption value="Vegetables">Vegetables</NativeSelectOption>
               <NativeSelectOption value="Fruits">Fruits</NativeSelectOption>
               <NativeSelectOption value="Bakery">Bakery</NativeSelectOption>
               <NativeSelectOption value="Beverages">Beverages</NativeSelectOption>
               <NativeSelectOption value="Snacks">Snacks</NativeSelectOption>
+              <NativeSelectOption value="Dairy">Dairy</NativeSelectOption>
+              <NativeSelectOption value="Meat">Meat</NativeSelectOption>
+              <NativeSelectOption value="Other">Other</NativeSelectOption>
+              <NativeSelectOption value="Frozen">Frozen</NativeSelectOption>
+              <NativeSelectOption value="Electronics">Electronics</NativeSelectOption>
+              <NativeSelectOption value="Clothing">Clothing</NativeSelectOption>
+              <NativeSelectOption value="Home Goods">Home Goods</NativeSelectOption>
+              <NativeSelectOption value="Beauty">Beauty</NativeSelectOption>
+              <NativeSelectOption value="Pet Supplies">Pet Supplies</NativeSelectOption>
+              <NativeSelectOption value="Cleaning Supplies">Cleaning Supplies</NativeSelectOption>
+              <NativeSelectOption value="Food Staples">Food Staples</NativeSelectOption>
             </NativeSelect>
             <NativeSelect
               className="w-40"

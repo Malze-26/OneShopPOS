@@ -413,22 +413,16 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
 export const getInventoryStatusReport = async (req: AuthRequest, res: Response) => {
   try {
     const { Product } = req.models!;
-    const { category, status, sortBy, preset, startDate, endDate } = req.query;
-
-    const { buildDateFilter } = await import('../utils/dateRange');
-    const dateMatchFilter = buildDateFilter(
-      preset as string,
-      startDate as string,
-      endDate as string
-    );
+    const { category, status, sortBy, preset, startDate: start, endDate: end } = req.query;
+    const { getDateRange } = await import('../utils/dateRange');
+    const { endDate } = getDateRange(preset as string, start as string, end as string);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pipeline: any[] = [
       {
         $match: {
-          stock: { $gt: 0 },
           ...(category ? { category: category as string } : {}),
-          ...(preset && preset !== 'all-time' && dateMatchFilter.createdAt ? { createdAt: dateMatchFilter.createdAt } : {}),
+          createdAt: { $lte: endDate },
         },
       },
       {
@@ -472,9 +466,8 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
     const summaryPipeline: any[] = [
       {
         $match: {
-          stock: { $gt: 0 },
           ...(category ? { category: category as string } : {}),
-          ...(preset && preset !== 'all-time' && dateMatchFilter.createdAt ? { createdAt: dateMatchFilter.createdAt } : {}),
+          createdAt: { $lte: endDate },
         },
       },
       {
