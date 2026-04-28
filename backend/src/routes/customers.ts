@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { protect } from '../middleware/authMiddleware';
+import { protect, requireRole } from '../middleware/authMiddleware';
 import {
   getCustomers,
   getCustomer,
@@ -8,6 +8,7 @@ import {
   deleteCustomer,
   getCustomerStats,
   getCustomerOrders,
+  recalcCustomerStats,
 } from '../controllers/customerController';
 import { AuthRequest } from '../types';
 import { Customer } from '../models/Customer';
@@ -21,6 +22,7 @@ function asyncHandler(fn: (req: Request | AuthRequest, res: Response, next: Next
 router.use(protect);
 
 router.get('/stats', asyncHandler(getCustomerStats));
+router.post('/recalc', requireRole('Manager'), asyncHandler(recalcCustomerStats));
 router.get('/', asyncHandler(getCustomers));
 router.get('/:id/orders', asyncHandler(getCustomerOrders));
 router.get('/:id', asyncHandler(getCustomer));

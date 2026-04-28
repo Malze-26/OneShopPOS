@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { protect } from '../middleware/authMiddleware';
+import { protect, requireRole } from '../middleware/authMiddleware';
 import {
   getTransactions,
   getTransaction,
@@ -7,7 +7,7 @@ import {
   getTransactionStats,
 } from '../controllers/transactionController';
 import { AuthRequest } from '../types';
-import { voidTransaction, refundTransaction } from '../controllers/transactionController';
+import { voidTransaction } from '../controllers/transactionController';
 
 
 const router = Router();
@@ -21,7 +21,7 @@ router.use(protect);
 router.get('/stats', asyncHandler(getTransactionStats));
 router.get('/', asyncHandler(getTransactions));
 router.get('/:id', asyncHandler(getTransaction));
-router.post('/', asyncHandler(createTransaction));
+router.post('/', requireRole('Cashier'), asyncHandler(createTransaction));
 
 router.patch('/:id/void', asyncHandler(voidTransaction));
 

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Bell, User, ChevronDown, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { avatarSrc } from '@/app/lib/avatarUtils';
 
 const pageTitle: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -87,8 +88,8 @@ export function TopHeader() {
               className="flex items-center gap-2 px-3 py-2 hover:bg-[#f9fafb] rounded-lg transition-colors"
             >
               <div className="w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center overflow-hidden">
-                {user?.avatar
-                  ? <img src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}`} alt={user.name} className="w-full h-full object-cover" />
+                {avatarSrc(user?.avatar)
+                  ? <img src={avatarSrc(user?.avatar)} alt={user?.name} className="w-full h-full object-cover" />
                   : <span className="text-white text-xs font-medium">{initials}</span>
                 }
               </div>

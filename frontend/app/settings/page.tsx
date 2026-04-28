@@ -6,6 +6,7 @@ import { Store, Palette, KeyRound, Upload, Check, Eye, EyeOff, Loader2, User } f
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { avatarSrc } from '@/app/lib/avatarUtils';
 
 const CURRENCIES = [
   { code: 'LKR', label: 'LKR — Sri Lankan Rupee', locale: 'en-LK' },
@@ -62,9 +63,7 @@ export default function SettingsPage() {
   const [profileName, setProfileName]   = useState(user?.name ?? '');
   const [profileEmail, setProfileEmail] = useState(user?.email ?? '');
   const [profilePhone, setProfilePhone] = useState(user?.phone ?? '');
-  const [avatarPreview, setAvatarPreview] = useState<string>(
-    user?.avatar ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}` : ''
-  );
+  const [avatarPreview, setAvatarPreview] = useState<string>(avatarSrc(user?.avatar));
 
   // Sync all form fields once store context finishes loading from the API.
   // store.storeId is '' in the defaults and becomes non-empty after the first
@@ -93,7 +92,7 @@ export default function SettingsPage() {
     setProfileEmail(user.email);
     setProfilePhone(p => p || (user.phone ?? ''));
     if (user.avatar && !avatarPreview) {
-      setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}`);
+      setAvatarPreview(avatarSrc(user.avatar));
     }
   }, [user]);
   const [avatarFile, setAvatarFile]       = useState<File | null>(null);
@@ -191,7 +190,7 @@ export default function SettingsPage() {
         const form = new FormData();
         form.append('avatar', avatarFile);
         const { data } = await api.post('/auth/profile/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-        setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${data.avatar}`);
+        setAvatarPreview(avatarSrc(data.avatar));
         setAvatarFile(null);
         setUploadingAvatar(false);
       }
