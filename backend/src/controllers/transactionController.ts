@@ -71,7 +71,7 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Customer, Order } = req.models!;
+    const { Transaction, Customer, Order, Product, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
@@ -83,6 +83,23 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       storeId,
       createdBy: userId,
     });
+
+    // Deduct inventory for each item in the POS transaction
+    if (Array.isArray(req.body.items) && req.body.items.length > 0) {
+      for (const item of req.body.items) {
+        if (item.product) {
+          await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+          await StockHistory.create({
+            product:  item.product,
+            type:     'remove',
+            quantity: item.quantity,
+            reason:   `POS Transaction ${txnId}`,
+            by:       userId,
+            storeId,
+          });
+        }
+      }
+    }
 
     // Recalculate customer stats and send receipt email
     if (req.body.customerId && req.body.customerId !== 'guest') {
@@ -172,7 +189,7 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 
 // DELETE /api/transactions/:id/void — Void transaction
 export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, Order, Product, StockHistory } = req.models!;
+  const { Transaction, Product, StockHistory } = req.models!;
   const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
     res.status(404).json({ message: 'Transaction not found' });
@@ -183,10 +200,9 @@ export async function voidTransaction(req: AuthRequest, res: Response): Promise<
     return;
   }
 
-  // Restore inventory
-  const order = await Order.findOne({ orderId: transaction.orderId });
-  if (order) {
-    for (const item of order.items) {
+  // Restore inventory from items stored on the transaction
+  if (transaction.items && transaction.items.length > 0) {
+    for (const item of transaction.items) {
       await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
       await StockHistory.create({
         product:  item.product,

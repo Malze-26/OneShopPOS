@@ -55,11 +55,13 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { storeName, logoUrl } = useStore();
+  const { storeName, logoUrl, subscriptionPlan, refresh } = useStore();
   const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
   const logoSrc = logoUrl ? `${apiBase}${logoUrl}` : null;
   const [logoError, setLogoError] = useState(false);
   useEffect(() => { setLogoError(false); }, [logoSrc]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { refresh(); }, []);
 
   const isActive = (path: string) => pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
 
@@ -84,6 +86,11 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-base font-bold text-[#101828]">{storeName}</span>
+            {subscriptionPlan && subscriptionPlan !== 'free' && (
+              <span className="text-[10px] font-semibold text-amber-600 capitalize leading-tight flex items-center gap-0.5">
+                ✦ {subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)}
+              </span>
+            )}
           </div>
         </Link>
       </div>
