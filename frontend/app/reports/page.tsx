@@ -19,7 +19,7 @@ interface SalesSummary {
   grossSales: number; refundsCount: number; refundTotal: number;
   netSales: number; transactionCount: number; avgOrderValue: number;
 }
-interface HourlyPoint  { time: string; sales: number }
+interface HourlyPoint { time: string; sales: number }
 interface PaymentMethod { name: string; amount: number; count: number; percentage: number }
 interface DailyRow {
   date: string;
@@ -47,7 +47,7 @@ export default function ReportsPage() {
   const searchParams = useSearchParams();
   const preset = searchParams.get('preset') || 'today';
 
-  const [data, setData]       = useState<ApiResponse | null>(null);
+  const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [channel, setChannel] = useState('all');
@@ -73,19 +73,19 @@ export default function ReportsPage() {
 
   const summary = data?.summary;
   const summaryCards = [
-    { title: 'Gross Sales',         value: fmt(summary?.grossSales       ?? 0) },
-    { title: 'Discounts & Refunds', value: String(summary?.refundsCount  ?? 0) },
-    { title: 'Net Sales',           value: fmt(summary?.netSales         ?? 0) },
-    { title: 'Total Tax',           value: fmt(0) },
-    { title: 'Transactions',        value: String(summary?.transactionCount ?? 0) },
-    { title: 'Avg. Order Value',    value: fmt(summary?.avgOrderValue    ?? 0) },
+    { title: 'Gross Sales', value: fmt(summary?.grossSales ?? 0) },
+    { title: 'Discounts & Refunds', value: String(summary?.refundsCount ?? 0) },
+    { title: 'Net Sales', value: fmt(summary?.netSales ?? 0) },
+    { title: 'Total Tax', value: fmt(0) },
+    { title: 'Transactions', value: String(summary?.transactionCount ?? 0) },
+    { title: 'Avg. Order Value', value: fmt(summary?.avgOrderValue ?? 0) },
   ];
 
-  const hourlySales   = data?.hourlySales    ?? [];
+  const hourlySales = data?.hourlySales ?? [];
   const rawPaymentMethods = data?.paymentMethods ?? [];
   const filteredPayments = rawPaymentMethods.filter(m => m.name === 'Cash' || m.name === 'Card');
   const filteredTotal = filteredPayments.reduce((s, p) => s + p.amount, 0);
-  
+
   const paymentMethods = filteredPayments.map(p => ({
     ...p,
     percentage: filteredTotal > 0 ? Math.round((p.amount / filteredTotal) * 100) : 0
@@ -276,7 +276,7 @@ export default function ReportsPage() {
             <h2 className="text-base font-semibold text-[#101828]">Sales Breakdown</h2>
             <p className="text-xs text-[#4a5565] mt-0.5">Showing {salesBreakdown.length} entries</p>
           </div>
-          <button 
+          <button
             onClick={handleExportPDF}
             className="flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
           >
@@ -288,7 +288,7 @@ export default function ReportsPage() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['Date', 'POS (In-store)', 'Online', 'Gross Sales', 'Discounts', 'Net Sales'].map((h) => (
+                {['Date', 'POS (In-store)', 'E-Commerce', 'Gross Sales', 'Discounts', 'Net Sales'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>

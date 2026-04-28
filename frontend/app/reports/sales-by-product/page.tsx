@@ -26,14 +26,17 @@ interface ProductRow {
   stock?: number;
 }
 
+interface ApiResponse {
+  dateRange: string;
+  summary: SummaryData;
+  products: ProductRow[];
+}
+
 export default function SalesByProductPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
-  const [productData, setProductData] = useState<ProductRow[]>([]);
+  const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
   const [categoryFilter, setCategoryFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
 
@@ -56,10 +59,8 @@ export default function SalesByProductPage() {
         if (start) params.set('startDate', start);
         if (end) params.set('endDate', end);
 
-        const response = await api.get(`/reports/sales-by-product?${params.toString()}`);
-        const data = response.data;
-        setSummaryData(data.summary);
-        setProductData(data.products ?? []);
+        const response = await api.get<ApiResponse>(`/reports/sales-by-product?${params.toString()}`);
+        setData(response.data);
       } catch {
         setError('Failed to load sales data');
       } finally {
@@ -69,6 +70,9 @@ export default function SalesByProductPage() {
 
     fetchSalesData();
   }, [preset, categoryFilter, channelFilter, searchParams]);
+
+  const summaryData = data?.summary;
+  const productData = data?.products ?? [];
 
   const summaryCards = summaryData
     ? [
@@ -105,16 +109,44 @@ export default function SalesByProductPage() {
       (p?.sku?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? ''),
   );
 
+  const exportToCsv = () => {
+    if (filtered.length === 0) return;
+
+    const headers = ['SKU', 'Product Name', 'Category', 'Unit Price', 'Stock', 'Qty Sold', 'Net Sales'];
+    const rows = filtered.map(p => [
+      `"${p.sku}"`,
+      `"${p.name.replace(/"/g, '""')}"`,
+      `"${p.category}"`,
+      p.unitPrice || 0,
+      p.stock || 0,
+      p.qty,
+      p.sales
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sales_by_product_${preset}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar />
+        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} onExport={exportToCsv} />
       </div>
 
       <div className="mb-6">
         <h1 className="text-xl font-bold text-[#101828]">Sales by Product</h1>
-        <p className="text-sm text-[#4a5565] mt-1">Top-performing products by units sold and revenue</p>
+        <p className="text-sm text-[#4a5565] mt-1">
+          {loading ? 'Loading...' : `Top-performing products by units sold and revenue — ${data?.dateRange ?? ''}`}
+        </p>
       </div>
 
       {error && (
