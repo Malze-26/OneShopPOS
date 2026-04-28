@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingBag, Store, Globe, Search, ChevronDown,
-  Package, Clock, CheckCircle, Truck, XCircle, RotateCcw,
+  Package, Clock, CheckCircle, Truck, XCircle,
   Eye, X, MapPin, Phone, Mail, Calendar,
 } from 'lucide-react';
 import api from '@/app/lib/api';
@@ -11,9 +11,9 @@ import { useFmt, useStore } from '@/app/contexts/StoreContext';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type OrderSource    = 'physical' | 'online';
-type OrderStatus    = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-type PaymentStatus  = 'pending' | 'paid' | 'failed';
+type OrderSource   = 'physical' | 'online';
+type OrderStatus   = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'success';
+type PaymentStatus = 'pending' | 'paid' | 'failed' | 'success';
 
 interface OrderItem {
   productName: string;
@@ -40,6 +40,7 @@ interface Order {
   deliveryAddress?: string;
   notes?: string;
   createdAt: string;
+  _sourceType?: 'transaction' | 'order';
 }
 
 interface Stats {
@@ -52,22 +53,32 @@ interface Stats {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
-  pending:    { label: 'Pending',    color: 'bg-[#fff8e1] text-[#f59e0b]', icon: Clock },
-  confirmed:  { label: 'Confirmed',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
-  processing: { label: 'Processing', color: 'bg-[var(--color-primary-light)] text-[var(--color-primary)]', icon: Package },
-  shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
-  delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
-  cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  pending:    { label: 'Pending',    color: 'bg-[#fff8e1] text-[#f59e0b]',                                                    icon: Clock        },
+  success:    { label: 'Success',    color: 'bg-[#e8f5e9] text-[#12b76a]',                                                    icon: CheckCircle  },
+  confirmed:  { label: 'Confirmed',  color: 'bg-[#e8f5e9] text-[#12b76a]',                                                    icon: CheckCircle  },
+  processing: { label: 'Processing', color: 'bg-[var(--color-primary-light)] text-[var(--color-primary)]',                    icon: Package      },
+  shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]',                                                    icon: Truck        },
+  delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]',                                                    icon: CheckCircle  },
+  cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]',                                                    icon: XCircle      },
 };
 
-const PAYMENT_STATUS_COLOR: Record<PaymentStatus, string> = {
-  pending:  'bg-[#fff8e1] text-[#f59e0b]',
-  paid:     'bg-[#e8f5e9] text-[#12b76a]',
-  failed:   'bg-[#fef3f2] text-[#f04438]',
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  pending: 'bg-[#fff8e1] text-[#f59e0b]',
+  paid:    'bg-[#e8f5e9] text-[#12b76a]',
+  success: 'bg-[#e8f5e9] text-[#12b76a]',
+  failed:  'bg-[#fef3f2] text-[#f04438]',
 };
 
-const ORDER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all',        label: 'All Statuses'  },
+  { value: 'pending',    label: 'Pending'       },
+  { value: 'success',    label: 'Success'       },
+  { value: 'processing', label: 'Processing'    },
+  { value: 'shipped',    label: 'Shipped'       },
+  { value: 'delivered',  label: 'Delivered'     },
+  { value: 'cancelled',  label: 'Cancelled'     },
+];
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -101,9 +112,12 @@ function OrderModal({ order, onClose, onStatusChange }: {
   onStatusChange: (id: string, status: OrderStatus) => void;
 }) {
   const fmt = useFmt();
-  const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
+  const cfg      = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
   const StatusIcon = cfg.icon;
   const payColor = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
+
+  const isPhysical = order.source === 'physical';
+  const isDone     = ['success', 'delivered', 'cancelled', 'refunded'].includes(order.status);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/30" onClick={onClose}>
@@ -126,17 +140,19 @@ function OrderModal({ order, onClose, onStatusChange }: {
           {/* Source + Status */}
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-              order.source === 'physical' ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
+              isPhysical ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
             }`}>
-              {order.source === 'physical' ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
-              {order.source === 'physical' ? 'Physical Store' : 'Online'}
+              {isPhysical ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+              {isPhysical ? 'Physical Store' : 'Online'}
             </span>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${cfg.color}`}>
               <StatusIcon className="w-3 h-3" />
               {cfg.label}
             </span>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${payColor}`}>
-              {order.paymentStatus ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1) : '-'} · {order.paymentMethod ?? '-'}
+              {order.paymentStatus
+                ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)
+                : '-'} · {order.paymentMethod ?? '-'}
             </span>
           </div>
 
@@ -199,20 +215,22 @@ function OrderModal({ order, onClose, onStatusChange }: {
             </div>
           </div>
 
-          {/* Update Status — manager action */}
-          {!['delivered', 'cancelled', 'refunded'].includes(order.status) && (
+          {/* Update Status — only for non-terminal online orders */}
+          {!isPhysical && !isDone && (
             <div>
               <h3 className="text-sm font-semibold text-[#101828] mb-2">Update Status</h3>
               <div className="flex flex-wrap gap-2">
-                {ORDER_STATUSES.filter(s => s !== order.status && !['refunded', 'confirmed'].includes(s)).map(s => (
-                  <button
-                    key={s}
-                    onClick={() => onStatusChange(order._id, s)}
-                    className="px-3 py-1.5 text-xs font-medium border border-[#e4e7ec] rounded-lg hover:bg-[#f9fafb] text-[#4a5565] transition-colors"
-                  >
-                    {STATUS_CONFIG[s].label}
-                  </button>
-                ))}
+                {(['processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[])
+                  .filter(s => s !== order.status)
+                  .map(s => (
+                    <button
+                      key={s}
+                      onClick={() => onStatusChange(order._id, s)}
+                      className="px-3 py-1.5 text-xs font-medium border border-[#e4e7ec] rounded-lg hover:bg-[#f9fafb] text-[#4a5565] transition-colors"
+                    >
+                      {STATUS_CONFIG[s]?.label ?? s}
+                    </button>
+                  ))}
               </div>
             </div>
           )}
@@ -272,12 +290,13 @@ export default function OrdersPage() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
+  // Confirm a COD online order — manager action
   const handleConfirm = async (id: string) => {
     setConfirming(prev => new Set(prev).add(id));
     try {
       await api.patch(`/orders/${id}/confirm`);
-      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: 'confirmed' } : o));
-      if (selected?._id === id) setSelected(prev => prev ? { ...prev, status: 'confirmed' } : null);
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: 'success', paymentStatus: 'success' } : o));
+      if (selected?._id === id) setSelected(prev => prev ? { ...prev, status: 'success', paymentStatus: 'success' } : null);
       fetchStats();
     } catch { /* silent */ } finally {
       setConfirming(prev => { const s = new Set(prev); s.delete(id); return s; });
@@ -300,7 +319,6 @@ export default function OrdersPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-         
           <p className="text-sm text-[#4a5565]">All physical store and online purchases</p>
         </div>
       </div>
@@ -308,10 +326,10 @@ export default function OrdersPage() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Orders"    value={stats.total}    icon={ShoppingBag}   color="bg-[var(--color-primary-light)] text-[var(--color-primary)]" />
-          <StatCard label="Physical"        value={stats.physical} icon={Store}         color="bg-[#e8f5e9] text-[#12b76a]" sub="In-store" />
-          <StatCard label="Online"          value={stats.online}   icon={Globe}         color="bg-[#f3e8ff] text-[#7f56d9]" sub="Website" />
-          <StatCard label="Pending"         value={stats.pending}  icon={Clock}         color="bg-[#fff8e1] text-[#f59e0b]" sub="Needs attention" />
+          <StatCard label="Total Orders" value={stats.total}    icon={ShoppingBag} color="bg-[var(--color-primary-light)] text-[var(--color-primary)]" />
+          <StatCard label="Physical"     value={stats.physical} icon={Store}       color="bg-[#e8f5e9] text-[#12b76a]" sub="In-store" />
+          <StatCard label="Online"       value={stats.online}   icon={Globe}       color="bg-[#f3e8ff] text-[#7f56d9]" sub="Website" />
+          <StatCard label="Pending"      value={stats.pending}  icon={Clock}       color="bg-[#fff8e1] text-[#f59e0b]" sub="Needs attention" />
         </div>
       )}
 
@@ -349,9 +367,8 @@ export default function OrdersPage() {
             onChange={e => { setStatus(e.target.value); setPage(1); }}
             className="appearance-none pl-3 pr-8 py-2 text-sm border border-[#e4e7ec] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] bg-white text-[#101828]"
           >
-            <option value="all">All Statuses</option>
-            {ORDER_STATUSES.map(s => (
-              <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+            {STATUS_FILTER_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#98a2b3] pointer-events-none" />
@@ -377,9 +394,13 @@ export default function OrdersPage() {
               ) : orders.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-[#4a5565]">No orders found</td></tr>
               ) : orders.map(order => {
-                const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
+                const cfg        = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
                 const StatusIcon = cfg.icon;
-                const payColor = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
+                const payColor   = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
+                const isPhysical = order.source === 'physical';
+                // Confirm button only for online COD orders that are still pending
+                const canConfirm = !isPhysical && order.status === 'pending';
+
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-[var(--color-primary)] font-medium whitespace-nowrap">
@@ -387,10 +408,10 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        order.source === 'physical' ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
+                        isPhysical ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]' : 'bg-[#f3e8ff] text-[#7f56d9]'
                       }`}>
-                        {order.source === 'physical' ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
-                        {order.source === 'physical' ? 'Physical' : 'Online'}
+                        {isPhysical ? <Store className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                        {isPhysical ? 'Physical' : 'Online'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -401,7 +422,9 @@ export default function OrdersPage() {
                     <td className="px-4 py-3 font-semibold text-[#101828] whitespace-nowrap">{fmt(order.total ?? 0)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${payColor}`}>
-                        {order.paymentStatus ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1) : '-'}
+                        {order.paymentStatus
+                          ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)
+                          : '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -413,12 +436,14 @@ export default function OrdersPage() {
                     <td className="px-4 py-3 text-[#4a5565] whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString(currencyLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                        {order.createdAt
+                          ? new Date(order.createdAt).toLocaleDateString(currencyLocale, { day: 'numeric', month: 'short', year: 'numeric' })
+                          : '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        {order.status === 'pending' && (
+                        {canConfirm && (
                           <button
                             onClick={() => handleConfirm(order._id)}
                             disabled={confirming.has(order._id)}

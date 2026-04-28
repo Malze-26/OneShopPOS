@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { avatarSrc } from '@/app/lib/avatarUtils';
 import { Plus, Search, Eye, EyeOff, UserMinus, AlertTriangle, Loader2, X } from 'lucide-react';
 import api from '@/app/lib/api';
 
@@ -319,8 +320,10 @@ export default function EmployeesPage() {
                   <tr key={String(emp.id)} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{ background: 'var(--color-primary)' }}>
-                          {emp.avatar}
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium overflow-hidden" style={{ background: 'var(--color-primary)' }}>
+                          {avatarSrc(emp.avatar)
+                            ? <img src={avatarSrc(emp.avatar)} alt={emp.name} className="w-full h-full object-cover" />
+                            : emp.avatar}
                         </div>
                         <div className="text-sm font-medium text-[#101828]">{emp.name}</div>
                       </div>

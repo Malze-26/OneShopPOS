@@ -87,23 +87,12 @@ export async function getNoSalesAlerts(req: AuthRequest, res: Response): Promise
   });
 }
 
-// GET /api/alerts/inactive-staff  — cashiers who haven't logged in recently
+// GET /api/alerts/inactive-staff  — all employees where isActive = false
 export async function getInactiveStaffAlerts(req: AuthRequest, res: Response): Promise<void> {
   const { User } = req.models!;
-  const days = parseInt((req.query.days as string) ?? '7');
 
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-
-  const users = await User.find({
-    role: 'Cashier',
-    isActive: true,
-    $or: [
-      { lastLogin: { $lt: cutoff } },
-      { lastLogin: { $exists: false } },
-    ],
-  })
-    .select('name lastLogin')
+  const users = await User.find({ isActive: false })
+    .select('name lastLogin role')
     .sort({ lastLogin: 1 })
     .lean();
 
@@ -117,8 +106,9 @@ export async function getInactiveStaffAlerts(req: AuthRequest, res: Response): P
       return {
         id: u._id,
         name: u.name,
+        role: u.role,
         lastLogin: last ? last.toISOString().slice(0, 10) : 'Never',
-        daysInactive: daysInactive ?? days,
+        daysInactive: daysInactive ?? 0,
       };
     }),
   });

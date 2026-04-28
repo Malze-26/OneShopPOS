@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Tag } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import api from '@/app/lib/api';
 
@@ -121,6 +121,23 @@ export default function CategoriesPage() {
           <Plus className="w-4 h-4" />
           Add Category
         </button>
+      </div>
+
+      {/* Stat tile */}
+      <div className="mb-6">
+        <div className="inline-flex items-center gap-4 bg-white rounded-xl px-6 py-4 shadow-sm border border-[#e4e7ec] min-w-[200px]">
+          <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center">
+            <Tag className="w-5 h-5 text-[var(--color-primary)]" />
+          </div>
+          <div>
+            <p className="text-xs text-[#4a5565] font-medium uppercase tracking-wide">Total Categories</p>
+            {loading ? (
+              <Loader2 className="w-5 h-5 text-[var(--color-primary)] animate-spin mt-1" />
+            ) : (
+              <p className="text-2xl font-bold text-[#101828]">{categories.length}</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Body */}

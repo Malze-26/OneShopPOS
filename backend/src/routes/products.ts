@@ -3,6 +3,7 @@ import { protect, requireRole } from '../middleware/authMiddleware';
 import {
   getProducts,
   getProduct,
+  getProductStats,
   createProduct,
   updateProduct,
   deleteProduct,
@@ -24,6 +25,7 @@ function asyncHandler(fn: (req: Request | AuthRequest, res: Response, next: Next
 router.use(protect);
 
 router.get('/', asyncHandler(getProducts));
+router.get('/stats', asyncHandler(getProductStats));
 
 // Manager-only write operations
 router.post('/', requireRole('Manager'), asyncHandler(createProduct));
