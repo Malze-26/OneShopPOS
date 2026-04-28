@@ -171,14 +171,18 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
   try {
     const { Transaction, Order, Product } = req.models!;
-    const { preset, startDate, endDate } = req.query;
+    const { preset, startDate, endDate, channel } = req.query;
 
+    const { buildDateFilter, getDateRangeLabel } = await import('../utils/dateRange');
     const dateMatchFilter = buildDateFilter(
       preset as string,
       startDate as string,
       endDate as string
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
+
+    // Map frontend channel names to backend OrderSource
+    const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
 
     // Start from Transaction (filtered by date + success), then join to Order for product items
     const [salesData, topGrossingItem, totalUnitsSoldAgg, topCategoryByRevenue] = await Promise.all([
@@ -194,6 +198,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
           },
         },
         { $unwind: '$order' },
+        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
         { $unwind: '$order.items' },
         {
           $lookup: {
@@ -231,6 +236,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
           },
         },
         { $unwind: '$order' },
+        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
         { $unwind: '$order.items' },
         {
           $group: {
@@ -255,6 +261,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
           },
         },
         { $unwind: '$order' },
+        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
         { $unwind: '$order.items' },
         { $group: { _id: null, total: { $sum: '$order.items.quantity' } } },
       ]),
@@ -271,6 +278,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
           },
         },
         { $unwind: '$order' },
+        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
         { $unwind: '$order.items' },
         {
           $lookup: {
@@ -405,12 +413,23 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
 export const getInventoryStatusReport = async (req: AuthRequest, res: Response) => {
   try {
     const { Product } = req.models!;
-    const { category, status, sortBy } = req.query;
+    const { category, status, sortBy, preset, startDate, endDate } = req.query;
+
+    const { buildDateFilter } = await import('../utils/dateRange');
+    const dateMatchFilter = buildDateFilter(
+      preset as string,
+      startDate as string,
+      endDate as string
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pipeline: any[] = [
       {
-        $match: category ? { category: category as string } : {},
+        $match: {
+          stock: { $gt: 0 },
+          ...(category ? { category: category as string } : {}),
+          ...(preset && preset !== 'all-time' && dateMatchFilter.createdAt ? { createdAt: dateMatchFilter.createdAt } : {}),
+        },
       },
       {
         $addFields: {
@@ -451,7 +470,13 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const summaryPipeline: any[] = [
-      { $match: category ? { category: category as string } : {} },
+      {
+        $match: {
+          stock: { $gt: 0 },
+          ...(category ? { category: category as string } : {}),
+          ...(preset && preset !== 'all-time' && dateMatchFilter.createdAt ? { createdAt: dateMatchFilter.createdAt } : {}),
+        },
+      },
       {
         $addFields: {
           assetValue: { $multiply: ['$stock', '$costPrice'] },
@@ -535,7 +560,7 @@ export const getEmployeeActivityReport = async (req: AuthRequest, res: Response)
 
     // Build the user match filter
     const userMatch: any = { isActive: true };
-    
+
     // Always exclude Manager unless specifically requested
     if (role && role !== 'all') {
       userMatch.role = role;

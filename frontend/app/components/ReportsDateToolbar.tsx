@@ -13,9 +13,11 @@ const ranges = [
 
 interface ReportsDateToolbarProps {
   onExport?: () => void;
+  showRanges?: string[];
+  isSingleDate?: boolean;
 }
 
-export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
+export function ReportsDateToolbar({ onExport, showRanges, isSingleDate }: ReportsDateToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,8 +48,10 @@ export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
   const applyCustomRange = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('preset', 'custom');
-    if (tempStart) params.set('startDate', tempStart);
-    if (tempEnd) params.set('endDate', tempEnd);
+    if (tempStart) {
+      params.set('startDate', tempStart);
+      params.set('endDate', isSingleDate ? tempStart : tempEnd);
+    }
     router.push(`${pathname}?${params.toString()}`);
     setShowPicker(false);
   };
@@ -56,7 +60,7 @@ export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 relative">
       <div className="flex gap-2 items-center">
         <div className="flex gap-2">
-          {ranges.map(({ label, value }) => {
+          {ranges.filter(r => !showRanges || showRanges.includes(r.value)).map(({ label, value }) => {
             const isActive = currentPreset === value;
             const isCustom = value === 'custom';
 
@@ -78,9 +82,9 @@ export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
         </div>
 
         {/* Selected custom range label */}
-        {currentPreset === 'custom' && tempStart && tempEnd && !showPicker && (
+        {currentPreset === 'custom' && tempStart && (isSingleDate || tempEnd) && !showPicker && (
           <span className="text-xs font-medium text-[#4a5565] bg-[#f2f4f7] px-3 py-1.5 rounded-full border border-[#e4e7ec]">
-            {tempStart} to {tempEnd}
+            {isSingleDate ? tempStart : `${tempStart} to ${tempEnd}`}
           </span>
         )}
       </div>
@@ -89,7 +93,7 @@ export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
       {showPicker && (
         <div className="absolute top-12 left-0 z-50 bg-white p-4 rounded-xl shadow-xl border border-[#e4e7ec] w-72 animate-in fade-in slide-in-from-top-2">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-semibold text-[#101828]">Select Range</h3>
+            <h3 className="text-sm font-semibold text-[#101828]">{isSingleDate ? 'Select Date' : 'Select Range'}</h3>
             <button onClick={() => setShowPicker(false)} className="text-[#667085] hover:text-[#101828]">
               <X className="h-4 w-4" />
             </button>
@@ -97,7 +101,7 @@ export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
 
           <div className="space-y-3 mb-4">
             <div>
-              <label className="block text-xs font-medium text-[#475467] mb-1">Start Date</label>
+              <label className="block text-xs font-medium text-[#475467] mb-1">{isSingleDate ? 'Date' : 'Start Date'}</label>
               <input
                 type="date"
                 value={tempStart}
@@ -105,24 +109,26 @@ export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
                 className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-[#475467] mb-1">End Date</label>
-              <input
-                type="date"
-                value={tempEnd}
-                onChange={(e) => setTempEnd(e.target.value)}
-                className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-              />
-            </div>
+            {!isSingleDate && (
+              <div>
+                <label className="block text-xs font-medium text-[#475467] mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={tempEnd}
+                  onChange={(e) => setTempEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                />
+              </div>
+            )}
           </div>
 
           <button
             onClick={applyCustomRange}
-            disabled={!tempStart || !tempEnd}
+            disabled={!tempStart || (!isSingleDate && !tempEnd)}
             className="w-full bg-[var(--color-primary)] text-white py-2 rounded-lg text-sm font-semibold hover:bg-opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Check className="h-4 w-4" />
-            Apply Range
+            {isSingleDate ? 'Apply Date' : 'Apply Range'}
           </button>
         </div>
       )}
