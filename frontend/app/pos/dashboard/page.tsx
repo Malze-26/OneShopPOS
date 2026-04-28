@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useStore } from "@/app/contexts/StoreContext";
 import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
@@ -49,6 +50,7 @@ interface Category {
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
+  const { subscriptionPlan, refresh: refreshStore } = useStore();
   const isOnline = useOnlineStatus();
   const { storeName } = useStore();
   const [activeCategory, setActiveCategory] = useState("All");
@@ -89,6 +91,9 @@ export default function POSDashboard() {
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { refreshStore(); }, []);
 
   // Reset discounts and promo when cart is cleared
   useEffect(() => {
@@ -294,6 +299,7 @@ export default function POSDashboard() {
         onSync={handleSync}
         onToggleMenu={() => setShowMenu(v => !v)}
         onLogout={handleLogout}
+        subscriptionPlan={subscriptionPlan}
       />
 
       <div className="flex flex-1 min-h-0">
