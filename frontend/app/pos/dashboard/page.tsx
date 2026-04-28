@@ -226,6 +226,15 @@ export default function POSDashboard() {
     );
   };
 
+  const refreshProducts = useCallback(async () => {
+    try {
+      const productsRes = await api.get("/products");
+      setProducts(productsRes.data.data);
+    } catch (err) {
+      console.error("Failed to refresh products:", err);
+    }
+  }, []);
+
   const handleCheckoutSuccess = () => {
     setCart([]);
     setSelectedCustomer(null);
@@ -236,6 +245,7 @@ export default function POSDashboard() {
     setLoyaltyPointsUsed(0);
     setShowCheckout(false);
     refreshPendingCount();
+    refreshProducts(); // Refresh inventory to show updated stock levels
   };
 
   const checkoutState = {
