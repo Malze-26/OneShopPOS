@@ -11,7 +11,11 @@ const ranges = [
   { label: 'Custom', value: 'custom' }
 ];
 
-export function ReportsDateToolbar() {
+interface ReportsDateToolbarProps {
+  onExport?: () => void;
+}
+
+export function ReportsDateToolbar({ onExport }: ReportsDateToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -125,6 +129,7 @@ export function ReportsDateToolbar() {
 
       <button
         type="button"
+        onClick={onExport}
         className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
       >
         <Download className="h-3.5 w-3.5" />

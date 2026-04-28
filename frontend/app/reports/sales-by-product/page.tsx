@@ -22,6 +22,8 @@ interface ProductRow {
   category: string;
   qty: number;
   sales: number;
+  unitPrice?: number;
+  stock?: number;
 }
 
 export default function SalesByProductPage() {

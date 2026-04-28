@@ -108,7 +108,7 @@ export default function ReportsPage() {
   const handleExportPDF = () => {
     if (!data) return;
     const doc = new jsPDF();
-    const primaryColor = [103, 58, 183]; // Purple
+    const primaryColor: [number, number, number] = [103, 58, 183]; // Purple
 
     doc.setFontSize(20);
     doc.text('Sales Summary Report', 14, 22);
@@ -200,30 +200,45 @@ export default function ReportsPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-        {/* Sales by Channel — all POS for tenant stores */}
+        {/* Sales by Channel */}
         <div className="bg-white rounded-xl border border-[#e4e7ec] shadow-sm p-5">
           <h2 className="text-base font-semibold text-[#101828] mb-1">Sales by Channel</h2>
-          <p className="text-xs text-[#4a5565] mb-4">Today&apos;s breakdown</p>
+          <p className="text-xs text-[#4a5565] mb-4">Gross Sales Breakdown</p>
           <div className="h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={[{ name: 'POS (Direct)', value: 100, color: CHANNEL_COLORS[0] }]}
+                  data={[
+                    { name: 'POS (In-store)', value: totals.posSales > 0 ? totals.posSales : 0.0001, color: CHANNEL_COLORS[0] }, // use 0.0001 to render empty pie if 0
+                    { name: 'E-commerce', value: totals.onlineSales > 0 ? totals.onlineSales : 0.0001, color: CHANNEL_COLORS[1] }
+                  ]}
                   cx="50%" cy="50%"
                   innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value"
                 >
                   <Cell fill={CHANNEL_COLORS[0]} />
+                  <Cell fill={CHANNEL_COLORS[1]} />
                 </Pie>
-                <Tooltip formatter={(value: number) => `${value}%`} />
+                <Tooltip formatter={(value: number) => value === 0.0001 ? fmt(0) : fmt(value)} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center justify-between text-sm mt-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHANNEL_COLORS[0] }} />
-              <span className="text-[#4a5565]">POS (Direct)</span>
+              <span className="text-[#4a5565]">POS (In-store)</span>
             </div>
-            <span className="font-medium text-[#101828]">100%</span>
+            <span className="font-medium text-[#101828]">
+              {totals.posSales + totals.onlineSales > 0 ? Math.round((totals.posSales / (totals.posSales + totals.onlineSales)) * 100) : 0}%
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm mt-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHANNEL_COLORS[1] }} />
+              <span className="text-[#4a5565]">E-commerce</span>
+            </div>
+            <span className="font-medium text-[#101828]">
+              {totals.posSales + totals.onlineSales > 0 ? Math.round((totals.onlineSales / (totals.posSales + totals.onlineSales)) * 100) : 0}%
+            </span>
           </div>
         </div>
 

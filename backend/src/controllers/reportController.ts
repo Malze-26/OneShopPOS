@@ -520,13 +520,11 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
   }
 };
 
-// ============= Customer Activity Report =============
-export const getCustomerActivityReport = async (req: AuthRequest, res: Response) => {
+// ============= Employee Activity Report =============
+export const getEmployeeActivityReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { Order, Customer, Transaction } = req.models!;
-    const { preset, startDate, endDate, channel, customerType } = req.query;
-
-    const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
+    const { User, Transaction } = req.models!;
+    const { preset, startDate, endDate, role } = req.query;
 
     const dateMatchFilter = buildDateFilter(
       preset as string,
@@ -535,106 +533,80 @@ export const getCustomerActivityReport = async (req: AuthRequest, res: Response)
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    const uniqueCustomers = await Transaction.aggregate([
-      { $match: { ...dateMatchFilter, status: 'success' } },
-      { $group: { _id: '$customer' } },
-      { $count: 'total' },
-    ]);
+    // Build the user match filter
+    const userMatch: any = { isActive: true };
+    if (role && role !== 'all') {
+      userMatch.role = role;
+    }
 
-    const topSpender = await Transaction.aggregate([
-      { $match: { ...dateMatchFilter, status: 'success' } },
-      {
-        $group: {
-          _id: '$customer',
-          totalSpent: { $sum: '$amount' },
-          orderCount: { $sum: 1 },
-        },
-      },
-      { $sort: { totalSpent: -1 } },
-      { $limit: 1 },
-    ]);
-
-    const newVsReturning = await Transaction.aggregate([
-      { $match: { ...dateMatchFilter, status: 'success' } },
-      { $group: { _id: '$customer', orderCount: { $sum: 1 } } },
-      {
-        $facet: {
-          new: [{ $match: { orderCount: 1 } }, { $count: 'count' }],
-          returning: [{ $match: { orderCount: { $gt: 1 } } }, { $count: 'count' }],
-        },
-      },
-    ]);
-
-    const newCount = newVsReturning[0]?.new[0]?.count || 0;
-    const returningCount = newVsReturning[0]?.returning[0]?.count || 0;
-    const totalNewReturning = newCount + returningCount;
-    const returningPercentage = totalNewReturning > 0 ? Math.round((returningCount / totalNewReturning) * 100) : 0;
-
-    const customerStats = await Transaction.aggregate([
-      { $match: { ...dateMatchFilter, status: 'success' } },
+    const employeeStats = await User.aggregate([
+      { $match: userMatch },
       {
         $lookup: {
-          from: 'orders',
-          localField: 'orderId',
-          foreignField: 'orderId',
-          as: 'orderInfo',
-        },
-      },
-      { $unwind: { path: '$orderInfo', preserveNullAndEmptyArrays: true } },
-      ...(sourceFilter ? [{ $match: { 'orderInfo.source': sourceFilter } }] : []),
-      {
-        $group: {
-          _id: '$customer',
-          orderCount: { $sum: 1 },
-          spent: { $sum: '$amount' },
-          lastOrder: { $max: '$createdAt' },
+          from: 'transactions',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$createdBy', '$$userId'] },
+                status: 'success',
+                ...dateMatchFilter,
+              },
+            },
+          ],
+          as: 'transactions',
         },
       },
       {
-        $lookup: {
-          from: 'customers',
-          localField: '_id',
-          foreignField: 'name',
-          as: 'profile',
+        $addFields: {
+          orderCount: { $size: '$transactions' },
+          totalSales: { $sum: '$transactions.amount' },
+          lastActive: { $max: '$transactions.createdAt' },
         },
       },
-      { $unwind: { path: '$profile', preserveNullAndEmptyArrays: true } },
-      // Apply Customer Type filter
-      ...(customerType === 'new' ? [{ $match: { 'profile.totalOrders': { $lte: 1 } } }] : []),
-      ...(customerType === 'returning' ? [{ $match: { 'profile.totalOrders': { $gt: 1 } } }] : []),
-      { $sort: { spent: -1 } },
-      { $limit: 100 },
+      { $match: { orderCount: { $gt: 0 } } },
+      { $project: { transactions: 0, password: 0 } },
+      { $sort: { totalSales: -1, name: 1 } },
     ]);
 
-    const customerList = customerStats.map(c => {
-      const spent = c.spent || 0;
+    const activeEmployees = employeeStats.length;
+    let topPerformer = 'N/A';
+    let topPerformerSales = 0;
+    let totalSalesAll = 0;
+
+    const employeesList = employeeStats.map((e) => {
+      totalSalesAll += e.totalSales;
+      if (e.totalSales > topPerformerSales) {
+        topPerformerSales = e.totalSales;
+        topPerformer = e.name || 'Unknown';
+      }
+
       return {
-        name: c._id || 'Anonymous Customer',
-        email: c.profile?.email || 'N/A',
-        phone: c.profile?.phone || 'N/A',
-        type: (c.profile?.totalOrders || 1) <= 1 ? 'New' : 'Returning',
-        orderCount: c.orderCount || 0,
-        spent: spent,
-        loyaltyTier: (c.profile?.totalSpent || spent) >= 100000 ? 'Platinum' : (c.profile?.totalSpent || spent) >= 50000 ? 'Gold' : (c.profile?.totalSpent || spent) >= 20000 ? 'Silver' : 'Bronze',
-        lastOrder: c.lastOrder
+        id: e._id,
+        name: e.name || 'Unknown',
+        email: e.email || 'N/A',
+        role: e.role || 'Unknown',
+        orderCount: e.orderCount || 0,
+        totalSales: e.totalSales || 0,
+        lastActive: e.lastActive || null,
       };
     });
+
+    const avgSalesPerEmployee = activeEmployees > 0 ? Math.round(totalSalesAll / activeEmployees) : 0;
 
     res.json({
       dateRange: dateLabel,
       summary: {
-        uniqueCustomers: uniqueCustomers[0]?.total || 0,
-        topSpender: topSpender[0]?._id || 'N/A',
-        topSpenderAmount: topSpender[0]?.totalSpent || 0,
-        newVsReturning: {
-          returning: returningPercentage,
-          new: 100 - returningPercentage,
-        },
+        activeEmployees,
+        topPerformer,
+        topPerformerSales,
+        avgSalesPerEmployee,
       },
-      customers: customerList,
+      employees: employeesList,
     });
   } catch (error) {
-    console.error('Error fetching customer activity:', error);
-    res.status(500).json({ error: 'Failed to fetch customer activity' });
+    console.error('Error fetching employee activity:', error);
+    res.status(500).json({ error: 'Failed to fetch employee activity' });
   }
 };
+

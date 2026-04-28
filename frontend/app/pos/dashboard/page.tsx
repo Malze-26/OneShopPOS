@@ -109,7 +109,12 @@ export default function POSDashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-    if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
+    
+    // ONLY redirect to main dashboard if we are SURE the user is a Manager or Superadmin
+    if (user.role === 'Manager' || (user.role as string) === 'superadmin') {
+      router.replace('/dashboard');
+    }
+
   }, [user, authLoading, router]);
 
   // Fetch products, categories, and customers on mount

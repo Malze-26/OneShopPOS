@@ -4,7 +4,7 @@ import {
   getSalesByProductReport,
   getDailyZReport,
   getInventoryStatusReport,
-  getCustomerActivityReport,
+  getEmployeeActivityReport,
 } from '../controllers/reportController';
 import { protect } from '../middleware/authMiddleware';
 import { requireTenant } from '../middleware/tenantMiddleware';
@@ -27,7 +27,7 @@ router.get('/inventory-status', getInventoryStatusReport);
 // Daily Z Report
 router.get('/daily-z-report', getDailyZReport);
 
-// Customer Activity Report
-router.get('/customer-activity', getCustomerActivityReport);
+// Employee Activity Report
+router.get('/employee-details', getEmployeeActivityReport);
 
 export default router;
