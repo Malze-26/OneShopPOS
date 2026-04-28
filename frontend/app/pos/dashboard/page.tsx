@@ -6,7 +6,7 @@ import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
 import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
-import { fmt, genId } from "./constants/pos"; 
+import { fmt, genId } from "./constants/pos";
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
 import PromoModal from "./components/PromoModal";
@@ -110,7 +110,12 @@ export default function POSDashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-    if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
+    
+    // ONLY redirect to main dashboard if we are SURE the user is a Manager or Superadmin
+    if (user.role === 'Manager' || (user.role as string) === 'superadmin') {
+      router.replace('/dashboard');
+    }
+
   }, [user, authLoading, router]);
 
   // Fetch products, categories, and customers on mount
@@ -303,11 +308,10 @@ export default function POSDashboard() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${
-                    activeCategory === cat
+                  className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${activeCategory === cat
                       ? "bg-[#1B1A55] text-white border-transparent"
                       : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#9290C3] hover:text-[#1B1A55]"
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>
@@ -350,7 +354,7 @@ export default function POSDashboard() {
                 className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#9290C3] hover:text-[#1B1A55] hover:bg-[#F5F4FF]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 History
               </button>
@@ -359,9 +363,9 @@ export default function POSDashboard() {
                 className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#9290C3] hover:text-[#1B1A55] hover:bg-[#F5F4FF]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
                 </svg>
                 Customers
               </button>

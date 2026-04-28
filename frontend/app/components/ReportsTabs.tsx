@@ -8,7 +8,7 @@ const tabs = [
   { label: 'Daily Z-Report', href: '/reports/daily-z-report' },
   { label: 'Sales by Product', href: '/reports/sales-by-product' },
   { label: 'Inventory Status', href: '/reports/inventory-status' },
-  { label: 'Customer Activity', href: '/reports/customer-activity' },
+  { label: 'Employee Details', href: '/reports/employee-details' },
 ];
 
 export function ReportsTabs() {
