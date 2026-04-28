@@ -6,6 +6,7 @@ interface User {
 }
 
 interface TopBarProps {
+  storeName: string;
   user: User;
   time: Date;
   isOnline: boolean;
@@ -21,6 +22,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({
+  storeName,
   user,
   time,
   isOnline,
@@ -39,10 +41,10 @@ export default function TopBar({
 
       {/* Logo */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)" }}>
-          <span className="text-white font-black text-[10px] tracking-[-1px]">POS</span>
-        </div>
-        <span className="text-white font-bold text-[14px] tracking-[-0.3px]">OneShop POS</span>
+       <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)" }}>
+        <span className="text-white font-black text-[10px] tracking-[-1px]">POS</span>
+      </div>
+      <span className="text-white font-bold text-[14px] tracking-[-0.3px]">{storeName}</span> {/* ← use storeName */}
       </div>
 
       {/* Search */}

@@ -13,6 +13,7 @@ import PromoModal from "./components/PromoModal";
 import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
+import { useStore } from "@/app/contexts/StoreContext";
 
 interface Product {
   _id: string;
@@ -49,7 +50,7 @@ export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
   const isOnline = useOnlineStatus();
-
+  const { storeName } = useStore();
   const [activeCategory, setActiveCategory] = useState("All");
   const [cart, setCart] = useState<{ id: string; name: string; sku: string; price: number; qty: number; unit: string; weight: number | null; }[]>([]);
   const [search, setSearch] = useState("");
@@ -275,6 +276,7 @@ export default function POSDashboard() {
     <div className="h-screen flex flex-col overflow-hidden bg-[#F0F2F8] font-sans">
 
       <TopBar
+        storeName={storeName}
         user={user}
         time={time}
         isOnline={isOnline}
