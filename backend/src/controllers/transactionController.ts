@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
+import { sendReceiptEmail } from '../utils/sendReceiptEmail';
 
 function generateTxnId(): string {
   const num = Math.floor(Math.random() * 90000) + 10000;
@@ -14,7 +15,7 @@ export async function getTransactions(req: AuthRequest, res: Response, next: Nex
 
     const filter: Record<string, unknown> = {};
 
-    if (customerId) filter.customerId = customerId; 
+    if (customerId) filter.customerId = customerId;
     if (payment && payment !== 'All') filter.paymentMethod = payment;
     if (search) filter.txnId = { $regex: search, $options: 'i' };
     if (startDate || endDate) {
@@ -70,7 +71,7 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Customer } = req.models!;
+    const { Transaction, Customer, Order } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
@@ -83,9 +84,8 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       createdBy: userId,
     });
 
-    // Recalculate customer stats from real Orders and award loyalty points
+    // Recalculate customer stats and send receipt email
     if (req.body.customerId && req.body.customerId !== 'guest') {
-      const { Order } = req.models!;
       const customer = await Customer.findById(req.body.customerId);
       if (customer) {
         const pointsEarned = Math.floor(req.body.amount / 100);
@@ -110,14 +110,35 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 
           await Customer.findByIdAndUpdate(req.body.customerId, {
             $set: {
-              totalSpent:  agg?.totalSpent  ?? 0,
-              totalOrders: agg?.totalOrders ?? 0,
+              totalSpent:   agg?.totalSpent  ?? 0,
+              totalOrders:  agg?.totalOrders ?? 0,
               lastPurchase: agg?.lastPurchase ?? new Date(),
             },
             $inc: { loyaltyPoints: pointsEarned },
           });
+
+          // Send receipt email
+          try {
+            await sendReceiptEmail({
+              customerName:  customer.name,
+              customerEmail: customer.email,
+              orderId:       txnId,
+              items:         req.body.items || [],
+              subtotal:      req.body.subtotal || req.body.amount,
+              discount:      req.body.discount || 0,
+              total:         req.body.amount,
+              paymentMethod: req.body.paymentMethod,
+              date: new Date().toLocaleDateString('en-LK', {
+                day: '2-digit', month: 'short', year: 'numeric',
+              }),
+            });
+          } catch (emailErr) {
+            console.error('Failed to send receipt email:', emailErr);
+            // don't fail the transaction if email fails
+          }
+
         } else {
-          // No email to join on — fall back to incrementing
+          // No email — fall back to incrementing
           await Customer.findByIdAndUpdate(req.body.customerId, {
             $inc: { loyaltyPoints: pointsEarned, totalOrders: 1, totalSpent: req.body.amount },
             $set: { lastPurchase: new Date() },
@@ -162,13 +183,11 @@ export async function voidTransaction(req: AuthRequest, res: Response): Promise<
     return;
   }
 
-  // Restore inventory by finding the order and incrementing stock for each item
+  // Restore inventory
   const order = await Order.findOne({ orderId: transaction.orderId });
   if (order) {
     for (const item of order.items) {
-      // Increment product stock back
       await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
-      // Log the restoration in StockHistory
       await StockHistory.create({
         product:  item.product,
         type:     'add',
@@ -184,5 +203,3 @@ export async function voidTransaction(req: AuthRequest, res: Response): Promise<
   await transaction.save();
   res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
 }
-
-

@@ -16,6 +16,7 @@ interface Tenant {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
 
+/// Login page with tenant selection and role-based login flow
 export default function LoginPage() {
   const { login } = useAuth();
 
@@ -45,7 +46,6 @@ export default function LoginPage() {
         }
       })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Apply tenant branding ────────────────────────────────────────────────
