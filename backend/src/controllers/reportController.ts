@@ -548,7 +548,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
 // ============= Employee Activity Report =============
 export const getEmployeeActivityReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { User, Transaction } = req.models!;
+    const { User, Transaction, Customer } = req.models!;
     const { preset, startDate, endDate, role } = req.query;
 
     const dateMatchFilter = buildDateFilter(
@@ -558,17 +558,90 @@ export const getEmployeeActivityReport = async (req: AuthRequest, res: Response)
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Build the user match filter
+    // If preset is custom, show registered relevant customers
+    if (preset === 'custom') {
+      const customerMatch: any = {};
+      if (dateMatchFilter.createdAt) {
+        customerMatch.createdAt = dateMatchFilter.createdAt;
+      }
+
+      const customerStats = await Customer.aggregate([
+        { $match: customerMatch },
+        {
+          $lookup: {
+            from: 'transactions',
+            let: { custId: { $toString: '$_id' } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$customerId', '$$custId'] },
+                  status: 'success',
+                  ...dateMatchFilter,
+                },
+              },
+            ],
+            as: 'transactions',
+          },
+        },
+        {
+          $addFields: {
+            orderCount: { $size: '$transactions' },
+            totalSales: { $sum: '$transactions.amount' },
+            lastActive: { $max: '$transactions.createdAt' },
+          },
+        },
+        { $project: { transactions: 0, password: 0 } },
+        { $sort: { totalSales: -1, name: 1 } },
+      ]);
+
+      const activeCustomers = customerStats.filter(c => c.orderCount > 0).length;
+      let topCustName = 'N/A';
+      let topCustSales = 0;
+      let totalSpentAll = 0;
+
+      const customersList = customerStats.map((c) => {
+        totalSpentAll += c.totalSales;
+        if (c.totalSales > topCustSales) {
+          topCustSales = c.totalSales;
+          topCustName = c.name || 'Unknown';
+        }
+
+        return {
+          id: c._id,
+          name: c.name || 'Unknown',
+          email: c.email || 'N/A',
+          role: 'Customer',
+          orderCount: c.orderCount || 0,
+          totalSales: c.totalSales || 0,
+          lastActive: c.lastActive || null,
+        };
+      });
+
+      const avgSpent = activeCustomers > 0 ? Math.round(totalSpentAll / activeCustomers) : 0;
+
+      return res.json({
+        dateRange: dateLabel,
+        summary: {
+          activeEmployees: activeCustomers,
+          topPerformer: topCustName,
+          topPerformerSales: topCustSales,
+          avgSalesPerEmployee: avgSpent,
+        },
+        employees: customersList,
+        isCustomerReport: true,
+      });
+    }
+
+    // Default: Employee activity (Today, 7 Days, This Month)
     const userMatch: any = { isActive: true };
 
-    // Always exclude Manager unless specifically requested
     if (role && role !== 'all') {
       userMatch.role = role;
     } else {
-      userMatch.role = { $ne: 'Manager' };
+      // User requested only Cashier and Sales Representative for Today/7D/Month
+      userMatch.role = { $in: ['Cashier', 'Sales Representative'] };
     }
 
-    // Filter employees by their registration date (createdAt)
     if (preset !== 'all-time' && dateMatchFilter.createdAt) {
       userMatch.createdAt = dateMatchFilter.createdAt;
     }

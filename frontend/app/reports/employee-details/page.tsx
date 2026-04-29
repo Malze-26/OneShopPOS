@@ -30,6 +30,7 @@ interface ApiResponse {
   dateRange: string;
   summary: Summary;
   employees: EmployeeRow[];
+  isCustomerReport?: boolean;
 }
 
 export default function EmployeeDetailsPage() {
@@ -71,7 +72,9 @@ export default function EmployeeDetailsPage() {
   const exportToCsv = () => {
     if (!data?.employees || filtered.length === 0) return;
 
-    const headers = ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'];
+    const headers = data?.isCustomerReport
+      ? ['Customer Name', 'Email', 'Role', 'Orders', 'Total Spent', 'Last Purchase']
+      : ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'];
     
     const rows = filtered.map(emp => [
       `"${emp.name.replace(/"/g, '""')}"`,
@@ -104,9 +107,11 @@ export default function EmployeeDetailsPage() {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#101828]">Employee Details</h1>
+        <h1 className="text-xl font-bold text-[#101828]">
+          {data?.isCustomerReport ? 'Customer Details' : 'Employee Details'}
+        </h1>
         <p className="text-sm text-[#4a5565] mt-1">
-          {loading ? 'Loading...' : `Overview of employee performance — ${data?.dateRange ?? ''}`}
+          {loading ? 'Loading...' : `${data?.isCustomerReport ? 'Overview of registered customers' : 'Overview of employee performance'} — ${data?.dateRange ?? ''}`}
         </p>
       </div>
 
@@ -126,15 +131,17 @@ export default function EmployeeDetailsPage() {
               />
             </div>
 
-            <NativeSelect
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-44"
-            >
-              <NativeSelectOption value="all">All Roles</NativeSelectOption>
-              <NativeSelectOption value="Cashier">Cashier</NativeSelectOption>
-              <NativeSelectOption value="Sales Representative">Sales Representative</NativeSelectOption>
-            </NativeSelect>
+            {!data?.isCustomerReport && (
+              <NativeSelect
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-44"
+              >
+                <NativeSelectOption value="all">All Roles</NativeSelectOption>
+                <NativeSelectOption value="Cashier">Cashier</NativeSelectOption>
+                <NativeSelectOption value="Sales Representative">Sales Representative</NativeSelectOption>
+              </NativeSelect>
+            )}
           </div>
         </div>
 
@@ -142,7 +149,10 @@ export default function EmployeeDetailsPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'].map((h) => (
+                {(data?.isCustomerReport
+                  ? ['Customer Name', 'Email', 'Role', 'Orders', 'Total Spent', 'Last Purchase']
+                  : ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active']
+                ).map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -174,7 +184,7 @@ export default function EmployeeDetailsPage() {
 
         <div className="px-5 py-4 border-t border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565]">
-            Showing {filtered.length} of {(data?.employees ?? []).length} employees
+            Showing {filtered.length} of {(data?.employees ?? []).length} {data?.isCustomerReport ? 'customers' : 'employees'}
           </p>
         </div>
       </div>
