@@ -20,16 +20,21 @@ function yesterdayRange() {
 
 // GET /api/dashboard/summary
 export async function getDashboardSummary(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, Customer, Product } = req.models!;
+  const { Transaction, Order, Customer, Product } = req.models!;
   const today = todayRange();
   const yesterday = yesterdayRange();
 
+  // source: { $ne: 'physical' } matches ecom orders (no source field) and POS online orders
+  const onlineFilter = { source: { $ne: 'physical' } };
+
   const [
     todaySalesAgg, yesterdaySalesAgg,
-    todayOrderCount, yesterdayOrderCount,
+    todayTxnCount, yesterdayTxnCount,
+    todayOnlineCount, yesterdayOnlineCount,
     customerCount,
     lowStockCount,
-    pendingCount,
+    pendingTxnCount,
+    pendingOnlineCount,
     newCustomerCount,
   ] = await Promise.all([
     Transaction.aggregate([
@@ -42,11 +47,19 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     ]),
     Transaction.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
     Transaction.countDocuments({ createdAt: { $gte: yesterday.start, $lte: yesterday.end } }),
+    Order.countDocuments({ ...onlineFilter, createdAt: { $gte: today.start, $lte: today.end } }),
+    Order.countDocuments({ ...onlineFilter, createdAt: { $gte: yesterday.start, $lte: yesterday.end } }),
     Customer.countDocuments({}),
     Product.countDocuments({
       $expr: { $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] },
     }),
     Transaction.countDocuments({ status: 'pending', createdAt: { $gte: today.start, $lte: today.end } }),
+    // ecom orders use orderStatus; POS online orders use status — check both
+    Order.countDocuments({
+      ...onlineFilter,
+      $or: [{ status: 'pending' }, { orderStatus: 'pending' }],
+      createdAt: { $gte: today.start, $lte: today.end },
+    }),
     Customer.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
   ]);
 
@@ -55,6 +68,9 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
   const salesChange = yesterdaySales > 0
     ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
     : null;
+
+  const todayOrderCount = todayTxnCount + todayOnlineCount;
+  const yesterdayOrderCount = yesterdayTxnCount + yesterdayOnlineCount;
 
   const ordersChange = yesterdayOrderCount > 0
     ? Math.round(((todayOrderCount - yesterdayOrderCount) / yesterdayOrderCount) * 100)
@@ -65,7 +81,7 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     salesChange,
     todayOrders: todayOrderCount,
     ordersChange,
-    pendingOrders: pendingCount,
+    pendingOrders: pendingTxnCount + pendingOnlineCount,
     totalCustomers: customerCount,
     newCustomersToday: newCustomerCount,
     lowStockItems: lowStockCount,

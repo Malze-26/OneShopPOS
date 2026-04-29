@@ -1,7 +1,5 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 interface ReceiptItem {
   name: string;
   qty: number;
@@ -21,6 +19,9 @@ interface ReceiptData {
 }
 
 export async function sendReceiptEmail(data: ReceiptData) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return; // skip silently if not configured
+  const resend = new Resend(apiKey);
   const itemRows = data.items.map(item => `
     <tr>
       <td style="padding:8px 0;border-bottom:1px solid #f0f0f0">${item.name}</td>

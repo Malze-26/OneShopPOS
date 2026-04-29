@@ -2,9 +2,7 @@ import { Response } from 'express';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../types';
 
-type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'success';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'cancelled' | 'success';
 
 /** Maps a Transaction document → unified order shape (for POS / physical orders). */
 function txnToOrder(txn: Record<string, unknown>) {
@@ -32,8 +30,7 @@ function txnToOrder(txn: Record<string, unknown>) {
 }
 
 /**
- * Detects whether a raw order document is an e-commerce order (from the website)
- * vs a POS order created by the manager dashboard.
+ * Detects whether a raw order document is from e com website vs a POS order
  * E-com orders have an `orderStatus` field; POS orders have a `source` field.
  */
 function isEcomOrder(doc: Record<string, unknown>): boolean {
@@ -90,8 +87,6 @@ function normalizeOnlineOrder(doc: Record<string, unknown>) {
     _sourceType:    'ecom' as const,
   };
 }
-
-// ── Controllers ───────────────────────────────────────────────────────────────
 
 // GET /api/orders — unified view: POS from transactions collection, e-com from orders collection
 export async function getOrders(req: AuthRequest, res: Response): Promise<void> {
@@ -236,13 +231,14 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
   const src    = (source || 'physical') as string;
   const method = (paymentMethod as string) || '';
 
-  const isPOS          = src === 'physical';
-  const isOnlinePaid   = src === 'online' && method.toLowerCase() !== 'cash-on-delivery';
-  const shouldComplete = isPOS || isOnlinePaid;
+  const isPOS        = src === 'physical';
+  const isOnlinePaid = src === 'online' && method.toLowerCase() !== 'cash-on-delivery';
 
-  const finalStatus        = shouldComplete ? 'success' : 'pending';
-  const finalPaymentStatus = isPOS ? 'paid' : (isOnlinePaid ? 'success' : 'pending');
-
+  // Online card orders: status stays 'pending' until syncEcomOrders processes them.
+  // Physical POS orders: immediately complete.
+  const finalStatus        = isPOS ? 'success' : 'pending';
+  const finalPaymentStatus = isPOS ? 'paid' : (isOnlinePaid ? 'paid' : 'pending'); //]=
+  
   const order = await Order.create({
     orderId,
     source: src,
@@ -262,7 +258,10 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
     createdBy: req.user!.id,
   });
 
-  if (shouldComplete && Array.isArray(items) && items.length > 0) {
+  // Only deduct inventory immediately for physical POS orders.
+  // Online card orders are deducted by syncEcomOrders to avoid double-counting
+  // when the e-com website also creates a record with orderStatus in MongoDB.
+  if (isPOS && Array.isArray(items) && items.length > 0) {
     for (const item of items) {
       await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
       await StockHistory.create({
@@ -311,7 +310,7 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
     const productId = item.product as mongoose.Types.ObjectId | string | undefined;
     const quantity  = (item.qty ?? item.quantity ?? 1) as number;
     if (productId) {
-      await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
+      //await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
       await StockHistory.create({
         product:  productId,
         type:     'remove',
@@ -349,10 +348,19 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
 export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<void> {
   const { Order, Product, StockHistory } = req.models!;
 
-  const CARD_METHODS = ['card', 'payhere'];
+  const CARD_METHODS = [
+    //'card', 
+    'payhere'
+  ];
 
+  // Find all unprocessed online card orders — covers two cases:
+  //   1. E-com direct orders (website wrote to MongoDB with orderStatus field)
+  //   2. POS-API-created online orders (via POST /api/orders, source='online', paymentStatus='paid')
   const unprocessed = await Order.find({
-    orderStatus:   { $exists: true },
+    $or: [
+      { orderStatus: { $exists: true } },
+      { source: 'online' },
+    ],
     paymentMethod: { $in: CARD_METHODS },
     paymentStatus: { $ne: 'success' },
   }).lean() as Record<string, unknown>[];
@@ -372,7 +380,7 @@ export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<v
       const productId = item.product as mongoose.Types.ObjectId | string | undefined;
       const quantity  = (item.qty ?? item.quantity ?? 1) as number;
       if (productId) {
-        await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
+        //await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
         await StockHistory.create({
           product:  productId,
           type:     'remove',
@@ -394,7 +402,7 @@ export async function updateOrderStatus(req: AuthRequest, res: Response): Promis
   const { Order } = req.models!;
   const { status } = req.body as { status: OrderStatus };
 
-  const validStatuses: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'success'];
+  const validStatuses: OrderStatus[] = ['pending', 'confirmed', 'shipped', 'cancelled', 'success'];
   if (!validStatuses.includes(status)) {
     res.status(400).json({ message: `Invalid status: ${status}` });
     return;

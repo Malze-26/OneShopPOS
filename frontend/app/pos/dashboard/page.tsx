@@ -21,7 +21,6 @@ import PromoModal from "./components/PromoModal";
 import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
-import { useStore } from "@/app/contexts/StoreContext";
 
 
 interface Product {
