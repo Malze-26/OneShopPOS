@@ -34,8 +34,8 @@ const tenantSchema = new Schema<ITenant>({
   subscription: {
     plan: {
       type: String,
-      enum: ['free', 'basic', 'premium', 'enterprise'],
-      default: 'free',
+      enum: ['basic', 'premium'],
+      default: 'basic',
     },
     status: {
       type: String,

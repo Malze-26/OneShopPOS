@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Store, Plus, Eye, Edit2, Trash2, Calendar } from 'lucide-react';
 import MainLayout from '../components/layout/MainLayout';
 import { tenantAPI } from '../../utils/api';
@@ -23,10 +23,11 @@ interface Tenant {
   createdAt: string;
 }
 
-export default function TenantManagementPage() {
+function TenantManagementPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState('all');
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,10 +84,11 @@ export default function TenantManagementPage() {
     },
   ];
 
+  const q = searchTerm.toLowerCase().trim();
   const filteredTenants = tenants.filter((tenant) => {
-    const matchesSearch = tenant.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const nameMatch = !q || tenant.businessName.toLowerCase().includes(q);
+    const statusMatch = statusFilter === 'all' || tenant.status === statusFilter;
+    return nameMatch && statusMatch;
   });
 
   const getStatusBadge = (status: string) => {
@@ -202,7 +204,7 @@ export default function TenantManagementPage() {
                     {tenant.status}
                   </span>
                   <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                    {tenant.subscription?.plan || 'free'}
+                    {tenant.subscription?.plan || 'basic'}
                   </span>
                 </div>
 
@@ -232,5 +234,13 @@ export default function TenantManagementPage() {
         )}
       </div>
     </MainLayout>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <TenantManagementPage />
+    </Suspense>
   );
 }

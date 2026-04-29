@@ -30,7 +30,7 @@ export default function EditTenantPage() {
     email: '',
     primaryColor: '#3B82F6',
     status: 'active',
-    subscriptionPlan: 'free',
+    subscriptionPlan: 'basic',
     subscriptionStatus: 'active',
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -243,10 +243,8 @@ export default function EditTenantPage() {
                   name="subscriptionPlan" value={formData.subscriptionPlan} onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 >
-                  <option value="free">Free</option>
                   <option value="basic">Basic</option>
                   <option value="premium">Premium</option>
-                  <option value="enterprise">Enterprise</option>
                 </select>
               </div>
 

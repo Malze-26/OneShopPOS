@@ -1,6 +1,76 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { ITenant } from '../models/Tenant';
 import { HydratedDocument } from 'mongoose';
+
+export interface ManagerCredentials {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export const setManagerInTenantDb = async (
+  dbName: string,
+  storeId: string,
+  manager: ManagerCredentials
+): Promise<void> => {
+  const uri = getTenantDbUri(dbName);
+  const conn = await mongoose.createConnection(uri).asPromise();
+  try {
+    const hashed = await bcrypt.hash(manager.password, 10);
+    await conn.db!.collection('users').updateOne(
+      { role: 'Manager' },
+      {
+        $set: {
+          name: manager.name,
+          email: manager.email.toLowerCase(),
+          password: hashed,
+          role: 'Manager',
+          storeId,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true }
+    );
+  } finally {
+    await conn.close();
+  }
+};
+
+export const getManagerFromTenantDb = async (
+  dbName: string
+): Promise<{ name: string; email: string } | null> => {
+  const uri = getTenantDbUri(dbName);
+  const conn = await mongoose.createConnection(uri).asPromise();
+  try {
+    const user = await conn.db!.collection('users').findOne(
+      { role: 'Manager' },
+      { projection: { name: 1, email: 1 } }
+    );
+    if (!user) return null;
+    return { name: user.name, email: user.email };
+  } finally {
+    await conn.close();
+  }
+};
+
+export const syncPlanToTenantDb = async (
+  dbName: string,
+  plan: string
+): Promise<void> => {
+  const uri = getTenantDbUri(dbName);
+  const conn = await mongoose.createConnection(uri).asPromise();
+  try {
+    await conn.db!.collection('storesettings').updateOne(
+      {},
+      { $set: { subscriptionPlan: plan, updatedAt: new Date() } }
+    );
+  } finally {
+    await conn.close();
+  }
+};
 
 const POS_COLLECTIONS = [
   'categories',
@@ -44,7 +114,6 @@ export const provisionTenantDatabase = async (
   tenant: HydratedDocument<ITenant>
 ): Promise<string> => {
   const slug = slugify(tenant.businessName);
-  const shortId = tenant._id.toString().slice(-8);
   const dbName = `oneshop_${slug}`;
   const uri = getTenantDbUri(dbName);
 
@@ -77,6 +146,7 @@ export const provisionTenantDatabase = async (
       logoUrl: tenant.logo ?? '',
       backgroundImageUrl: tenant.backgroundImage ?? '',
       primaryColor: tenant.primaryColor ?? '#155dfc',
+      subscriptionPlan: tenant.subscription?.plan ?? 'basic',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
