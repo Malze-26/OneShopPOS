@@ -78,7 +78,7 @@ export default function DailyZReportPage() {
     <div className="p-6 max-w-[1400px] bg-[#f8f9fc] min-h-screen">
       <div className="mb-4 print:hidden">
         <ReportsTabs />
-        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} />
+        <ReportsDateToolbar showRanges={['today', 'last-7-days', 'this-month', 'custom']} isSingleDate={true} />
       </div>
 
       <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-[#e4e7ec] print:shadow-none print:border-none print:max-w-full">
