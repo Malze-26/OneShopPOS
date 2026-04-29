@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
+import { buildDateFilter } from '../utils/dateRange';
 
 interface TxnStat {
   _id: string;
@@ -25,7 +26,7 @@ function formatLastActive(date?: Date): string {
 export async function getEmployees(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { User, Transaction } = req.models!;
-    const { search, role, status } = req.query;
+    const { search, role, status, preset, startDate, endDate } = req.query;
 
     const filter: Record<string, unknown> = {};
 
@@ -42,10 +43,16 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
 
     const { Order } = req.models!;
 
+    const dateFilter = buildDateFilter(
+      preset as string,
+      startDate as string,
+      endDate as string
+    );
+
     const [users, txnStats, orderStats] = await Promise.all([
       User.find(filter).sort({ createdAt: 1 }),
       Transaction.aggregate<TxnStat>([
-        { $match: { status: 'success' } },
+        { $match: { ...dateFilter, status: 'success' } },
         {
           $group: {
             _id: '$createdBy',
@@ -87,7 +94,16 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
       };
     });
 
-    res.json({ data: employees, total: employees.length });
+    // Filter to only show employees with activity in the selected range
+    // but show everyone if 'all-time' is selected or if there are no date constraints
+    const filteredEmployees = employees.filter(emp => {
+      if (preset && preset !== 'all-time') {
+        return emp.transactions > 0;
+      }
+      return true;
+    });
+
+    res.json({ data: filteredEmployees, total: filteredEmployees.length });
   } catch (err) {
     next(err);
   }

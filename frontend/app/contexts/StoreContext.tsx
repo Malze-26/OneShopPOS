@@ -13,6 +13,7 @@ interface StoreSettings {
   storeId: string;
   logoUrl: string;
   primaryColor: string;
+  subscriptionPlan: string;
 }
 
 const defaults: StoreSettings = {
@@ -25,6 +26,7 @@ const defaults: StoreSettings = {
   storeId: '',
   logoUrl: '',
   primaryColor: '#155dfc',
+  subscriptionPlan: 'free',
 };
 
 interface StoreContextValue extends StoreSettings {

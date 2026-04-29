@@ -4,14 +4,16 @@ import {
   getSalesByProductReport,
   getDailyZReport,
   getInventoryStatusReport,
-  getCustomerActivityReport,
+  getEmployeeActivityReport,
 } from '../controllers/reportController';
 import { protect } from '../middleware/authMiddleware';
+import { requireTenant } from '../middleware/tenantMiddleware';
 
 const router = express.Router();
 
-// All report routes require authentication
+// All report routes require authentication and tenant context
 router.use(protect);
+router.use(requireTenant);
 
 // Sales Summary Report
 router.get('/sales-summary', getSalesSummary);
@@ -25,7 +27,7 @@ router.get('/inventory-status', getInventoryStatusReport);
 // Daily Z Report
 router.get('/daily-z-report', getDailyZReport);
 
-// Customer Activity Report
-router.get('/customer-activity', getCustomerActivityReport);
+// Employee Activity Report
+router.get('/employee-details', getEmployeeActivityReport);
 
 export default router;

@@ -11,9 +11,14 @@ export default function ManagerGuard({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace('/login'); return; }
-    if (user.role !== 'Manager') router.replace('/pos/dashboard');
+    
+    // ONLY redirect to POS if we are SURE the user is a POS user
+    if (user.role === 'Cashier' || user.role === 'Sales Representative') {
+      router.replace('/pos/dashboard');
+    }
   }, [user, loading, router]);
 
-  if (loading || !user || user.role !== 'Manager') return null;
+
+  if (loading || !user || (user.role !== 'Manager' && (user.role as string) !== 'superadmin')) return null;
   return <>{children}</>;
 }

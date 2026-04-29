@@ -18,7 +18,7 @@ export function tenantMiddleware(req: AuthRequest, res: Response, next: NextFunc
     return next();
   }
 
-  if (!tenantId.startsWith('oneshop_')) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(tenantId)) {
     res.status(400).json({ message: 'Invalid OneShop-Tenant-ID header value' });
     return;
   }

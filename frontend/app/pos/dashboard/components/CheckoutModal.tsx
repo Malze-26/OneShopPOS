@@ -46,7 +46,6 @@ export default function CheckoutModal({
   const methodLabel =
     method === "cash" ? "Cash" : "Card";
 
-    // Handle payment confirmation: construct transaction data, attempt to save to server if online, otherwise save offline. Update UI state accordingly.
   const handleConfirm = async () => {
     const transactionData = {
       orderId,
@@ -55,37 +54,22 @@ export default function CheckoutModal({
       paymentMethod: methodLabel,
       amount: total,
       status: "success",
+      items: state.items.map(item => ({
+        product:     item.id,
+        productName: item.name,
+        sku:         item.sku,
+        quantity:    item.qty,
+        unitPrice:   item.unit === 'kg' ? item.price / item.qty : item.price,
+        subtotal:    item.unit === 'kg' ? item.price : item.price * item.qty,
+      })),
     };
     if (isOnline) {
-      let txnOk = false;
       try {
         await api.post("/transactions", transactionData);
-        txnOk = true;
         setSavedOffline(false);
       } catch {
         await savePendingTransaction(transactionData);
         setSavedOffline(true);
-      }
-      if (txnOk) {
-        const orderData = {
-          orderId,
-          source: 'physical',
-          customerName: state.customer?.name || 'Guest Customer',
-          items: state.items.map(item => ({
-            product:     item.id,
-            productName: item.name,
-            sku:         item.sku,
-            quantity:    item.qty,
-            unitPrice:   item.unit === 'kg' ? item.price / item.qty : item.price,
-            subtotal:    item.unit === 'kg' ? item.price : item.price * item.qty,
-          })),
-          subtotal,
-          discount: state.discount + state.loyaltyDiscount,
-          total,
-          paymentMethod: methodLabel,
-          paymentStatus: 'paid',
-        };
-        try { await api.post("/orders", orderData); } catch { /* silent */ }
       }
       setStep("success");
     } else {

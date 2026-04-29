@@ -4,7 +4,7 @@
   "description": "OneShop POS tenant API",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "seed": "ts-node src/seed.ts",
@@ -29,6 +29,7 @@
     "@types/node": "^22.13.4",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.3"
   }
 }

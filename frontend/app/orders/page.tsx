@@ -264,6 +264,11 @@ export default function OrdersPage() {
   const [page, setPage]           = useState(1);
   const PAGE_SIZE = 20;
 
+  // Auto-process any pending card/payhere e-com orders on first load
+  useEffect(() => {
+    api.post('/orders/sync').catch(() => { /* silent — non-critical */ });
+  }, []);
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await api.get('/orders/stats');
@@ -399,7 +404,9 @@ export default function OrdersPage() {
                 const payColor   = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
                 const isPhysical = order.source === 'physical';
                 // Confirm button only for online COD orders that are still pending
-                const canConfirm = !isPhysical && order.status === 'pending';
+                const canConfirm = !isPhysical
+                  && order.status === 'pending'
+                  && order.paymentMethod?.toLowerCase() === 'cash-on-delivery';
 
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">

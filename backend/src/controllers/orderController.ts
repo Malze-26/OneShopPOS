@@ -279,8 +279,7 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
   res.status(201).json({ data: order });
 }
 
-// PATCH /api/orders/:id/confirm — Manager only
-// Handles both POS online orders (status field) and e-com orders (orderStatus field).
+// PATCH /api/orders/:id/confirm — Manager only (COD e-com orders only)
 export async function confirmOrder(req: AuthRequest, res: Response): Promise<void> {
   const { Order, Product, StockHistory } = req.models!;
 
@@ -289,7 +288,14 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
   if (!raw) { res.status(404).json({ message: 'Order not found' }); return; }
 
   const ecom          = isEcomOrder(raw);
+  const payMethod     = ((raw.paymentMethod as string) || '').toLowerCase();
   const currentStatus = ecom ? (raw.orderStatus as string) : (raw.status as string);
+
+  // Card/payhere e-com orders are auto-processed via /sync — reject manual confirmation
+  if (ecom && payMethod !== 'cash-on-delivery') {
+    res.status(400).json({ message: 'This order is auto-processed and does not require manual confirmation.' });
+    return;
+  }
 
   if (currentStatus !== 'pending') {
     res.status(400).json({ message: `Order is already ${currentStatus}` });
@@ -335,6 +341,52 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
   );
 
   res.json({ data: normalizeOnlineOrder({ ...raw, ...updateFields }) });
+}
+
+// POST /api/orders/sync — Manager only
+// Auto-processes pending card/payhere e-com orders: reduces inventory and marks as success.
+// Idempotent — safe to call multiple times (atomic findOneAndUpdate guards against double-processing).
+export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<void> {
+  const { Order, Product, StockHistory } = req.models!;
+
+  const CARD_METHODS = ['card', 'payhere'];
+
+  const unprocessed = await Order.find({
+    orderStatus:   { $exists: true },
+    paymentMethod: { $in: CARD_METHODS },
+    paymentStatus: { $ne: 'success' },
+  }).lean() as Record<string, unknown>[];
+
+  let processed = 0;
+
+  for (const order of unprocessed) {
+    // Atomic claim — only the first concurrent caller succeeds; others skip this order
+    const claimed = await Order.collection.findOneAndUpdate(
+      { _id: (order as { _id: mongoose.Types.ObjectId })._id, paymentStatus: { $ne: 'success' } },
+      { $set: { paymentStatus: 'success', status: 'success', orderStatus: 'success' } }
+    );
+    if (!claimed) continue;
+
+    const items = ((order.orderItems || order.items || []) as Record<string, unknown>[]);
+    for (const item of items) {
+      const productId = item.product as mongoose.Types.ObjectId | string | undefined;
+      const quantity  = (item.qty ?? item.quantity ?? 1) as number;
+      if (productId) {
+        await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
+        await StockHistory.create({
+          product:  productId,
+          type:     'remove',
+          quantity: quantity,
+          reason:   `E-com order auto-processed: ${order.orderId as string}`,
+          by:       req.user!.id,
+          storeId:  req.user!.storeId,
+        });
+      }
+    }
+    processed++;
+  }
+
+  res.json({ data: { processed } });
 }
 
 // PATCH /api/orders/:id/status — Manager only
