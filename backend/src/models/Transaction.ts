@@ -1,7 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type PaymentMethod = 'Cash' | 'Card';
-export type TransactionStatus = 'success' | 'pending' | 'failed' | 'voided';
+export type TransactionStatus = 'success' | 'voided';
+export type OrderStatus = 'success' | 'cancelled';
+export type PaymentStatus = 'paid' | 'voided';
 
 export interface ITransactionItem {
   product: mongoose.Types.ObjectId;
@@ -20,6 +22,8 @@ export interface ITransaction extends Document {
   paymentMethod: PaymentMethod;
   amount: number;
   status: TransactionStatus;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
   items: ITransactionItem[];
   storeId: string;
   createdBy: mongoose.Types.ObjectId;
@@ -71,8 +75,18 @@ export const transactionSchema = new Schema<ITransaction>(
     },
     status: {
       type: String,
-      enum: ['success', 'pending', 'failed', 'voided'],
+      enum: ['success', 'voided'],
       default: 'success',
+    },
+    orderStatus: {
+      type: String,
+      enum: ['success', 'cancelled'],
+      default: 'success',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['paid', 'voided'],
+      default: 'paid',
     },
     items: {
       type: [transactionItemSchema],

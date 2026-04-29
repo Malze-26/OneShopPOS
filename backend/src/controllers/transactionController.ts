@@ -188,34 +188,50 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 }
 
 // DELETE /api/transactions/:id/void — Void transaction
-export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, Product, StockHistory } = req.models!;
-  const transaction = await Transaction.findById(req.params.id);
-  if (!transaction) {
-    res.status(404).json({ message: 'Transaction not found' });
-    return;
-  }
-  if (transaction.status === 'voided') {
-    res.status(400).json({ message: 'Transaction already voided' });
-    return;
-  }
+export async function voidTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { Transaction, Product, StockHistory } = req.models!;
+    const transaction = await Transaction.findById(req.params.id);
 
-  // Restore inventory from items stored on the transaction
-  if (transaction.items && transaction.items.length > 0) {
-    for (const item of transaction.items) {
-      await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
-      await StockHistory.create({
-        product:  item.product,
-        type:     'add',
-        quantity: item.quantity,
-        reason:   `Transaction voided: ${transaction.txnId}`,
-        by:       req.user!.id,
-        storeId:  transaction.storeId,
-      });
+    if (!transaction) {
+      res.status(404).json({ message: 'Transaction not found' });
+      return;
     }
-  }
 
-  transaction.status = 'voided';
-  await transaction.save();
-  res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
+    if (transaction.paymentStatus === 'voided') {
+      res.status(400).json({ message: 'Transaction already voided' });
+      return;
+    }
+
+    await Transaction.collection.updateOne(
+      { _id: transaction._id },
+      { $set: { status: 'voided', orderStatus: 'cancelled', paymentStatus: 'voided' } }
+    );
+
+    // Restock inventory
+    if (transaction.items?.length > 0) {
+      for (const item of transaction.items) {
+        await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+
+        await StockHistory.create({
+          product: item.product,
+          type: 'add',
+          quantity: item.quantity,
+          reason: `Transaction voided: ${transaction.txnId}`,
+          by: req.user!.id,
+          storeId: transaction.storeId,
+        });
+      }
+    }
+
+    const updated = await Transaction.findById(transaction._id).lean();
+
+    res.status(200).json({
+      message: 'Transaction voided successfully',
+      data: updated,
+    });
+
+  } catch (error) {
+    next(error);
+  }
 }

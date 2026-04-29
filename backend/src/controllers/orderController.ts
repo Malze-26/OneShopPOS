@@ -8,7 +8,16 @@ type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'deliver
 
 /** Maps a Transaction document → unified order shape (for POS / physical orders). */
 function txnToOrder(txn: Record<string, unknown>) {
-  const status = (txn.status as string) === 'success' ? 'success' : txn.status;
+  // Derive orderStatus: prefer explicit field, fallback to status
+  const orderStatus = (txn.orderStatus ?? txn.status) as string;
+
+  // Derive paymentStatus: prefer explicit field, fallback mapping from status
+  const paymentStatus = txn.paymentStatus
+    ? (txn.paymentStatus as string)
+    : (txn.status as string) === 'success'
+    ? 'paid'
+    : 'voided';
+
   return {
     _id:             txn._id,
     orderId:         txn.txnId,
@@ -16,13 +25,14 @@ function txnToOrder(txn: Record<string, unknown>) {
     customerName:    txn.customer,
     customerEmail:   undefined,
     customerPhone:   undefined,
-    items:           [],
+    items:           txn.items ?? [],
     subtotal:        txn.amount,
     discount:        0,
     total:           txn.amount,
-    status,
+    status:          orderStatus,
+    orderStatus,
     paymentMethod:   txn.paymentMethod,
-    paymentStatus:   status === 'success' ? 'paid' : status,
+    paymentStatus,
     deliveryAddress: undefined,
     notes:           undefined,
     createdAt:       txn.createdAt,

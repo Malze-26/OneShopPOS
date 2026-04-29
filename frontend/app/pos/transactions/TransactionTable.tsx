@@ -1,6 +1,5 @@
 import React from "react";
 import { Transaction } from "./types";
-import StatusIcon from "./StatusIcon";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -18,9 +17,50 @@ const PAYMENT_ICONS: Record<string, React.ReactNode> = {
 };
 
 const PAYMENT_BADGE_CLASS: Record<string, string> = {
-  Cash:            "bg-emerald-100 text-emerald-800",
-  Card:            "bg-violet-100 text-violet-900",
+  Cash: "bg-emerald-100 text-emerald-800",
+  Card: "bg-violet-100 text-violet-900",
 };
+
+// ── Status badge config ────────────────────────────────────────────────────────
+
+type StatusKey = 'success' | 'voided' | 'paid';
+
+const STATUS_CONFIG: Record<StatusKey, { dot: string; text: string; badge: string }> = {
+  success: {
+    dot:   "bg-emerald-500",
+    text:  "text-emerald-700",
+    badge: "bg-emerald-50 border border-emerald-200 text-emerald-700",
+  },
+  paid: {
+    dot:   "bg-emerald-500",
+    text:  "text-emerald-700",
+    badge: "bg-emerald-50 border border-emerald-200 text-emerald-700",
+  },
+  voided: {
+    dot:   "bg-red-400",
+    text:  "text-red-600",
+    badge: "bg-red-50 border border-red-200 text-red-600",
+  },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status as StatusKey] ?? {
+    dot:   "bg-gray-400",
+    text:  "text-gray-600",
+    badge: "bg-gray-50 border border-gray-200 text-gray-600",
+  };
+
+  const label = status.charAt(0).toUpperCase() + status.slice(1);
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${cfg.badge}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {label}
+    </span>
+  );
+}
+
+// ── Props ──────────────────────────────────────────────────────────────────────
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -32,6 +72,8 @@ interface TransactionTableProps {
   onPageChange: (p: number) => void;
   onOpenModal: (t: Transaction) => void;
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TransactionTable({
   transactions,
@@ -53,9 +95,17 @@ export default function TransactionTable({
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const paginated  = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const pageBtnClass = "w-8 h-8 rounded-lg border text-[13px] font-bold flex items-center justify-center transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#9290C3] hover:text-[#1B1A55]";
+  const pageBtnClass =
+    "w-8 h-8 rounded-lg border text-[13px] font-bold flex items-center justify-center transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#9290C3] hover:text-[#1B1A55]";
+
+  const GRID = "grid grid-cols-[90px_90px_120px_160px_1fr_100px_130px_120px_130px_50px]";
+
+  const HEADERS = [
+    "Date", "Time", "Transaction #", "Customer",
+    "Order ID", "Total", "Payment Method", "Order Status", "Payment Status", "",
+  ];
 
   return (
     <div className="bg-white rounded-2xl border border-[#E3E6F0] overflow-hidden mb-5">
@@ -91,9 +141,9 @@ export default function TransactionTable({
       </div>
 
       {/* Header */}
-      <div className="grid grid-cols-[100px_120px_130px_180px_1fr_110px_140px_80px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
-        {["Date", "Time", "Transaction #", "Customer", "Order ID", "Total", "Payment", "Status"].map((h) => (
-          <div key={h} className="text-[12px] font-bold text-[#535C91] tracking-[0.3px]">{h}</div>
+      <div className={`${GRID} py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]`}>
+        {HEADERS.map((h, i) => (
+          <div key={i} className="text-[12px] font-bold text-[#535C91] tracking-[0.3px]">{h}</div>
         ))}
       </div>
 
@@ -103,40 +153,71 @@ export default function TransactionTable({
           {transactions.length === 0 ? "No transactions yet" : "No transactions match your search"}
         </div>
       ) : (
-        paginated.map((t, i) => (
-          <div
-            key={t._id}
-            className={`grid grid-cols-[100px_120px_130px_180px_1fr_110px_140px_80px] py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#F5F4FF] ${
-              i < paginated.length - 1 ? "border-b border-[#E3E6F0]" : ""
-            }`}
-          >
-            <div className="text-[13px] text-[#6B7280] font-medium">
-              {new Date(t.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+        paginated.map((t, i) => {
+          // Resolve statuses — support both old (single status) and new (separate fields) docs
+          const orderStatus   = t.orderStatus   ?? t.status;
+          const paymentStatus = t.paymentStatus ?? (t.status === 'success' ? 'paid' : 'voided');
+
+          return (
+            <div
+              key={t._id}
+              onClick={() => onOpenModal(t)}
+              className={`${GRID} py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#F5F4FF] ${
+                i < paginated.length - 1 ? "border-b border-[#E3E6F0]" : ""
+              }`}
+            >
+              {/* Date */}
+              <div className="text-[13px] text-[#6B7280] font-medium">
+                {new Date(t.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+              </div>
+
+              {/* Time */}
+              <div className="text-[13px] text-[#6B7280] font-medium">
+                {new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+
+              {/* Transaction # */}
+              <div className="text-[13px] font-bold text-[#535C91]">#{t.txnId}</div>
+
+              {/* Customer */}
+              <div className="text-[13px] font-semibold text-[#111827]">{t.customer}</div>
+
+              {/* Order ID */}
+              <div className="text-[13px] text-[#6B7280]">{t.orderId}</div>
+
+              {/* Total */}
+              <div className="text-[13px] font-bold text-[#111827]">Rs. {t.amount.toLocaleString()}</div>
+
+              {/* Payment Method */}
+              <div>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${PAYMENT_BADGE_CLASS[t.paymentMethod] ?? "bg-gray-100 text-gray-700"}`}>
+                  {PAYMENT_ICONS[t.paymentMethod]}
+                  {t.paymentMethod}
+                </span>
+              </div>
+
+              {/* Order Status */}
+              <div>
+                <StatusBadge status={orderStatus} />
+              </div>
+
+              {/* Payment Status */}
+              <div>
+                <StatusBadge status={paymentStatus} />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onOpenModal(t); }}
+                  className="text-[10px] font-bold text-[#535C91] bg-[#F0F2F8] rounded px-2 py-0.5 cursor-pointer border-none hover:bg-[#E3E6F0] transition-colors"
+                >
+                  ···
+                </button>
+              </div>
             </div>
-            <div className="text-[13px] text-[#6B7280] font-medium">
-              {new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </div>
-            <div className="text-[13px] font-bold text-[#535C91]">#{t.txnId}</div>
-            <div className="text-[13px] font-semibold text-[#111827]">{t.customer}</div>
-            <div className="text-[13px] text-[#6B7280]">{t.orderId}</div>
-            <div className="text-[13px] font-bold text-[#111827]">Rs. {t.amount.toLocaleString()}</div>
-            <div>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${PAYMENT_BADGE_CLASS[t.paymentMethod] ?? "bg-gray-100 text-gray-700"}`}>
-                {PAYMENT_ICONS[t.paymentMethod]}
-                {t.paymentMethod}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <StatusIcon status={t.status} />
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpenModal(t); }}
-                className="text-[10px] font-bold text-[#535C91] bg-[#F0F2F8] rounded px-2 py-0.5 cursor-pointer border-none hover:bg-[#E3E6F0] transition-colors"
-              >
-                ···
-              </button>
-            </div>
-          </div>
-        ))
+          );
+        })
       )}
 
       {/* Pagination */}
@@ -145,7 +226,11 @@ export default function TransactionTable({
           Showing {filtered.length === 0 ? 0 : Math.min((page - 1) * ITEMS_PER_PAGE + 1, filtered.length)} to {Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} transactions
         </span>
         <div className="flex items-center gap-1.5">
-          <button className={`${pageBtnClass} border-[#E3E6F0] bg-white text-[#6B7280]`} disabled={page === 1} onClick={() => onPageChange(page - 1)}>
+          <button
+            className={`${pageBtnClass} border-[#E3E6F0] bg-white text-[#6B7280]`}
+            disabled={page === 1}
+            onClick={() => onPageChange(page - 1)}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
@@ -163,7 +248,11 @@ export default function TransactionTable({
               {p}
             </button>
           ))}
-          <button className={`${pageBtnClass} border-[#E3E6F0] bg-white text-[#6B7280]`} disabled={page === totalPages || totalPages === 0} onClick={() => onPageChange(page + 1)}>
+          <button
+            className={`${pageBtnClass} border-[#E3E6F0] bg-white text-[#6B7280]`}
+            disabled={page === totalPages || totalPages === 0}
+            onClick={() => onPageChange(page + 1)}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
