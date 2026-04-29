@@ -6,6 +6,7 @@ interface User {
 }
 
 interface TopBarProps {
+  storeName: string;
   user: User;
   time: Date;
   isOnline: boolean;
@@ -14,6 +15,7 @@ interface TopBarProps {
   syncing: boolean;
   syncMessage: string;
   showMenu: boolean;
+  subscriptionPlan?: string;
   onSearch: (val: string) => void;
   onSync: () => void;
   onToggleMenu: () => void;
@@ -21,6 +23,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({
+  storeName,
   user,
   time,
   isOnline,
@@ -29,6 +32,7 @@ export default function TopBar({
   syncing,
   syncMessage,
   showMenu,
+  subscriptionPlan,
   onSearch,
   onSync,
   onToggleMenu,
@@ -42,7 +46,12 @@ export default function TopBar({
         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)" }}>
           <span className="text-white font-black text-[10px] tracking-[-1px]">POS</span>
         </div>
-        <span className="text-white font-bold text-[14px] tracking-[-0.3px]">OneShop POS</span>
+        <span className="text-white font-bold text-[14px] tracking-[-0.3px]">{storeName}</span>
+        {subscriptionPlan && subscriptionPlan !== 'free' && (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full capitalize" style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+            ✦ {subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)}
+          </span>
+        )}
       </div>
 
       {/* Search */}

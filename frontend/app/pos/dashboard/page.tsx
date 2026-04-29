@@ -1,11 +1,19 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
 import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
 import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
+import { useCartState } from "@/app/hooks/useCartState";
+import { useCustomerManagement } from "@/app/hooks/useCustomerManagement";
+import { useDiscounts } from "@/app/hooks/useDiscounts";
+import { usePromoCode } from "@/app/hooks/usePromoCode";
+import { useWeightModal } from "@/app/hooks/useWeightModal";
+import { useProductsData } from "@/app/hooks/useProductsData";
+import { useSyncState } from "@/app/hooks/useSyncState";
+import { usePOSUI } from "@/app/hooks/usePOSUI";
 import { fmt, genId } from "./constants/pos"; 
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
@@ -14,9 +22,11 @@ import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
 
+
 interface Product {
   _id: string;
   name: string;
+  sku: string;
   sellingPrice: number;
   category: string;
   stock: number;
@@ -24,17 +34,6 @@ interface Product {
   lowStockThreshold: number;
   isWeightBased: boolean;
   unit: string;
-}
-
-interface Customer {
-  _id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar: string;
-  totalOrders: number;
-  totalSpent: number;
-  loyaltyPoints?: number;
 }
 
 interface Category {
@@ -48,61 +47,18 @@ export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
   const isOnline = useOnlineStatus();
+  const { storeName } = useStore();
 
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [cart, setCart] = useState<{ id: string; name: string; price: number; qty: number; unit: string; weight: number | null; }[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [addedId, setAddedId] = useState<string | null>(null);
-  const [time, setTime] = useState(new Date());
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [discount, setDiscount] = useState(0);
-  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
-  const [loyaltyPointsUsed, setLoyaltyPointsUsed] = useState(0);
-  const [error, setError] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState("");
-  const [showPromo, setShowPromo] = useState(false);
-  const [promoInput, setPromoInput] = useState("");
-  const [promoLoading, setPromoLoading] = useState(false);
-  const [promoError, setPromoError] = useState("");
-  const [promoSuccess, setPromoSuccess] = useState("");
-  const [promoCode, setPromoCode] = useState("");
-  const [showWeightModal, setShowWeightModal] = useState(false);
-  const [weightProduct, setWeightProduct] = useState<Product | null>(null);
-  const [weightInput, setWeightInput] = useState("");
-  const [weightError, setWeightError] = useState("");
+  // Custom hooks for state management
+  const { cart, setCart, addedId, setAddedId, showCheckout, setShowCheckout } = useCartState();
+  const { selectedCustomer, setSelectedCustomer, customers, setCustomers, customerSearch, setCustomerSearch, showCustomerDropdown, setShowCustomerDropdown } = useCustomerManagement();
+  const { discount, setDiscount, loyaltyDiscount, setLoyaltyDiscount, loyaltyPointsUsed, setLoyaltyPointsUsed, promoCode, setPromoCode } = useDiscounts(cart);
+  const { showPromo, setShowPromo, promoInput, setPromoInput, promoLoading, setPromoLoading, promoError, setPromoError, promoSuccess, setPromoSuccess } = usePromoCode();
+  const { showWeightModal, setShowWeightModal, weightProduct, setWeightProduct, weightInput, setWeightInput, weightError, setWeightError } = useWeightModal();
+  const { products, setProducts, categories, setCategories, loadingData, setLoadingData, activeCategory, setActiveCategory, search, setSearch } = useProductsData();
+  const { pendingCount, setPendingCount, syncing, setSyncing, syncMessage, setSyncMessage } = useSyncState();
+  const { showMenu, setShowMenu, time, error, setError } = usePOSUI();
 
-  // Close customer dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => setShowCustomerDropdown(false);
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
-
-  // Reset discounts and promo when cart is cleared
-  useEffect(() => {
-    if (cart.length === 0) {
-      setDiscount(0);
-      setPromoCode("");
-      setLoyaltyDiscount(0);
-      setLoyaltyPointsUsed(0);
-    }
-  }, [cart]);
-
-  // Update time every second
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   // Redirect to login if not authenticated, or to main dashboard if user role is not cashier
   useEffect(() => {
@@ -213,7 +169,7 @@ export default function POSDashboard() {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === product._id);
       if (existing) return prev.map((i) => i.id === product._id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { id: product._id, name: product.name, price: product.sellingPrice, qty: 1, unit: "item", weight: null }];
+      return [...prev, { id: product._id, name: product.name, sku: product.sku, price: product.sellingPrice, qty: 1, unit: "item", weight: null }];
     });
     setAddedId(product._id);
     setTimeout(() => setAddedId(null), 350);
@@ -225,6 +181,15 @@ export default function POSDashboard() {
     );
   };
 
+  const refreshProducts = useCallback(async () => {
+    try {
+      const productsRes = await api.get("/products");
+      setProducts(productsRes.data.data);
+    } catch (err) {
+      console.error("Failed to refresh products:", err);
+    }
+  }, []);
+
   const handleCheckoutSuccess = () => {
     setCart([]);
     setSelectedCustomer(null);
@@ -235,6 +200,7 @@ export default function POSDashboard() {
     setLoyaltyPointsUsed(0);
     setShowCheckout(false);
     refreshPendingCount();
+    refreshProducts(); // Refresh inventory to show updated stock levels
   };
 
   const checkoutState = {
@@ -264,6 +230,7 @@ export default function POSDashboard() {
     <div className="h-screen flex flex-col overflow-hidden bg-[#F0F2F8] font-sans">
 
       <TopBar
+        storeName={storeName}
         user={user}
         time={time}
         isOnline={isOnline}
@@ -479,6 +446,7 @@ export default function POSDashboard() {
               return [...prev, {
                 id: weightProduct._id,
                 name: `${weightProduct.name} (${weight}kg)`,
+                sku: weightProduct.sku,
                 price: totalPrice,
                 qty: 1,
                 unit: "kg",

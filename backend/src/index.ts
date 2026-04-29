@@ -1,9 +1,8 @@
+import 'dotenv/config';
 import dns from 'dns';
+
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
-import dotenv from "dotenv";
-dotenv.config();
-import 'dotenv/config';
 import path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
@@ -23,6 +22,7 @@ import reportRoutes from './routes/reports';
 import dashboardRoutes from './routes/dashboard';
 import alertsRoutes from './routes/alerts';
 import tenantRoutes from './routes/tenants';
+import shiftRoutes from './routes/shifts';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 
 const app = express();
@@ -78,6 +78,7 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/shifts', shiftRoutes);
 
 // ── 404 handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {

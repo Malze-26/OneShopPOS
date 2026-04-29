@@ -26,10 +26,22 @@
       "PowerShell($base = \"c:\\\\Users\\\\ASUS\\\\Desktop\\\\BACKUPS\\\\Studies\\\\ITM_aca\\\\L2-Software Project\\\\OneShop_POS\\\\backend\\\\oneshop-tenant-factory\\\\src\"; @\\(\"controllers\",\"middleware\",\"models\",\"routes\",\"utils\",\"scripts\"\\) | ForEach-Object { New-Item -ItemType Directory -Path \"$base\\\\$_\" -Force | Out-Null }; Write-Host \"Directories created\")",
       "Bash(npx ts-node-dev *)",
       "Bash(curl -s http://localhost:5001/api/health)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(sed -n '514,540p' src/seed.ts)",
+      "Bash(sed -n '1100,1165p' src/seed.ts)",
+      "Bash(node scripts/update-open-door-logo.mjs)",
+      "Bash(node scripts/update-tech-store-logo.mjs)",
+      "Bash(node scripts/update-fashion-hub-logo.mjs)",
+      "Bash(node scripts/update-store-details.mjs)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' -d '{\\\\\"email\\\\\":\\\\\"mng01@opendoor.lk\\\\\",\\\\\"password\\\\\":\\\\\"Admin@1234\\\\\"}')",
+      "Bash(curl -s \"http://localhost:5000/api/stocks/grns\" -H \"Authorization: Bearer $\\(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' -d '{\\\\\"email\\\\\":\\\\\"mng01@opendoor.lk\\\\\",\\\\\"password\\\\\":\\\\\"Admin@1234\\\\\"}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'total: {d[\\\\\"total\\\\\"]}'\\); [print\\(f'  {g[\\\\\"grnNumber\\\\\"]} | {g[\\\\\"supplier\\\\\"]} | LKR {g[\\\\\"totalCost\\\\\"]:,}'\\) for g in d['data']]\")",
+      "Read(//c/Users/ASUS/Downloads/**)",
+      "Bash(powershell -command \"\\(Get-Item 'C:\\\\Users\\\\ASUS\\\\Downloads\\\\Gemini_Generated_Image_w8894cw8894cw889.png'\\).length / 1KB\")"
     ],
     "additionalDirectories": [
-      "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory"
+      "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",
+      "\\tmp"
     ]
   }
 }

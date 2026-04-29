@@ -1,7 +1,16 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type PaymentMethod = 'Cash' | 'Card';
-export type TransactionStatus = 'success' | 'pending' | 'failed' | 'refunded' | 'voided';
+export type TransactionStatus = 'success' | 'pending' | 'failed' | 'voided';
+
+export interface ITransactionItem {
+  product: mongoose.Types.ObjectId;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
 
 export interface ITransaction extends Document {
   txnId: string;
@@ -11,11 +20,24 @@ export interface ITransaction extends Document {
   paymentMethod: PaymentMethod;
   amount: number;
   status: TransactionStatus;
+  items: ITransactionItem[];
   storeId: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const transactionItemSchema = new Schema<ITransactionItem>(
+  {
+    product:     { type: Schema.Types.ObjectId, ref: 'Product' },
+    productName: { type: String, default: '' },
+    sku:         { type: String, default: '' },
+    quantity:    { type: Number, min: 1 },
+    unitPrice:   { type: Number, min: 0 },
+    subtotal:    { type: Number, min: 0 },
+  },
+  { _id: false }
+);
 
 export const transactionSchema = new Schema<ITransaction>(
   {
@@ -49,8 +71,12 @@ export const transactionSchema = new Schema<ITransaction>(
     },
     status: {
       type: String,
-      enum: ['success', 'pending', 'failed', 'refunded', 'voided'],
+      enum: ['success', 'pending', 'failed', 'voided'],
       default: 'success',
+    },
+    items: {
+      type: [transactionItemSchema],
+      default: [],
     },
     storeId: {
       type: String,

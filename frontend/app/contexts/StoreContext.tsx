@@ -13,6 +13,7 @@ interface StoreSettings {
   storeId: string;
   logoUrl: string;
   primaryColor: string;
+  subscriptionPlan: string;
 }
 
 const defaults: StoreSettings = {
@@ -25,6 +26,7 @@ const defaults: StoreSettings = {
   storeId: '',
   logoUrl: '',
   primaryColor: '#155dfc',
+  subscriptionPlan: 'free',
 };
 
 interface StoreContextValue extends StoreSettings {
@@ -51,7 +53,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Update CSS variable for primary color whenever it changes
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--color-primary', settings.primaryColor);
+      const color = '#' + settings.primaryColor.replace(/^#+/, '');
+      document.documentElement.style.setProperty('--color-primary', color);
     }
   }, [settings.primaryColor]);
 

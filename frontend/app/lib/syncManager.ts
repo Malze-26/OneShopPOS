@@ -12,9 +12,16 @@ export async function syncPendingTransactions(): Promise<{ synced: number; faile
       await api.post('/transactions', data);
       await deletePendingTransaction(localId);
       synced++;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to sync transaction:', err);
-      failed++;
+
+      const status = err?.response?.status;
+      if (status === 400 || status === 422 || status === 500) {
+        console.warn(`Dropping unrecoverable pending transaction: ${transaction.localId}`);
+        await deletePendingTransaction(transaction.localId);
+      } else {
+        failed++;
+      }
     }
   }
 

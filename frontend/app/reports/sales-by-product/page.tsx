@@ -5,6 +5,8 @@ import { Search, ShoppingCart, Star, Shapes } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/app/components/ui/native-select';
 import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
+import { useSearchParams } from 'next/navigation';
+import api from '@/app/lib/api';
 
 interface SummaryData {
   totalUnitsSold: number;
@@ -20,14 +22,26 @@ interface ProductRow {
   category: string;
   qty: number;
   sales: number;
+  unitPrice?: number;
+  stock?: number;
+}
+
+interface ApiResponse {
+  dateRange: string;
+  summary: SummaryData;
+  products: ProductRow[];
 }
 
 export default function SalesByProductPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
-  const [productData, setProductData] = useState<ProductRow[]>([]);
+  const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [channelFilter, setChannelFilter] = useState('');
+
+  const searchParams = useSearchParams();
+  const preset = searchParams.get('preset') || 'today';
 
   useEffect(() => {
     const fetchSalesData = async () => {
@@ -35,15 +49,18 @@ export default function SalesByProductPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch('/api/reports/sales-by-product', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
+        const params = new URLSearchParams();
+        params.set('preset', preset);
+        if (categoryFilter) params.set('category', categoryFilter);
+        if (channelFilter) params.set('channel', channelFilter);
 
-        if (!response.ok) throw new Error('Failed to fetch sales data');
+        const start = searchParams.get('startDate');
+        const end = searchParams.get('endDate');
+        if (start) params.set('startDate', start);
+        if (end) params.set('endDate', end);
 
-        const data = await response.json();
-        setSummaryData(data.summary);
-        setProductData(data.products ?? []);
+        const response = await api.get<ApiResponse>(`/reports/sales-by-product?${params.toString()}`);
+        setData(response.data);
       } catch {
         setError('Failed to load sales data');
       } finally {
@@ -52,53 +69,84 @@ export default function SalesByProductPage() {
     };
 
     fetchSalesData();
-  }, []);
+  }, [preset, categoryFilter, channelFilter, searchParams]);
+
+  const summaryData = data?.summary;
+  const productData = data?.products ?? [];
 
   const summaryCards = summaryData
     ? [
-        {
-          title: 'Total Units Sold',
-          value: summaryData.totalUnitsSold.toLocaleString(),
-          subtext: 'units this period',
-          icon: ShoppingCart,
-          iconBg: 'var(--color-primary-light)',
-          iconColor: 'var(--color-primary)',
-        },
-        {
-          title: 'Top Grossing Item',
-          value: summaryData.topGrossingItem || 'N/A',
-          subtext: `Rs. ${(summaryData.topGrossingAmount ?? 0).toLocaleString()}`,
-          icon: Star,
-          iconBg: '#fffaeb',
-          iconColor: '#f79009',
-        },
-        {
-          title: 'Top Category',
-          value: summaryData.topCategory || 'N/A',
-          subtext: `Rs. ${(summaryData.topCategoryRevenue ?? 0).toLocaleString()}`,
-          icon: Shapes,
-          iconBg: '#f4f3ff',
-          iconColor: '#7f56d9',
-        },
-      ]
+      {
+        title: 'Total Units Sold',
+        value: summaryData.totalUnitsSold.toLocaleString(),
+        subtext: 'units this period',
+        icon: ShoppingCart,
+        iconBg: 'var(--color-primary-light)',
+        iconColor: 'var(--color-primary)',
+      },
+      {
+        title: 'Top Grossing Item',
+        value: summaryData.topGrossingItem || 'N/A',
+        subtext: `Rs. ${(summaryData.topGrossingAmount ?? 0).toLocaleString()}`,
+        icon: Star,
+        iconBg: '#fffaeb',
+        iconColor: '#f79009',
+      },
+      {
+        title: 'Top Category',
+        value: summaryData.topCategory || 'N/A',
+        subtext: `Rs. ${(summaryData.topCategoryRevenue ?? 0).toLocaleString()}`,
+        icon: Shapes,
+        iconBg: '#f4f3ff',
+        iconColor: '#7f56d9',
+      },
+    ]
     : [];
 
   const filtered = productData.filter(
     (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()),
+      (p?.name?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? '') ||
+      (p?.sku?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? ''),
   );
+
+  const exportToCsv = () => {
+    if (filtered.length === 0) return;
+
+    const headers = ['SKU', 'Product Name', 'Category', 'Unit Price', 'Stock', 'Qty Sold', 'Net Sales'];
+    const rows = filtered.map(p => [
+      `"${p.sku}"`,
+      `"${p.name.replace(/"/g, '""')}"`,
+      `"${p.category}"`,
+      p.unitPrice || 0,
+      p.stock || 0,
+      p.qty,
+      p.sales
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sales_by_product_${preset}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar />
+        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} onExport={exportToCsv} />
       </div>
 
       <div className="mb-6">
         <h1 className="text-xl font-bold text-[#101828]">Sales by Product</h1>
-        <p className="text-sm text-[#4a5565] mt-1">Top-performing products by units sold and revenue</p>
+        <p className="text-sm text-[#4a5565] mt-1">
+          {loading ? 'Loading...' : `Top-performing products by units sold and revenue — ${data?.dateRange ?? ''}`}
+        </p>
       </div>
 
       {error && (
@@ -144,13 +192,34 @@ export default function SalesByProductPage() {
             />
           </div>
           <div className="flex gap-2">
-            <NativeSelect className="w-40">
-              <NativeSelectOption value="">All Categories</NativeSelectOption>
-              <NativeSelectOption value="baby">Baby Products</NativeSelectOption>
-              <NativeSelectOption value="bakery">Bakery</NativeSelectOption>
-              <NativeSelectOption value="beverages">Beverages</NativeSelectOption>
+            <NativeSelect
+              className="w-40"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+<NativeSelectOption value="">All Categories</NativeSelectOption>
+              <NativeSelectOption value="Vegetables">Vegetables</NativeSelectOption>
+              <NativeSelectOption value="Fruits">Fruits</NativeSelectOption>
+              <NativeSelectOption value="Bakery">Bakery</NativeSelectOption>
+              <NativeSelectOption value="Beverages">Beverages</NativeSelectOption>
+              <NativeSelectOption value="Snacks">Snacks</NativeSelectOption>
+              <NativeSelectOption value="Dairy">Dairy</NativeSelectOption>
+              <NativeSelectOption value="Meat">Meat</NativeSelectOption>
+              <NativeSelectOption value="Other">Other</NativeSelectOption>
+              <NativeSelectOption value="Frozen">Frozen</NativeSelectOption>
+              <NativeSelectOption value="Electronics">Electronics</NativeSelectOption>
+              <NativeSelectOption value="Clothing">Clothing</NativeSelectOption>
+              <NativeSelectOption value="Home Goods">Home Goods</NativeSelectOption>
+              <NativeSelectOption value="Beauty">Beauty</NativeSelectOption>
+              <NativeSelectOption value="Pet Supplies">Pet Supplies</NativeSelectOption>
+              <NativeSelectOption value="Cleaning Supplies">Cleaning Supplies</NativeSelectOption>
+              <NativeSelectOption value="Food Staples">Food Staples</NativeSelectOption>
             </NativeSelect>
-            <NativeSelect className="w-40">
+            <NativeSelect
+              className="w-40"
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+            >
               <NativeSelectOption value="">All Channels</NativeSelectOption>
               <NativeSelectOption value="pos">POS (In-store)</NativeSelectOption>
               <NativeSelectOption value="online">E-commerce (Online)</NativeSelectOption>
@@ -162,7 +231,7 @@ export default function SalesByProductPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['SKU', 'Product Name', 'Category', 'Qty Sold', 'Net Sales'].map((h) => (
+                {['SKU', 'Product Name', 'Category', 'Unit Price', 'Stock', 'Qty Sold', 'Net Sales'].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -172,7 +241,7 @@ export default function SalesByProductPage() {
             <tbody className="divide-y divide-[#e4e7ec]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#4a5565]">Loading...</td>
+                  <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#4a5565]">Loading...</td>
                 </tr>
               ) : filtered.length > 0 ? (
                 filtered.map((product) => (
@@ -180,13 +249,15 @@ export default function SalesByProductPage() {
                     <td className="px-5 py-4 text-sm font-medium" style={{ color: 'var(--color-primary)' }}>{product.sku}</td>
                     <td className="px-5 py-4 text-sm text-[#101828]">{product.name}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{product.category}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">Rs. {product.unitPrice?.toLocaleString() ?? 0}</td>
+                    <td className="px-5 py-4 text-sm text-[#4a5565]">{product.stock ?? 0}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{product.qty}</td>
                     <td className="px-5 py-4 text-sm font-semibold text-[#101828]">Rs. {product.sales.toLocaleString()}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#4a5565]">No products found</td>
+                  <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#4a5565]">No products found</td>
                 </tr>
               )}
             </tbody>

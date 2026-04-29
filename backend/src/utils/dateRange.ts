@@ -106,6 +106,9 @@ export const buildDateFilter = (
   customStart?: string,
   customEnd?: string
 ): any => {
+  if (preset?.toLowerCase() === 'all-time') {
+    return {};
+  }
   const { startDate, endDate } = getDateRange(preset, customStart, customEnd);
   return {
     createdAt: {

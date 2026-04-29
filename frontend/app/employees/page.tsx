@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { avatarSrc } from '@/app/lib/avatarUtils';
 import { Plus, Search, Eye, EyeOff, UserMinus, AlertTriangle, Loader2, X } from 'lucide-react';
 import api from '@/app/lib/api';
 
@@ -18,13 +19,13 @@ interface Employee {
 }
 
 const roleConfig: Record<string, { bg: string; text: string }> = {
-  Manager:               { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
-  Cashier:               { bg: '#ecfdf3', text: '#12b76a' },
-  'Sales Representative':{ bg: '#fff7ed', text: '#ea580c' },
+  Manager: { bg: 'var(--color-primary-light)', text: 'var(--color-primary)' },
+  Cashier: { bg: '#ecfdf3', text: '#12b76a' },
+  'Sales Representative': { bg: '#fff7ed', text: '#ea580c' },
 };
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
-  active:   { label: 'Active',   bg: '#ecfdf3', text: '#12b76a' },
+  active: { label: 'Active', bg: '#ecfdf3', text: '#12b76a' },
   inactive: { label: 'Inactive', bg: '#f2f4f7', text: '#4a5565' },
 };
 
@@ -44,33 +45,40 @@ const emptyForm: FormState = {
 };
 
 export default function EmployeesPage() {
-  const [employees, setEmployees]         = useState<Employee[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState<string | null>(null);
-  const [search, setSearch]               = useState('');
-  const [roleFilter, setRoleFilter]       = useState('All Roles');
-  const [statusFilter, setStatusFilter]   = useState('All Status');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All Roles');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [preset, setPreset] = useState('this-month');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Add Employee modal
-  const [showModal, setShowModal]         = useState(false);
-  const [form, setForm]                   = useState<FormState>(emptyForm);
-  const [showPw, setShowPw]               = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [formError, setFormError]         = useState('');
-  const [saving, setSaving]               = useState(false);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // Deactivate confirmation
   const [deactivateTarget, setDeactivateTarget] = useState<Employee | null>(null);
-  const [deactivating, setDeactivating]         = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, string> = {};
-      if (search)                         params.search = search;
-      if (roleFilter !== 'All Roles')     params.role   = roleFilter;
-      if (statusFilter !== 'All Status')  params.status = statusFilter;
+      if (search) params.search = search;
+      if (roleFilter !== 'All Roles') params.role = roleFilter;
+      if (statusFilter !== 'All Status') params.status = statusFilter;
+      if (preset) params.preset = preset;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
       const res = await api.get('/employees', { params });
       setEmployees(res.data.data ?? []);
     } catch {
@@ -78,12 +86,12 @@ export default function EmployeesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, statusFilter]);
+  }, [search, roleFilter, statusFilter, preset]);
 
   useEffect(() => {
     const t = setTimeout(fetchEmployees, search ? 300 : 0);
     return () => clearTimeout(t);
-  }, [fetchEmployees, search]);
+  }, [fetchEmployees, search, preset, startDate, endDate]);
 
   const inactiveCount = employees.filter((e) => e.status === 'inactive').length;
 
@@ -132,7 +140,7 @@ export default function EmployeesPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-       
+
           <p className="text-sm text-[#4a5565]">Manage store staff and cashiers</p>
         </div>
         <button
@@ -157,6 +165,89 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+
+      {/* Date Range Selector */}
+      <div className="flex items-center gap-2 mb-4 relative">
+        <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-[#e4e7ec] w-fit shadow-sm">
+          {[
+            { id: 'today', label: 'Today' },
+            { id: 'last-7-days', label: 'Last 7 Days' },
+            { id: 'this-month', label: 'This Month' },
+            { id: 'custom', label: 'Custom' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id === 'custom') {
+                  setShowDatePicker(!showDatePicker);
+                } else {
+                  setPreset(item.id);
+                  setStartDate('');
+                  setEndDate('');
+                  setShowDatePicker(false);
+                }
+              }}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${preset === item.id
+                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  : 'text-[#4a5565] hover:bg-[#f5f8ff] hover:text-[var(--color-primary)]'
+                }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Selected custom range label */}
+        {preset === 'custom' && startDate && endDate && !showDatePicker && (
+          <span className="text-xs font-medium text-[#4a5565] bg-[#f2f4f7] px-3 py-1.5 rounded-full border border-[#e4e7ec]">
+            {startDate} to {endDate}
+          </span>
+        )}
+
+        {/* Date Picker Popover */}
+        {showDatePicker && (
+          <div className="absolute top-12 left-0 z-50 bg-white p-4 rounded-xl shadow-xl border border-[#e4e7ec] w-72">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-semibold text-[#101828]">Select Range</h3>
+              <button onClick={() => setShowDatePicker(false)} className="text-[#667085] hover:text-[#101828]">
+                <span className="text-lg">×</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-[#475467] mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#475467] mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#d0d5dd] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setPreset('custom');
+                setShowDatePicker(false);
+              }}
+              disabled={!startDate || !endDate}
+              className="w-full bg-[var(--color-primary)] text-white py-2 rounded-lg text-sm font-semibold hover:bg-opacity-90 transition-all disabled:opacity-50"
+            >
+              Apply Range
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec] mb-6">
@@ -229,8 +320,10 @@ export default function EmployeesPage() {
                   <tr key={String(emp.id)} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{ background: 'var(--color-primary)' }}>
-                          {emp.avatar}
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium overflow-hidden" style={{ background: 'var(--color-primary)' }}>
+                          {avatarSrc(emp.avatar)
+                            ? <img src={avatarSrc(emp.avatar)} alt={emp.name} className="w-full h-full object-cover" />
+                            : emp.avatar}
                         </div>
                         <div className="text-sm font-medium text-[#101828]">{emp.name}</div>
                       </div>

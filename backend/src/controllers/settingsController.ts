@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { AuthRequest } from '../types';
 
 // GET /api/settings — requires tenant header (set by tenantMiddleware)
@@ -13,7 +14,23 @@ export async function getSettings(req: AuthRequest, res: Response): Promise<void
     res.status(404).json({ message: 'Store settings not found' });
     return;
   }
-  res.json({ data: settings });
+
+  // Fetch subscriptionPlan from the tenant factory DB
+  const tenantId = req.headers['oneshop-tenant-id'] as string | undefined;
+  let subscriptionPlan = 'free';
+  if (tenantId) {
+    try {
+      const factoryDb = process.env.TENANT_FACTORY_DB || 'oneshop-tenant-factory';
+      const factoryConn = mongoose.connection.useDb(factoryDb, { useCache: true });
+      const tenant = await factoryConn.collection('tenants').findOne(
+        { databaseName: tenantId },
+        { projection: { 'subscription.plan': 1 } }
+      );
+      if (tenant?.subscription?.plan) subscriptionPlan = tenant.subscription.plan as string;
+    } catch { /* keep default */ }
+  }
+
+  res.json({ data: { ...settings.toObject(), subscriptionPlan } });
 }
 
 // PATCH /api/settings — Manager only
@@ -29,7 +46,10 @@ export async function updateSettings(req: AuthRequest, res: Response): Promise<v
   if (address !== undefined)  update.address        = address;
   if (phone !== undefined)    update.phone          = phone;
   if (email !== undefined)    update.email          = email;
-  if (primaryColor)           update.primaryColor   = primaryColor;
+  if (primaryColor) {
+    const clean = '#' + String(primaryColor).replace(/^#+/, '');
+    if (/^#[0-9a-fA-F]{6}$/.test(clean)) update.primaryColor = clean;
+  }
 
   const settings = await StoreSettings.findOneAndUpdate(
     { storeId },

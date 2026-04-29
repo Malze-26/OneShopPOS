@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
+import { sendReceiptEmail } from '../utils/sendReceiptEmail';
 
 function generateTxnId(): string {
   const num = Math.floor(Math.random() * 90000) + 10000;
@@ -10,10 +11,11 @@ function generateTxnId(): string {
 export async function getTransactions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { Transaction } = req.models!;
-    const { payment, search, startDate, endDate, page = '1', limit = '20' } = req.query;
+    const { payment, search, startDate, endDate, page = '1', limit = '20', customerId } = req.query;
 
     const filter: Record<string, unknown> = {};
 
+    if (customerId) filter.customerId = customerId;
     if (payment && payment !== 'All') filter.paymentMethod = payment;
     if (search) filter.txnId = { $regex: search, $options: 'i' };
     if (startDate || endDate) {
@@ -69,7 +71,7 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Customer } = req.models!;
+    const { Transaction, Customer, Order, Product, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
@@ -82,17 +84,84 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       createdBy: userId,
     });
 
-    // Award loyalty points: 1 point per Rs. 100 spent
+    // Deduct inventory for each item in the POS transaction
+    if (Array.isArray(req.body.items) && req.body.items.length > 0) {
+      for (const item of req.body.items) {
+        if (item.product) {
+          await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+          await StockHistory.create({
+            product:  item.product,
+            type:     'remove',
+            quantity: item.quantity,
+            reason:   `POS Transaction ${txnId}`,
+            by:       userId,
+            storeId,
+          });
+        }
+      }
+    }
+
+    // Recalculate customer stats and send receipt email
     if (req.body.customerId && req.body.customerId !== 'guest') {
-      const pointsEarned = Math.floor(req.body.amount / 100);
-      await Customer.findByIdAndUpdate(req.body.customerId, {
-        $inc: {
-          loyaltyPoints: pointsEarned,
-          totalOrders: 1,
-          totalSpent: req.body.amount,
-        },
-        lastPurchase: new Date(),
-      });
+      const customer = await Customer.findById(req.body.customerId);
+      if (customer) {
+        const pointsEarned = Math.floor(req.body.amount / 100);
+
+        if (customer.email) {
+          // Recalculate from the Orders collection — single source of truth
+          const [agg] = await Order.aggregate<{
+            totalSpent: number;
+            totalOrders: number;
+            lastPurchase: Date | null;
+          }>([
+            { $match: { customerEmail: customer.email } },
+            {
+              $group: {
+                _id: null,
+                totalSpent:   { $sum: '$total' },
+                totalOrders:  { $sum: 1 },
+                lastPurchase: { $max: '$createdAt' },
+              },
+            },
+          ]);
+
+          await Customer.findByIdAndUpdate(req.body.customerId, {
+            $set: {
+              totalSpent:   agg?.totalSpent  ?? 0,
+              totalOrders:  agg?.totalOrders ?? 0,
+              lastPurchase: agg?.lastPurchase ?? new Date(),
+            },
+            $inc: { loyaltyPoints: pointsEarned },
+          });
+
+          // Send receipt email
+          try {
+            await sendReceiptEmail({
+              customerName:  customer.name,
+              customerEmail: customer.email,
+              orderId:       txnId,
+              items:         req.body.items || [],
+              subtotal:      req.body.subtotal || req.body.amount,
+              discount:      req.body.discount || 0,
+              total:         req.body.amount,
+              paymentMethod: req.body.paymentMethod,
+              date: new Date().toLocaleDateString('en-LK', {
+                day: '2-digit', month: 'short', year: 'numeric',
+              }),
+            });
+          } catch (emailErr) {
+            console.error('Failed to send receipt email:', emailErr);
+            // don't fail the transaction if email fails
+          }
+
+        } else {
+          // No email — fall back to incrementing
+          await Customer.findByIdAndUpdate(req.body.customerId, {
+            $inc: { loyaltyPoints: pointsEarned, totalOrders: 1, totalSpent: req.body.amount },
+            $set: { lastPurchase: new Date() },
+          });
+        }
+      }
     }
 
     res.status(201).json({ data: transaction });
@@ -120,7 +189,7 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 
 // DELETE /api/transactions/:id/void — Void transaction
 export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction } = req.models!;
+  const { Transaction, Product, StockHistory } = req.models!;
   const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
     res.status(404).json({ message: 'Transaction not found' });
@@ -130,28 +199,23 @@ export async function voidTransaction(req: AuthRequest, res: Response): Promise<
     res.status(400).json({ message: 'Transaction already voided' });
     return;
   }
+
+  // Restore inventory from items stored on the transaction
+  if (transaction.items && transaction.items.length > 0) {
+    for (const item of transaction.items) {
+      await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+      await StockHistory.create({
+        product:  item.product,
+        type:     'add',
+        quantity: item.quantity,
+        reason:   `Transaction voided: ${transaction.txnId}`,
+        by:       req.user!.id,
+        storeId:  transaction.storeId,
+      });
+    }
+  }
+
   transaction.status = 'voided';
   await transaction.save();
   res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
-}
-
-// PATCH /api/transactions/:id/refund — Refund transaction
-export async function refundTransaction(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction } = req.models!;
-  const transaction = await Transaction.findById(req.params.id);
-  if (!transaction) {
-    res.status(404).json({ message: 'Transaction not found' });
-    return;
-  }
-  if (transaction.status === 'refunded') {
-    res.status(400).json({ message: 'Transaction already refunded' });
-    return;
-  }
-  if (transaction.status === 'voided') {
-    res.status(400).json({ message: 'Cannot refund a voided transaction' });
-    return;
-  }
-  transaction.status = 'refunded';
-  await transaction.save();
-  res.status(200).json({ message: 'Transaction refunded successfully', data: transaction });
 }

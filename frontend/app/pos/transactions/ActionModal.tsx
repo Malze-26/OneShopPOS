@@ -29,22 +29,6 @@ export default function ActionModal({
   // Always read live status from transactions array
   const liveTxn = transactions.find((t) => t._id === selectedTxn._id) ?? selectedTxn;
 
-  const handleRefund = async () => {
-    onActionLoading(true);
-    onActionError("");
-    try {
-      await api.patch(`/transactions/${liveTxn._id}/refund`);
-      onActionMessage("Transaction marked as refunded");
-      onUpdateTransactions((prev) =>
-        prev.map((t) => t._id === liveTxn._id ? { ...t, status: "refunded" } : t)
-      );
-    } catch (err: any) {
-      onActionError(err.response?.data?.message || "Failed to refund. Please try again.");
-    } finally {
-      onActionLoading(false);
-    }
-  };
-
   const handleVoid = async () => {
     if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
     onActionLoading(true);
@@ -116,22 +100,6 @@ export default function ActionModal({
 
             <button
               disabled={actionLoading}
-              onClick={handleRefund}
-              className="w-full py-3 bg-amber-50 border border-amber-200 rounded-xl text-[14px] font-bold text-amber-800 flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-amber-100 transition-colors"
-            >
-              {actionLoading ? (
-                <div className="w-4 h-4 border-2 border-amber-800/40 border-t-amber-800 rounded-full animate-spin" />
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-                </svg>
-              )}
-              Mark as Refunded
-            </button>
-
-            <button
-              disabled={actionLoading}
               onClick={handleVoid}
               className="w-full py-3 bg-red-50 border border-red-200 rounded-xl text-[14px] font-bold text-red-600 flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-red-100 transition-colors"
             >
@@ -149,7 +117,7 @@ export default function ActionModal({
         )}
 
         {/* Status messages for non-actionable states */}
-        {(liveTxn.status === "refunded" || liveTxn.status === "voided") && !actionMessage && (
+        {liveTxn.status === "voided" && !actionMessage && (
           <div className="px-3 py-3 bg-gray-100 rounded-xl text-center">
             <p className="text-[13px] text-[#6B7280] m-0">
               This transaction has already been <strong>{liveTxn.status}</strong>.

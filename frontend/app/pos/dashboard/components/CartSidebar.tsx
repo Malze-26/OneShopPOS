@@ -4,6 +4,7 @@ import { C } from "../constants/tokens";
 interface CartItem {
   id: string;
   name: string;
+  sku: string;
   price: number;
   qty: number;
   unit: string;

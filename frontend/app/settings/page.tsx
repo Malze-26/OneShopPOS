@@ -6,6 +6,7 @@ import { Store, Palette, KeyRound, Upload, Check, Eye, EyeOff, Loader2, User } f
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { avatarSrc } from '@/app/lib/avatarUtils';
 
 const CURRENCIES = [
   { code: 'LKR', label: 'LKR — Sri Lankan Rupee', locale: 'en-LK' },
@@ -34,8 +35,9 @@ export default function SettingsPage() {
   const store = useStore();
   const { user, refreshUser } = useAuth();
   const searchParams = useSearchParams();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const storeSynced    = useRef(false);
 
   const initialTab = (searchParams.get('tab') as Tab) ?? 'store';
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -49,8 +51,10 @@ export default function SettingsPage() {
   const [email, setEmail]             = useState(store.email);
   const [currency, setCurrency]       = useState(store.currency);
 
+  const cleanColor = (c: string) => '#' + c.replace(/^#+/, '');
+
   // Appearance
-  const [primaryColor, setPrimaryColor] = useState(store.primaryColor || '#155dfc');
+  const [primaryColor, setPrimaryColor] = useState(cleanColor(store.primaryColor || '#155dfc'));
   const [logoPreview, setLogoPreview]   = useState<string>(store.logoUrl ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${store.logoUrl}` : '');
   const [logoFile, setLogoFile]         = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -59,9 +63,27 @@ export default function SettingsPage() {
   const [profileName, setProfileName]   = useState(user?.name ?? '');
   const [profileEmail, setProfileEmail] = useState(user?.email ?? '');
   const [profilePhone, setProfilePhone] = useState(user?.phone ?? '');
-  const [avatarPreview, setAvatarPreview] = useState<string>(
-    user?.avatar ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}` : ''
-  );
+  const [avatarPreview, setAvatarPreview] = useState<string>(avatarSrc(user?.avatar));
+
+  // Sync all form fields once store context finishes loading from the API.
+  // store.storeId is '' in the defaults and becomes non-empty after the first
+  // successful GET /settings, making it a reliable "data loaded" signal.
+  useEffect(() => {
+    if (storeSynced.current || !store.storeId) return;
+    storeSynced.current = true;
+
+    setStoreName(store.storeName);
+    setAddress(store.address ?? '');
+    setPhone(store.phone ?? '');
+    setEmail(store.email ?? '');
+    setCurrency(store.currency);
+    setPrimaryColor(cleanColor(store.primaryColor || '#155dfc'));
+
+    if (store.logoUrl) {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
+      setLogoPreview(`${apiBase}${store.logoUrl}`);
+    }
+  }, [store.storeId]);
 
   // Sync profile fields once user loads from AuthContext
   useEffect(() => {
@@ -70,7 +92,7 @@ export default function SettingsPage() {
     setProfileEmail(user.email);
     setProfilePhone(p => p || (user.phone ?? ''));
     if (user.avatar && !avatarPreview) {
-      setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${user.avatar}`);
+      setAvatarPreview(avatarSrc(user.avatar));
     }
   }, [user]);
   const [avatarFile, setAvatarFile]       = useState<File | null>(null);
@@ -131,7 +153,7 @@ export default function SettingsPage() {
         setLogoFile(null);
         setUploadingLogo(false);
       }
-      await api.patch('/settings', { primaryColor });
+      await api.patch('/settings', { primaryColor: cleanColor(primaryColor) });
       await store.refresh();
       showToast('Appearance saved');
     } catch {
@@ -168,7 +190,7 @@ export default function SettingsPage() {
         const form = new FormData();
         form.append('avatar', avatarFile);
         const { data } = await api.post('/auth/profile/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-        setAvatarPreview(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${data.avatar}`);
+        setAvatarPreview(avatarSrc(data.avatar));
         setAvatarFile(null);
         setUploadingAvatar(false);
       }
@@ -395,7 +417,10 @@ export default function SettingsPage() {
               <input
                 type="text"
                 value={primaryColor}
-                onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setPrimaryColor(e.target.value); }}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (/^#?[0-9a-fA-F]{0,6}$/.test(v)) setPrimaryColor(v.startsWith('#') ? v : '#' + v);
+                }}
                 className="w-28 px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
               <span className="text-xs text-[#4a5565]">Custom hex</span>

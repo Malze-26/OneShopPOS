@@ -32,8 +32,8 @@ interface CustomerStats {
 
 type SortKey = 'recent' | 'spent_high' | 'spent_low' | 'orders';
 
-type OrderStatus   = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+type OrderStatus   = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type PaymentStatus = 'pending' | 'paid' | 'failed';
 
 interface OrderItem {
   productName: string;
@@ -72,14 +72,12 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: R
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
-  refunded:   { label: 'Refunded',   color: 'bg-[#fef3f2] text-[#f04438]', icon: RotateCcw },
 };
 
 const PAYMENT_COLOR: Record<PaymentStatus, string> = {
   pending:  'bg-[#fff8e1] text-[#f59e0b]',
   paid:     'bg-[#e8f5e9] text-[#12b76a]',
   failed:   'bg-[#fef3f2] text-[#f04438]',
-  refunded: 'bg-[#fef3f2] text-[#f04438]',
 };
 
 // ── Customer Detail Panel ─────────────────────────────────────────────────────

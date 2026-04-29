@@ -18,6 +18,8 @@ import { Customer } from './models/Customer';
 import { Order } from './models/Order';
 import { StoreSettings } from './models/StoreSettings';
 import { Supplier } from './models/Supplier';
+import { GRN } from './models/GRN';
+import { StockHistory } from './models/StockHistory';
 
 const STORE_ID_FALLBACK = 'STORE-2025-001';
 let STORE_ID = STORE_ID_FALLBACK;
@@ -474,6 +476,42 @@ async function seed() {
     { name: 'EH Ginger Beer 400ml',             sku: 'SDW-005', category: 'Soft Drinks & Water',   sellingPrice: 120,  costPrice: 85,   stock: 50,  lowStockThreshold: 15, description: 'Elephant House ginger beer' },
     { name: 'Sparkling Water 500ml',            sku: 'SDW-006', category: 'Soft Drinks & Water',   sellingPrice: 180,  costPrice: 130,  stock: 40,  lowStockThreshold: 12, description: 'Carbonated mineral water' },
     { name: 'Nestlé Pure Life Water 1L',        sku: 'SDW-007', category: 'Soft Drinks & Water',   sellingPrice: 100,  costPrice: 68,   stock: 100, lowStockThreshold: 25, description: 'Purified bottled water' },
+    // ── Meat ─────────────────────────────────────────────────────────────────
+    { name: 'Lamb Chops 500g',                  sku: 'MT-001',  category: 'Meat',                  sellingPrice: 1450, costPrice: 1100, stock: 12,  lowStockThreshold: 5,  description: 'Fresh lamb chops, bone-in' },
+    { name: 'Minced Beef 500g',                 sku: 'MT-002',  category: 'Meat',                  sellingPrice: 980,  costPrice: 740,  stock: 18,  lowStockThreshold: 6,  description: 'Freshly minced beef' },
+    { name: 'Mutton Curry Cut 500g',            sku: 'MT-003',  category: 'Meat',                  sellingPrice: 1200, costPrice: 920,  stock: 10,  lowStockThreshold: 4,  description: 'Bone-in mutton cut for curries' },
+    // ── Snacks ───────────────────────────────────────────────────────────────
+    { name: 'Popcorn Salted 100g',              sku: 'SNK-GEN-001', category: 'Snacks',            sellingPrice: 150,  costPrice: 100,  stock: 50,  lowStockThreshold: 15, description: 'Ready-to-eat salted popcorn' },
+    { name: 'Mixed Nuts 200g',                  sku: 'SNK-GEN-002', category: 'Snacks',            sellingPrice: 480,  costPrice: 360,  stock: 30,  lowStockThreshold: 10, description: 'Roasted mixed nuts — cashew, almond, peanut' },
+    { name: 'Rice Crackers 150g',               sku: 'SNK-GEN-003', category: 'Snacks',            sellingPrice: 220,  costPrice: 160,  stock: 40,  lowStockThreshold: 12, description: 'Lightly salted rice crackers' },
+    // ── Grains & Pulses ───────────────────────────────────────────────────────
+    { name: 'Red Lentils 500g',                 sku: 'GPL-001', category: 'Grains & Pulses',       sellingPrice: 280,  costPrice: 200,  stock: 60,  lowStockThreshold: 15, description: 'Split red lentils (masoor dhal)' },
+    { name: 'Chickpeas 500g',                   sku: 'GPL-002', category: 'Grains & Pulses',       sellingPrice: 320,  costPrice: 235,  stock: 45,  lowStockThreshold: 12, description: 'Dried whole chickpeas (kadala)' },
+    { name: 'Green Mung Beans 500g',            sku: 'GPL-003', category: 'Grains & Pulses',       sellingPrice: 260,  costPrice: 190,  stock: 50,  lowStockThreshold: 12, description: 'Whole green mung beans (mung dhal)' },
+    { name: 'Black-Eyed Peas 500g',             sku: 'GPL-004', category: 'Grains & Pulses',       sellingPrice: 290,  costPrice: 210,  stock: 35,  lowStockThreshold: 10, description: 'Dried black-eyed peas' },
+    // ── Cooking Essentials ────────────────────────────────────────────────────
+    { name: 'Sunflower Oil 1L',                 sku: 'CKE-001', category: 'Cooking Essentials',    sellingPrice: 580,  costPrice: 440,  stock: 40,  lowStockThreshold: 10, description: 'Refined sunflower cooking oil' },
+    { name: 'Iodised Salt 1kg',                 sku: 'CKE-002', category: 'Cooking Essentials',    sellingPrice: 120,  costPrice: 80,   stock: 80,  lowStockThreshold: 20, description: 'Fine iodised table salt' },
+    { name: 'White Sugar 1kg',                  sku: 'CKE-003', category: 'Cooking Essentials',    sellingPrice: 230,  costPrice: 165,  stock: 70,  lowStockThreshold: 20, description: 'Refined white granulated sugar' },
+    { name: 'Coconut Oil 500ml',                sku: 'CKE-004', category: 'Cooking Essentials',    sellingPrice: 420,  costPrice: 310,  stock: 35,  lowStockThreshold: 10, description: 'Pure virgin coconut oil' },
+    // ── Dairy ─────────────────────────────────────────────────────────────────
+    { name: 'Greek Yogurt 200g',                sku: 'DRY-001', category: 'Dairy',                 sellingPrice: 280,  costPrice: 200,  stock: 20,  lowStockThreshold: 6,  description: 'Thick strained Greek-style yogurt' },
+    { name: 'Cream Cheese 200g',                sku: 'DRY-002', category: 'Dairy',                 sellingPrice: 450,  costPrice: 330,  stock: 15,  lowStockThreshold: 5,  description: 'Soft spreadable cream cheese' },
+    { name: 'Condensed Milk 400g',              sku: 'DRY-003', category: 'Dairy',                 sellingPrice: 320,  costPrice: 235,  stock: 30,  lowStockThreshold: 8,  description: 'Sweetened condensed milk' },
+    // ── Beverages ─────────────────────────────────────────────────────────────
+    { name: 'Coconut Water 330ml',              sku: 'BVG-001', category: 'Beverages',             sellingPrice: 180,  costPrice: 130,  stock: 45,  lowStockThreshold: 12, description: 'Natural coconut water, no added sugar' },
+    { name: 'Aloe Vera Drink 500ml',            sku: 'BVG-002', category: 'Beverages',             sellingPrice: 220,  costPrice: 160,  stock: 35,  lowStockThreshold: 10, description: 'Aloe vera flavoured health drink' },
+    { name: 'Energy Drink 250ml',               sku: 'BVG-003', category: 'Beverages',             sellingPrice: 350,  costPrice: 260,  stock: 40,  lowStockThreshold: 12, description: 'Caffeinated energy drink' },
+    // ── Household ─────────────────────────────────────────────────────────────
+    { name: 'Garbage Bags 30L (10pk)',          sku: 'HHS-001', category: 'Household',             sellingPrice: 180,  costPrice: 120,  stock: 50,  lowStockThreshold: 12, description: 'Heavy-duty black garbage bags' },
+    { name: 'Mosquito Coils (10pk)',            sku: 'HHS-002', category: 'Household',             sellingPrice: 130,  costPrice: 85,   stock: 60,  lowStockThreshold: 15, description: 'Slow-burn mosquito repellent coils' },
+    { name: 'LED Bulb 9W',                      sku: 'HHS-003', category: 'Household',             sellingPrice: 280,  costPrice: 200,  stock: 30,  lowStockThreshold: 8,  description: 'Energy-saving LED bulb E27 base' },
+    { name: 'Dish Sponge 3pk',                  sku: 'HHS-004', category: 'Household',             sellingPrice: 120,  costPrice: 80,   stock: 55,  lowStockThreshold: 15, description: 'Scrub sponge for dishes and surfaces' },
+    // ── Stationery ────────────────────────────────────────────────────────────
+    { name: 'Ballpoint Pens (10pk)',            sku: 'STN-001', category: 'Stationery',            sellingPrice: 150,  costPrice: 100,  stock: 40,  lowStockThreshold: 10, description: 'Blue ink ballpoint pens' },
+    { name: 'A4 Notebook 200 pages',            sku: 'STN-002', category: 'Stationery',            sellingPrice: 220,  costPrice: 155,  stock: 30,  lowStockThreshold: 8,  description: 'Ruled A4 notepad, 200 pages' },
+    { name: 'Correction Fluid 20ml',            sku: 'STN-003', category: 'Stationery',            sellingPrice: 90,   costPrice: 60,   stock: 35,  lowStockThreshold: 10, description: 'Fast-dry white correction fluid' },
+    { name: 'Stapler + 1000 Staples',          sku: 'STN-004', category: 'Stationery',            sellingPrice: 350,  costPrice: 250,  stock: 20,  lowStockThreshold: 5,  description: 'Desktop stapler with staple refills' },
   ];
 
   // Get admin _id via raw DB query to avoid any Mongoose type issues
@@ -512,16 +550,16 @@ async function seed() {
 
   // ── 5. Seed Customers ──────────────────────────────────────────────────────
   const customers = [
-    { name: 'Amal Perera',           email: 'amal.perera@gmail.com',    phone: '+94 71 234 5678', totalOrders: 24, totalSpent: 234000, lastPurchase: new Date('2026-02-20') },
-    { name: 'Nimali Fernando',        email: 'nimali.f@yahoo.com',        phone: '+94 76 345 6789', totalOrders: 18, totalSpent: 189500, lastPurchase: new Date('2026-02-19') },
-    { name: 'Kasun Rajapaksa',        email: 'kasun.r@gmail.com',         phone: '+94 77 456 7890', totalOrders: 32, totalSpent: 456200, lastPurchase: new Date('2026-02-20') },
-    { name: 'Dilani Wickramasinghe',  email: 'dilani.w@hotmail.com',      phone: '+94 78 567 8901', totalOrders: 12, totalSpent: 145000, lastPurchase: new Date('2026-02-18') },
-    { name: 'Ruwan Silva',            email: 'ruwan.silva@gmail.com',     phone: '+94 71 678 9012', totalOrders: 28, totalSpent: 312800, lastPurchase: new Date('2026-02-20') },
-    { name: 'Chamari Bandara',        email: 'chamari.b@gmail.com',       phone: '+94 76 789 0123', totalOrders: 15, totalSpent: 178400, lastPurchase: new Date('2026-02-17') },
-    { name: 'Pradeep Jayawardena',    email: 'pradeep.j@yahoo.com',       phone: '+94 77 890 1234', totalOrders: 21, totalSpent: 267300, lastPurchase: new Date('2026-02-19') },
-    { name: 'Shalini Dissanayake',    email: 'shalini.d@gmail.com',       phone: '+94 78 901 2345', totalOrders:  9, totalSpent:  98600, lastPurchase: new Date('2026-02-16') },
-    { name: 'Tharaka Kumara',         email: 'tharaka.k@gmail.com',       phone: '+94 71 012 3456', totalOrders: 35, totalSpent: 498700, lastPurchase: new Date('2026-02-21') },
-    { name: 'Sanduni Rathnayake',     email: 'sanduni.r@outlook.com',     phone: '+94 76 123 4567', totalOrders:  7, totalSpent:  76200, lastPurchase: new Date('2026-02-15') },
+    { name: 'Amal Perera',           email: 'amal.perera@gmail.com',    phone: '+94 71 234 5678' },
+    { name: 'Nimali Fernando',        email: 'nimali.f@yahoo.com',        phone: '+94 76 345 6789' },
+    { name: 'Kasun Rajapaksa',        email: 'kasun.r@gmail.com',         phone: '+94 77 456 7890' },
+    { name: 'Dilani Wickramasinghe',  email: 'dilani.w@hotmail.com',      phone: '+94 78 567 8901' },
+    { name: 'Ruwan Silva',            email: 'ruwan.silva@gmail.com',     phone: '+94 71 678 9012' },
+    { name: 'Chamari Bandara',        email: 'chamari.b@gmail.com',       phone: '+94 76 789 0123' },
+    { name: 'Pradeep Jayawardena',    email: 'pradeep.j@yahoo.com',       phone: '+94 77 890 1234' },
+    { name: 'Shalini Dissanayake',    email: 'shalini.d@gmail.com',       phone: '+94 78 901 2345' },
+    { name: 'Tharaka Kumara',         email: 'tharaka.k@gmail.com',       phone: '+94 71 012 3456' },
+    { name: 'Sanduni Rathnayake',     email: 'sanduni.r@outlook.com',     phone: '+94 76 123 4567' },
   ];
 
   console.log('');
@@ -1275,6 +1313,186 @@ async function seed() {
     } else {
       console.log(`  Supplier "${s.name}" already exists – skipping`);
     }
+  }
+
+  // ── 10. GRN Records ──────────────────────────────────────────────────────
+  console.log('\n── Step 10: GRN Records ──');
+
+  const existingGRN = await GRN.findOne({ grnNumber: 'GRN-2026-0001' });
+  if (existingGRN) {
+    console.log('  GRN records already exist – skipping');
+  } else {
+    // Fetch products needed for GRN items
+    const skusNeeded = [
+      'BEV-001', 'BEV-002', 'BEV-003',           // Beverages
+      'DAI-001', 'DAI-004', 'CHF-007',            // Dairy / Chilled
+      'BEV-004', 'MLT-004', 'MLT-005', 'TEA-003', // Nestlé
+      'VEG-001', 'VEG-002', 'VEG-003',            // Vegetables
+      'PRM-001', 'PRM-003', 'PRM-007',            // Processed Meats
+      'FRZ-001', 'FRZ-002', 'FRZ-004', 'FRZ-006', // Frozen
+    ];
+
+    const prodMap: Record<string, { _id: mongoose.Types.ObjectId; name: string; sku: string }> = {};
+    for (const sku of skusNeeded) {
+      const p = await Product.findOne({ sku, storeId: STORE_ID }).lean();
+      if (p) prodMap[sku] = { _id: p._id as mongoose.Types.ObjectId, name: p.name, sku: p.sku };
+    }
+
+    interface GRNSeedItem {
+      sku: string;
+      qty: number;
+      cost: number;
+    }
+
+    interface GRNSeedRecord {
+      grnNumber: string;
+      supplier: string;
+      referenceNumber: string;
+      notes: string;
+      items: GRNSeedItem[];
+      receivedBy: string;
+      createdAt: Date;
+    }
+
+    const grnRecords: GRNSeedRecord[] = [
+      {
+        grnNumber: 'GRN-2026-0001',
+        supplier: 'Ceylon Beverages Ltd',
+        referenceNumber: 'PO-2026-0023',
+        notes: 'Weekly Monday delivery. All items in good condition.',
+        items: [
+          { sku: 'BEV-001', qty: 48, cost: 130 },
+          { sku: 'BEV-002', qty: 36, cost: 125 },
+          { sku: 'BEV-003', qty: 30, cost: 125 },
+        ],
+        receivedBy: 'mng01@opendoor.lk',
+        createdAt: new Date('2026-01-15T09:30:00Z'),
+      },
+      {
+        grnNumber: 'GRN-2026-0002',
+        supplier: 'Anchor Foods Lanka',
+        referenceNumber: 'PO-2026-0024',
+        notes: 'Cold chain maintained. Checked on arrival.',
+        items: [
+          { sku: 'DAI-001', qty: 20, cost: 380 },
+          { sku: 'DAI-004', qty: 30, cost: 260 },
+          { sku: 'CHF-007', qty: 10, cost: 705 },
+        ],
+        receivedBy: 'mng01@opendoor.lk',
+        createdAt: new Date('2026-01-22T10:15:00Z'),
+      },
+      {
+        grnNumber: 'GRN-2026-0003',
+        supplier: 'Nestlé Lanka PLC',
+        referenceNumber: 'PO-2026-0035',
+        notes: 'Monthly Nestlé restock. Invoice to be settled end of month.',
+        items: [
+          { sku: 'BEV-004', qty: 24, cost: 500 },
+          { sku: 'MLT-004', qty: 10, cost: 1000 },
+          { sku: 'MLT-005', qty: 15, cost: 580 },
+          { sku: 'TEA-003', qty: 20, cost: 360 },
+        ],
+        receivedBy: 'mng01@opendoor.lk',
+        createdAt: new Date('2026-02-05T08:45:00Z'),
+      },
+      {
+        grnNumber: 'GRN-2026-0004',
+        supplier: 'Fresh Harvest Suppliers',
+        referenceNumber: 'PO-2026-0042',
+        notes: 'Tuesday morning delivery. Potatoes slightly damp — stored in dry area.',
+        items: [
+          { sku: 'VEG-001', qty: 30, cost: 120 },
+          { sku: 'VEG-002', qty: 40, cost: 100 },
+          { sku: 'VEG-003', qty: 50, cost: 140 },
+        ],
+        receivedBy: 'nimal@opendoor.lk',
+        createdAt: new Date('2026-02-18T07:20:00Z'),
+      },
+      {
+        grnNumber: 'GRN-2026-0005',
+        supplier: 'Keells Food Products',
+        referenceNumber: 'PO-2026-0058',
+        notes: 'Weekly chilled delivery. Temperature log verified.',
+        items: [
+          { sku: 'PRM-001', qty: 24, cost: 255 },
+          { sku: 'PRM-003', qty: 20, cost: 280 },
+          { sku: 'PRM-007', qty: 18, cost: 255 },
+        ],
+        receivedBy: 'mng01@opendoor.lk',
+        createdAt: new Date('2026-03-10T11:00:00Z'),
+      },
+      {
+        grnNumber: 'GRN-2026-0006',
+        supplier: 'Island Frozen Foods',
+        referenceNumber: 'PO-2026-0071',
+        notes: 'Temperature-controlled delivery. Items moved to freezer immediately.',
+        items: [
+          { sku: 'FRZ-001', qty: 20, cost: 355 },
+          { sku: 'FRZ-002', qty: 15, cost: 480 },
+          { sku: 'FRZ-004', qty: 18, cost: 430 },
+          { sku: 'FRZ-006', qty: 12, cost: 505 },
+        ],
+        receivedBy: 'mng01@opendoor.lk',
+        createdAt: new Date('2026-04-02T09:00:00Z'),
+      },
+    ];
+
+    const grnDocs = [];
+    const historyDocs = [];
+    const now = new Date();
+
+    for (const rec of grnRecords) {
+      const resolvedItems = rec.items
+        .filter((it) => prodMap[it.sku])
+        .map((it) => ({
+          product:          prodMap[it.sku]._id,
+          productName:      prodMap[it.sku].name,
+          sku:              it.sku,
+          quantityReceived: it.qty,
+          costPrice:        it.cost,
+          subtotal:         it.qty * it.cost,
+        }));
+
+      if (resolvedItems.length === 0) continue;
+
+      const totalItems = resolvedItems.reduce((s, i) => s + i.quantityReceived, 0);
+      const totalCost  = resolvedItems.reduce((s, i) => s + i.subtotal, 0);
+      const grnId = new mongoose.Types.ObjectId();
+
+      grnDocs.push({
+        _id:             grnId,
+        grnNumber:       rec.grnNumber,
+        supplier:        rec.supplier,
+        referenceNumber: rec.referenceNumber,
+        notes:           rec.notes,
+        items:           resolvedItems,
+        totalItems,
+        totalCost,
+        receivedBy:      rec.receivedBy,
+        storeId:         STORE_ID,
+        createdAt:       rec.createdAt,
+        updatedAt:       now,
+      });
+
+      for (const item of resolvedItems) {
+        historyDocs.push({
+          _id:       new mongoose.Types.ObjectId(),
+          product:   item.product,
+          type:      'add',
+          quantity:  item.quantityReceived,
+          reason:    `GRN: ${rec.grnNumber} — ${rec.supplier}`,
+          by:        rec.receivedBy,
+          storeId:   STORE_ID,
+          createdAt: rec.createdAt,
+          updatedAt: now,
+        });
+      }
+    }
+
+    await GRN.collection.insertMany(grnDocs);
+    await StockHistory.collection.insertMany(historyDocs);
+    console.log(`✓ ${grnDocs.length} GRN records inserted`);
+    console.log(`✓ ${historyDocs.length} stock history entries inserted`);
   }
 
   console.log('\nSeeding complete.');
