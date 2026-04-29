@@ -2,7 +2,6 @@
 import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { useStore } from "@/app/contexts/StoreContext";
 import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
@@ -15,7 +14,7 @@ import { useWeightModal } from "@/app/hooks/useWeightModal";
 import { useProductsData } from "@/app/hooks/useProductsData";
 import { useSyncState } from "@/app/hooks/useSyncState";
 import { usePOSUI } from "@/app/hooks/usePOSUI";
-import { fmt, genId } from "./constants/pos";
+import { fmt, genId } from "./constants/pos"; 
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
 import PromoModal from "./components/PromoModal";
@@ -23,6 +22,9 @@ import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
 import { useStore } from "@/app/contexts/StoreContext";
+
+
+interface Product {
   _id: string;
   name: string;
   sku: string;
@@ -45,8 +47,8 @@ interface Category {
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
-  const { subscriptionPlan, refresh: refreshStore, storeName } = useStore();
   const isOnline = useOnlineStatus();
+  const { storeName } = useStore();
 
   // Custom hooks for state management
   const { cart, setCart, addedId, setAddedId, showCheckout, setShowCheckout } = useCartState();
@@ -58,19 +60,12 @@ export default function POSDashboard() {
   const { pendingCount, setPendingCount, syncing, setSyncing, syncMessage, setSyncMessage } = useSyncState();
   const { showMenu, setShowMenu, time, error, setError } = usePOSUI();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { refreshStore(); }, []);
 
   // Redirect to login if not authenticated, or to main dashboard if user role is not cashier
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-    
-    // ONLY redirect to main dashboard if we are SURE the user is a Manager or Superadmin
-    if (user.role === 'Manager' || (user.role as string) === 'superadmin') {
-      router.replace('/dashboard');
-    }
-
+    if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
   }, [user, authLoading, router]);
 
   // Fetch products, categories, and customers on mount
@@ -249,7 +244,6 @@ export default function POSDashboard() {
         onSync={handleSync}
         onToggleMenu={() => setShowMenu(v => !v)}
         onLogout={handleLogout}
-        subscriptionPlan={subscriptionPlan}
       />
 
       <div className="flex flex-1 min-h-0">
@@ -264,10 +258,11 @@ export default function POSDashboard() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${activeCategory === cat
+                  className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${
+                    activeCategory === cat
                       ? "bg-[#1B1A55] text-white border-transparent"
                       : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#9290C3] hover:text-[#1B1A55]"
-                    }`}
+                  }`}
                 >
                   {cat}
                 </button>
@@ -310,7 +305,7 @@ export default function POSDashboard() {
                 className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#9290C3] hover:text-[#1B1A55] hover:bg-[#F5F4FF]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 History
               </button>
@@ -319,9 +314,9 @@ export default function POSDashboard() {
                 className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#9290C3] hover:text-[#1B1A55] hover:bg-[#F5F4FF]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
                 </svg>
                 Customers
               </button>
