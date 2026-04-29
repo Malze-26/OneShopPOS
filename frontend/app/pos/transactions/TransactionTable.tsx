@@ -91,8 +91,8 @@ export default function TransactionTable({
       </div>
 
       {/* Header */}
-      <div className="grid grid-cols-[140px_130px_180px_1fr_110px_140px_80px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
-        {["Time", "Transaction #", "Customer", "Order ID", "Total", "Payment", "Status"].map((h) => (
+      <div className="grid grid-cols-[100px_120px_130px_180px_1fr_110px_140px_80px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
+        {["Date", "Time", "Transaction #", "Customer", "Order ID", "Total", "Payment", "Status"].map((h) => (
           <div key={h} className="text-[12px] font-bold text-[#535C91] tracking-[0.3px]">{h}</div>
         ))}
       </div>
@@ -106,10 +106,13 @@ export default function TransactionTable({
         paginated.map((t, i) => (
           <div
             key={t._id}
-            className={`grid grid-cols-[140px_130px_180px_1fr_110px_140px_80px] py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#F5F4FF] ${
+            className={`grid grid-cols-[100px_120px_130px_180px_1fr_110px_140px_80px] py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#F5F4FF] ${
               i < paginated.length - 1 ? "border-b border-[#E3E6F0]" : ""
             }`}
           >
+            <div className="text-[13px] text-[#6B7280] font-medium">
+              {new Date(t.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+            </div>
             <div className="text-[13px] text-[#6B7280] font-medium">
               {new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>

@@ -137,7 +137,7 @@ export default function ReportsPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar onExport={handleExportPDF} />
+        <ReportsDateToolbar showRanges={['today', 'last-7-days', 'this-month', 'custom']} onExport={handleExportPDF} />
       </div>
 
       <div className="mb-6 flex items-center justify-between">

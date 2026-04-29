@@ -39,11 +39,18 @@ export default function DailyZReportPage() {
 
   useEffect(() => {
     setLoading(true);
-    api.get<ApiResponse>('/reports/daily-z-report?preset=today')
+    const params = new URLSearchParams();
+    params.set('preset', preset);
+    const start = searchParams.get('startDate');
+    const end = searchParams.get('endDate');
+    if (start) params.set('startDate', start);
+    if (end) params.set('endDate', end);
+
+    api.get<ApiResponse>(`/reports/daily-z-report?${params.toString()}`)
       .then(({ data: d }) => setData(d))
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, []);
+  }, [preset, searchParams]);
 
   const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
@@ -69,8 +76,9 @@ export default function DailyZReportPage() {
 
   return (
     <div className="p-6 max-w-[1400px] bg-[#f8f9fc] min-h-screen">
-      <div className="mb-8 print:hidden">
+      <div className="mb-4 print:hidden">
         <ReportsTabs />
+        <ReportsDateToolbar showRanges={['today', 'last-7-days', 'this-month', 'custom']} isSingleDate={true} />
       </div>
 
       <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-[#e4e7ec] print:shadow-none print:border-none print:max-w-full">

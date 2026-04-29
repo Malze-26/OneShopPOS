@@ -170,7 +170,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 // ============= Sales by Product Report =============
 export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { Transaction, Order, Product } = req.models!;
+    const { Order, Product } = req.models!;
     const { preset, startDate, endDate, channel } = req.query;
 
     const { buildDateFilter, getDateRangeLabel } = await import('../utils/dateRange');
@@ -184,26 +184,25 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
     // Map frontend channel names to backend OrderSource
     const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
 
-    // Start from Transaction (filtered by date + success), then join to Order for product items
+    // Build the finalized sales match
+    const finalizedMatch = {
+      ...dateMatchFilter,
+      status: 'success',
+      paymentStatus: { $in: ['paid', 'success'] }
+    };
+    if (sourceFilter) {
+      (finalizedMatch as any).source = sourceFilter;
+    }
+
     const [salesData, topGrossingItem, totalUnitsSoldAgg, topCategoryByRevenue] = await Promise.all([
       // Product-level sales data
-      Transaction.aggregate([
-        { $match: { ...dateMatchFilter, status: 'success' } },
-        {
-          $lookup: {
-            from: 'orders',
-            localField: 'orderId',
-            foreignField: 'orderId',
-            as: 'order',
-          },
-        },
-        { $unwind: '$order' },
-        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
-        { $unwind: '$order.items' },
+      Order.aggregate([
+        { $match: finalizedMatch },
+        { $unwind: '$items' },
         {
           $lookup: {
             from: 'products',
-            localField: 'order.items.product',
+            localField: 'items.product',
             foreignField: '_id',
             as: 'productInfo',
           },
@@ -211,13 +210,14 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
         { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
         {
           $group: {
-            _id: '$order.items.product',
-            totalQty: { $sum: '$order.items.quantity' },
-            totalRevenue: { $sum: { $multiply: ['$order.items.quantity', '$order.items.unitPrice'] } },
-            avgUnitPrice: { $avg: '$order.items.unitPrice' },
-            productName: { $first: '$order.items.productName' },
-            sku: { $first: '$order.items.sku' },
+            _id: '$items.product',
+            totalQty: { $sum: '$items.quantity' },
+            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+            avgUnitPrice: { $avg: '$items.unitPrice' },
+            productName: { $first: '$items.productName' },
+            sku: { $first: '$items.sku' },
             category: { $first: '$productInfo.category' },
+            stock: { $first: '$productInfo.stock' },
           },
         },
         { $sort: { totalQty: -1 } },
@@ -225,24 +225,14 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
       ]),
 
       // Top grossing item
-      Transaction.aggregate([
-        { $match: { ...dateMatchFilter, status: 'success' } },
-        {
-          $lookup: {
-            from: 'orders',
-            localField: 'orderId',
-            foreignField: 'orderId',
-            as: 'order',
-          },
-        },
-        { $unwind: '$order' },
-        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
-        { $unwind: '$order.items' },
+      Order.aggregate([
+        { $match: finalizedMatch },
+        { $unwind: '$items' },
         {
           $group: {
-            _id: '$order.items.product',
-            totalRevenue: { $sum: { $multiply: ['$order.items.quantity', '$order.items.unitPrice'] } },
-            productName: { $first: '$order.items.productName' },
+            _id: '$items.product',
+            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+            productName: { $first: '$items.productName' },
           },
         },
         { $sort: { totalRevenue: -1 } },
@@ -250,40 +240,20 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
       ]),
 
       // Total units sold
-      Transaction.aggregate([
-        { $match: { ...dateMatchFilter, status: 'success' } },
-        {
-          $lookup: {
-            from: 'orders',
-            localField: 'orderId',
-            foreignField: 'orderId',
-            as: 'order',
-          },
-        },
-        { $unwind: '$order' },
-        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
-        { $unwind: '$order.items' },
-        { $group: { _id: null, total: { $sum: '$order.items.quantity' } } },
+      Order.aggregate([
+        { $match: finalizedMatch },
+        { $unwind: '$items' },
+        { $group: { _id: null, total: { $sum: '$items.quantity' } } },
       ]),
 
       // Top category by revenue
-      Transaction.aggregate([
-        { $match: { ...dateMatchFilter, status: 'success' } },
-        {
-          $lookup: {
-            from: 'orders',
-            localField: 'orderId',
-            foreignField: 'orderId',
-            as: 'order',
-          },
-        },
-        { $unwind: '$order' },
-        ...(sourceFilter ? [{ $match: { 'order.source': sourceFilter } }] : []),
-        { $unwind: '$order.items' },
+      Order.aggregate([
+        { $match: finalizedMatch },
+        { $unwind: '$items' },
         {
           $lookup: {
             from: 'products',
-            localField: 'order.items.product',
+            localField: 'items.product',
             foreignField: '_id',
             as: 'productDetails',
           },
@@ -292,7 +262,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
         {
           $group: {
             _id: '$productDetails.category',
-            totalRevenue: { $sum: { $multiply: ['$order.items.quantity', '$order.items.unitPrice'] } },
+            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
           },
         },
         { $match: { _id: { $ne: null } } },
@@ -317,7 +287,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
         qty: item.totalQty || 0,
         sales: item.totalRevenue || 0,
         unitPrice: item.avgUnitPrice || 0,
-        stock: item.productInfo?.stock || 0,
+        stock: item.stock || 0,
       })),
     });
   } catch (error) {
@@ -413,22 +383,16 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
 export const getInventoryStatusReport = async (req: AuthRequest, res: Response) => {
   try {
     const { Product } = req.models!;
-    const { category, status, sortBy, preset, startDate, endDate } = req.query;
-
-    const { buildDateFilter } = await import('../utils/dateRange');
-    const dateMatchFilter = buildDateFilter(
-      preset as string,
-      startDate as string,
-      endDate as string
-    );
+    const { category, status, sortBy, preset, startDate: start, endDate: end } = req.query;
+    const { getDateRange } = await import('../utils/dateRange');
+    const { endDate } = getDateRange(preset as string, start as string, end as string);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pipeline: any[] = [
       {
         $match: {
-          stock: { $gt: 0 },
           ...(category ? { category: category as string } : {}),
-          ...(preset && preset !== 'all-time' && dateMatchFilter.createdAt ? { createdAt: dateMatchFilter.createdAt } : {}),
+          createdAt: { $lte: endDate },
         },
       },
       {
@@ -472,9 +436,8 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
     const summaryPipeline: any[] = [
       {
         $match: {
-          stock: { $gt: 0 },
           ...(category ? { category: category as string } : {}),
-          ...(preset && preset !== 'all-time' && dateMatchFilter.createdAt ? { createdAt: dateMatchFilter.createdAt } : {}),
+          createdAt: { $lte: endDate },
         },
       },
       {

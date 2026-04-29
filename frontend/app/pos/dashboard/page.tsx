@@ -1,18 +1,28 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
 import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
 import { useOnlineStatus } from "@/app/hooks/useOnlineStatus";
-import { fmt, genId } from "./constants/pos";
+import { useCartState } from "@/app/hooks/useCartState";
+import { useCustomerManagement } from "@/app/hooks/useCustomerManagement";
+import { useDiscounts } from "@/app/hooks/useDiscounts";
+import { usePromoCode } from "@/app/hooks/usePromoCode";
+import { useWeightModal } from "@/app/hooks/useWeightModal";
+import { useProductsData } from "@/app/hooks/useProductsData";
+import { useSyncState } from "@/app/hooks/useSyncState";
+import { usePOSUI } from "@/app/hooks/usePOSUI";
+import { fmt, genId } from "./constants/pos"; 
 import CheckoutModal from "./components/CheckoutModal";
 import WeightModal from "./components/WeightModal";
 import PromoModal from "./components/PromoModal";
 import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
+import { useStore } from "@/app/contexts/StoreContext";
+
 
 interface Product {
   _id: string;
@@ -27,17 +37,6 @@ interface Product {
   unit: string;
 }
 
-interface Customer {
-  _id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar: string;
-  totalOrders: number;
-  totalSpent: number;
-  loyaltyPoints?: number;
-}
-
 interface Category {
   _id: string;
   name: string;
@@ -49,72 +48,24 @@ export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
   const isOnline = useOnlineStatus();
+  const { storeName } = useStore();
 
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [cart, setCart] = useState<{ id: string; name: string; sku: string; price: number; qty: number; unit: string; weight: number | null; }[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [addedId, setAddedId] = useState<string | null>(null);
-  const [time, setTime] = useState(new Date());
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [discount, setDiscount] = useState(0);
-  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
-  const [loyaltyPointsUsed, setLoyaltyPointsUsed] = useState(0);
-  const [error, setError] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState("");
-  const [showPromo, setShowPromo] = useState(false);
-  const [promoInput, setPromoInput] = useState("");
-  const [promoLoading, setPromoLoading] = useState(false);
-  const [promoError, setPromoError] = useState("");
-  const [promoSuccess, setPromoSuccess] = useState("");
-  const [promoCode, setPromoCode] = useState("");
-  const [showWeightModal, setShowWeightModal] = useState(false);
-  const [weightProduct, setWeightProduct] = useState<Product | null>(null);
-  const [weightInput, setWeightInput] = useState("");
-  const [weightError, setWeightError] = useState("");
+  // Custom hooks for state management
+  const { cart, setCart, addedId, setAddedId, showCheckout, setShowCheckout } = useCartState();
+  const { selectedCustomer, setSelectedCustomer, customers, setCustomers, customerSearch, setCustomerSearch, showCustomerDropdown, setShowCustomerDropdown } = useCustomerManagement();
+  const { discount, setDiscount, loyaltyDiscount, setLoyaltyDiscount, loyaltyPointsUsed, setLoyaltyPointsUsed, promoCode, setPromoCode } = useDiscounts(cart);
+  const { showPromo, setShowPromo, promoInput, setPromoInput, promoLoading, setPromoLoading, promoError, setPromoError, promoSuccess, setPromoSuccess } = usePromoCode();
+  const { showWeightModal, setShowWeightModal, weightProduct, setWeightProduct, weightInput, setWeightInput, weightError, setWeightError } = useWeightModal();
+  const { products, setProducts, categories, setCategories, loadingData, setLoadingData, activeCategory, setActiveCategory, search, setSearch } = useProductsData();
+  const { pendingCount, setPendingCount, syncing, setSyncing, syncMessage, setSyncMessage } = useSyncState();
+  const { showMenu, setShowMenu, time, error, setError } = usePOSUI();
 
-  // Close customer dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => setShowCustomerDropdown(false);
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
-
-  // Reset discounts and promo when cart is cleared
-  useEffect(() => {
-    if (cart.length === 0) {
-      setDiscount(0);
-      setPromoCode("");
-      setLoyaltyDiscount(0);
-      setLoyaltyPointsUsed(0);
-    }
-  }, [cart]);
-
-  // Update time every second
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   // Redirect to login if not authenticated, or to main dashboard if user role is not cashier
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-    
-    // ONLY redirect to main dashboard if we are SURE the user is a Manager or Superadmin
-    if (user.role === 'Manager' || (user.role as string) === 'superadmin') {
-      router.replace('/dashboard');
-    }
-
+    if (user.role !== 'Cashier' && user.role !== 'Sales Representative') router.replace('/dashboard');
   }, [user, authLoading, router]);
 
   // Fetch products, categories, and customers on mount
@@ -231,6 +182,15 @@ export default function POSDashboard() {
     );
   };
 
+  const refreshProducts = useCallback(async () => {
+    try {
+      const productsRes = await api.get("/products");
+      setProducts(productsRes.data.data);
+    } catch (err) {
+      console.error("Failed to refresh products:", err);
+    }
+  }, []);
+
   const handleCheckoutSuccess = () => {
     setCart([]);
     setSelectedCustomer(null);
@@ -241,6 +201,7 @@ export default function POSDashboard() {
     setLoyaltyPointsUsed(0);
     setShowCheckout(false);
     refreshPendingCount();
+    refreshProducts(); // Refresh inventory to show updated stock levels
   };
 
   const checkoutState = {
@@ -270,6 +231,7 @@ export default function POSDashboard() {
     <div className="h-screen flex flex-col overflow-hidden bg-[#F0F2F8] font-sans">
 
       <TopBar
+        storeName={storeName}
         user={user}
         time={time}
         isOnline={isOnline}
@@ -296,10 +258,11 @@ export default function POSDashboard() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${activeCategory === cat
+                  className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${
+                    activeCategory === cat
                       ? "bg-[#1B1A55] text-white border-transparent"
                       : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#9290C3] hover:text-[#1B1A55]"
-                    }`}
+                  }`}
                 >
                   {cat}
                 </button>
@@ -342,7 +305,7 @@ export default function POSDashboard() {
                 className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#9290C3] hover:text-[#1B1A55] hover:bg-[#F5F4FF]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 History
               </button>
@@ -351,9 +314,9 @@ export default function POSDashboard() {
                 className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#9290C3] hover:text-[#1B1A55] hover:bg-[#F5F4FF]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
                 </svg>
                 Customers
               </button>
