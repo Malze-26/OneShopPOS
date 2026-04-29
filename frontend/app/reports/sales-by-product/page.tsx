@@ -197,7 +197,7 @@ export default function SalesByProductPage() {
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
-<NativeSelectOption value="">All Categories</NativeSelectOption>
+              <NativeSelectOption value="">All Categories</NativeSelectOption>
               <NativeSelectOption value="Vegetables">Vegetables</NativeSelectOption>
               <NativeSelectOption value="Fruits">Fruits</NativeSelectOption>
               <NativeSelectOption value="Bakery">Bakery</NativeSelectOption>
