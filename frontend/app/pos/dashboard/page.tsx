@@ -2,6 +2,7 @@
 import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useStore } from "@/app/contexts/StoreContext";
 import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
