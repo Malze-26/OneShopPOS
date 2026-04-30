@@ -46,8 +46,8 @@ describe("Backend API Integration Tests", () => {
     });
 
     test("should reject product with missing fields", () => {
-      const invalidProduct = { name: "Test" }; // missing price
-      const isValid = invalidProduct.name && invalidProduct.price > 0;
+      const invalidProduct: { name: string; price?: number } = { name: "Test" }; // missing price
+      const isValid = invalidProduct.name && (invalidProduct.price ?? 0) > 0;
 
       expect(isValid).toBe(false);
     });
@@ -288,7 +288,7 @@ describe("Backend API Integration Tests", () => {
     });
 
     test("should handle missing required fields", () => {
-      const product = { name: "Test" };
+      const product: { name: string; price?: number } = { name: "Test" };
       const isValid = product.name && product.price;
 
       expect(isValid).toBeFalsy();
