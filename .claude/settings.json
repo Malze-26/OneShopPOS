@@ -45,7 +45,8 @@
       "PowerShell(Stop-Process -Id 20252 -Force)",
       "Read(//c/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/**)",
       "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" log --oneline -- backend/src/controllers/orderController.ts)",
-      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" show 071b0e9 -- backend/src/controllers/orderController.ts)"
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" show 071b0e9 -- backend/src/controllers/orderController.ts)",
+      "Bash(npx jest *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",

@@ -99,74 +99,149 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
 
 // GET /api/dashboard/sales-trend
 export async function getSalesTrend(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction } = req.models!;
-  const days = parseInt((req.query.days as string) ?? '7');
+  try {
+    const { Transaction, Order } = req.models!;
+    const days = parseInt((req.query.days as string) ?? '7');
 
-  const since = new Date();
-  since.setDate(since.getDate() - (days - 1));
-  since.setHours(0, 0, 0, 0);
+    const since = new Date();
+    since.setDate(since.getDate() - (days - 1));
+    since.setHours(0, 0, 0, 0);
 
-  const raw = await Transaction.aggregate([
-    { $match: { status: 'success', createdAt: { $gte: since } } },
-    {
-      $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-        sales: { $sum: '$amount' },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ]);
+    const dateGroup = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
 
-  const byDay = new Map(raw.map((r) => [r._id, r.sales]));
+    const [txnRaw, orderRaw] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { status: 'success', createdAt: { $gte: since } } },
+        { $group: { _id: dateGroup, sales: { $sum: '$amount' } } },
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ['cancelled', 'refunded'] }, paymentStatus: 'paid', createdAt: { $gte: since } } },
+        { $group: { _id: dateGroup, sales: { $sum: '$total' } } },
+      ]),
+    ]);
 
-  const trend = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    trend.push({
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      sales: byDay.get(key) ?? 0,
-    });
+    const byDay = new Map<string, number>();
+    for (const r of [...txnRaw, ...orderRaw]) {
+      byDay.set(r._id, (byDay.get(r._id) ?? 0) + r.sales);
+    }
+
+    const trend = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      trend.push({
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        sales: byDay.get(key) ?? 0,
+      });
+    }
+
+    res.json({ data: trend });
+  } catch (err) {
+    console.error('getSalesTrend error:', err);
+    res.status(500).json({ message: 'Failed to fetch sales trend' });
   }
-
-  res.json({ data: trend });
 }
 
 // GET /api/dashboard/top-products
 export async function getTopProducts(req: AuthRequest, res: Response): Promise<void> {
-  const { Order } = req.models!;
-  const limit = parseInt((req.query.limit as string) ?? '5');
+  try {
+    const { Transaction, Order } = req.models!;
+    const limit = parseInt((req.query.limit as string) ?? '5');
 
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
 
-  const products = await Order.aggregate([
-    { $match: { status: { $ne: 'cancelled' }, createdAt: { $gte: since } } },
-    { $unwind: '$items' },
-    {
-      $group: {
-        _id: '$items.product',
-        name: { $first: '$items.productName' },
-        units: { $sum: '$items.quantity' },
-        revenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+    const itemPipeline = (matchStage: object) => [
+      { $match: { ...matchStage, createdAt: { $gte: since } } },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          name: { $first: '$items.productName' },
+          units: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+        },
       },
-    },
-    { $sort: { units: -1 } },
-    { $limit: limit },
-    {
-      $project: {
-        _id: 0,
-        name: 1,
-        units: 1,
-        revenue: 1,
-      },
-    },
-  ]);
+    ];
 
-  res.json({
-    data: products.map((p, i) => ({ rank: i + 1, ...p })),
-  });
+    const [txnProducts, orderProducts] = await Promise.all([
+      Transaction.aggregate(itemPipeline({ status: 'success' })),
+      Order.aggregate(itemPipeline({ status: { $nin: ['cancelled', 'refunded'] } })),
+    ]);
+
+    const map = new Map<string, { name: string; units: number; revenue: number }>();
+    for (const p of [...txnProducts, ...orderProducts]) {
+      const key = String(p._id);
+      const existing = map.get(key);
+      if (existing) {
+        existing.units += p.units;
+        existing.revenue += p.revenue;
+      } else {
+        map.set(key, { name: p.name, units: p.units, revenue: p.revenue });
+      }
+    }
+
+    const products = [...map.values()]
+      .sort((a, b) => b.units - a.units)
+      .slice(0, limit);
+
+    res.json({
+      data: products.map((p, i) => ({ rank: i + 1, ...p })),
+    });
+  } catch (err) {
+    console.error('getTopProducts error:', err);
+    res.status(500).json({ message: 'Failed to fetch top products' });
+  }
+}
+
+// GET /api/dashboard/payment-methods
+export async function getPaymentMethods(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { Transaction, Order } = req.models!;
+
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const [txnMethods, orderMethods] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { status: 'success', createdAt: { $gte: since } } },
+        { $group: { _id: '$paymentMethod', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ['cancelled', 'refunded'] }, paymentStatus: 'paid', createdAt: { $gte: since } } },
+        { $group: { _id: '$paymentMethod', count: { $sum: 1 }, total: { $sum: '$total' } } },
+      ]),
+    ]);
+
+    const map = new Map<string, { count: number; total: number }>();
+    for (const m of [...txnMethods, ...orderMethods]) {
+      const key = m._id ?? 'Unknown';
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += m.count;
+        existing.total += m.total;
+      } else {
+        map.set(key, { count: m.count, total: m.total });
+      }
+    }
+
+    const grandTotal = [...map.values()].reduce((sum, m) => sum + m.total, 0);
+
+    const data = [...map.entries()]
+      .map(([method, { count, total }]) => ({
+        method,
+        count,
+        total,
+        percentage: grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    res.json({ data });
+  } catch (err) {
+    console.error('getPaymentMethods error:', err);
+    res.status(500).json({ message: 'Failed to fetch payment methods' });
+  }
 }
 
 // GET /api/dashboard/employee-performance

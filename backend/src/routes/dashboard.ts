@@ -3,6 +3,7 @@ import {
   getDashboardSummary,
   getSalesTrend,
   getTopProducts,
+  getPaymentMethods,
   getEmployeePerformance,
   getRecentOrders,
 } from '../controllers/dashboardController';
@@ -14,6 +15,7 @@ router.use(protect);
 router.get('/summary',              getDashboardSummary);
 router.get('/sales-trend',          getSalesTrend);
 router.get('/top-products',         getTopProducts);
+router.get('/payment-methods',      getPaymentMethods);
 router.get('/employee-performance', getEmployeePerformance);
 router.get('/recent-orders',        getRecentOrders);
 
