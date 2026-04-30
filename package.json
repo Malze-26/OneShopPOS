@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "npm run dev --workspaces",
     "build": "npm run build --workspaces",
+    "test:frontend": "npm run test -w frontend",
+    "test:watch": "npm run test:watch -w frontend",
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "start:backend": "npm run start -w backend",
