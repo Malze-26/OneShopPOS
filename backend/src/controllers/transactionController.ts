@@ -203,7 +203,6 @@ export async function voidTransaction(req: AuthRequest, res: Response, next: Nex
       { $set: { status: 'voided', orderStatus: 'cancelled', paymentStatus: 'voided' } }
     );
 
-    // Restock inventory
     if (transaction.items?.length > 0) {
       for (const item of transaction.items) {
         await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });

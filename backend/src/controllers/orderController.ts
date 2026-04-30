@@ -25,7 +25,7 @@ function txnToOrder(txn: Record<string, unknown>) {
     items:           txn.items ?? [],
     subtotal:        txn.amount,
     discount:        (txn.discount as number) ?? 0,
-    total:           txn.amount,
+    total:           (txn.total as number) ?? txn.amount,
     status:          orderStatus,
     orderStatus,
     paymentMethod:   txn.paymentMethod,

@@ -399,8 +399,10 @@ export default function OrdersPage() {
                 const StatusIcon = cfg.icon;
                 const payColor   = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
                 const isPhysical = order.source === 'physical';
-                // Delivered button for any online order in processing state
-                const canDeliver = !isPhysical && order.status === 'processing';
+                // Confirm button only for online COD orders in processing state
+                const canDeliver = !isPhysical
+                  && order.status === 'processing'
+                  && order.paymentMethod?.toLowerCase() === 'cash-on-delivery';
 
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">
