@@ -66,7 +66,7 @@ export default function InventoryStatusPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} />
+        <ReportsDateToolbar showRanges={['today', 'custom']} />
       </div>
 
       <div className="mb-6">

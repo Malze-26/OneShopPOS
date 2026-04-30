@@ -95,4 +95,46 @@ export const tenantAPI = {
     const res = await fetch(`${API_URL}/tenants/analytics`, { headers: getHeaders() });
     return res.json();
   },
+
+  getStoreSettings: async (id: string) => {
+    const res = await fetch(`${API_URL}/tenants/${id}/store-settings`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  getManager: async (id: string) => {
+    const res = await fetch(`${API_URL}/tenants/${id}/manager`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  setManager: async (id: string, data: { name: string; email: string; password: string }) => {
+    const res = await fetch(`${API_URL}/tenants/${id}/manager`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+};
+
+export const notificationAPI = {
+  getAll: async () => {
+    const res = await fetch(`${API_URL}/notifications`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  markAsRead: async (id: string) => {
+    const res = await fetch(`${API_URL}/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    return res.json();
+  },
+
+  markAllAsRead: async () => {
+    const res = await fetch(`${API_URL}/notifications/read-all`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    return res.json();
+  },
 };

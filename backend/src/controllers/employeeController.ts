@@ -94,16 +94,7 @@ export async function getEmployees(req: AuthRequest, res: Response, next: NextFu
       };
     });
 
-    // Filter to only show employees with activity in the selected range
-    // but show everyone if 'all-time' is selected or if there are no date constraints
-    const filteredEmployees = employees.filter(emp => {
-      if (preset && preset !== 'all-time') {
-        return emp.transactions > 0;
-      }
-      return true;
-    });
-
-    res.json({ data: filteredEmployees, total: filteredEmployees.length });
+    res.json({ data: employees, total: employees.length });
   } catch (err) {
     next(err);
   }

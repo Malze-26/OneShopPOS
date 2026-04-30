@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, Edit2, Trash2, Palette } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Calendar, Edit2, Trash2, Palette, Store, DollarSign, User, KeyRound, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { tenantAPI } from '../../../utils/api';
 
@@ -25,6 +25,17 @@ interface Tenant {
   updatedAt: string;
 }
 
+interface StoreSettings {
+  storeName?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  currency?: string;
+  taxRate?: number;
+}
+
 const statusStyles: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   inactive: 'bg-gray-100 text-gray-700',
@@ -33,10 +44,8 @@ const statusStyles: Record<string, string> = {
 };
 
 const planStyles: Record<string, string> = {
-  free: 'bg-gray-100 text-gray-700',
   basic: 'bg-blue-100 text-blue-800',
   premium: 'bg-purple-100 text-purple-800',
-  enterprise: 'bg-green-100 text-green-800',
 };
 
 export default function ViewTenantPage() {
@@ -44,10 +53,19 @@ export default function ViewTenantPage() {
   const { id } = useParams<{ id: string }>();
 
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
+  const [manager, setManager] = useState<{ name: string; email: string } | null>(null);
+  const [managerForm, setManagerForm] = useState({ name: '', email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [managerSaving, setManagerSaving] = useState(false);
+  const [managerSaved, setManagerSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!id) return;
+
     const fetchTenant = async () => {
       try {
         const data = await tenantAPI.getOne(id);
@@ -62,8 +80,57 @@ export default function ViewTenantPage() {
         setLoading(false);
       }
     };
-    if (id) fetchTenant();
+
+    const fetchStoreSettings = async () => {
+      try {
+        const data = await tenantAPI.getStoreSettings(id);
+        if (data.success && data.settings) {
+          setStoreSettings(data.settings);
+        }
+      } catch {
+        // Store settings are optional — silently ignore
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    const fetchManager = async () => {
+      try {
+        const data = await tenantAPI.getManager(id);
+        if (data.success && data.manager) {
+          setManager(data.manager);
+          setManagerForm((prev) => ({ ...prev, name: data.manager.name, email: data.manager.email }));
+        }
+      } catch {}
+    };
+
+    fetchTenant();
+    fetchStoreSettings();
+    fetchManager();
   }, [id]);
+
+  const handleSaveManager = async () => {
+    if (!managerForm.name || !managerForm.email || !managerForm.password) {
+      alert('Name, email and password are all required.');
+      return;
+    }
+    setManagerSaving(true);
+    try {
+      const data = await tenantAPI.setManager(id, managerForm);
+      if (data.success) {
+        setManager({ name: managerForm.name, email: managerForm.email });
+        setManagerForm((prev) => ({ ...prev, password: '' }));
+        setManagerSaved(true);
+        setTimeout(() => setManagerSaved(false), 3000);
+      } else {
+        alert(data.message || 'Failed to save manager credentials');
+      }
+    } catch {
+      alert('Error saving manager credentials');
+    } finally {
+      setManagerSaving(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm(`Are you sure you want to delete "${tenant?.businessName}"? This cannot be undone.`)) return;
@@ -126,7 +193,7 @@ export default function ViewTenantPage() {
                 {tenant.status}
               </span>
               <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize ${planStyles[tenant.subscription?.plan] ?? 'bg-gray-100 text-gray-700'}`}>
-                {tenant.subscription?.plan || 'free'} plan
+                {tenant.subscription?.plan || 'basic'} plan
               </span>
             </div>
           </div>
@@ -202,12 +269,178 @@ export default function ViewTenantPage() {
               </div>
             </div>
 
+            {/* Store Settings from tenant database */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <Store className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Store Settings</h2>
+                <span className="text-xs text-gray-400 ml-auto">Live from tenant database</span>
+              </div>
+
+              {settingsLoading ? (
+                <p className="text-sm text-gray-400">Loading store settings...</p>
+              ) : storeSettings ? (
+                <div className="space-y-4">
+                  {storeSettings.storeName && (
+                    <div className="flex items-start gap-3">
+                      <Store className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Store Name</p>
+                        <p className="text-gray-900">{storeSettings.storeName}</p>
+                      </div>
+                    </div>
+                  )}
+                  {storeSettings.email && (
+                    <div className="flex items-start gap-3">
+                      <Mail className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Store Email</p>
+                        <p className="text-gray-900">{storeSettings.email}</p>
+                      </div>
+                    </div>
+                  )}
+                  {storeSettings.phone && (
+                    <div className="flex items-start gap-3">
+                      <Phone className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Store Phone</p>
+                        <p className="text-gray-900">{storeSettings.phone}</p>
+                      </div>
+                    </div>
+                  )}
+                  {storeSettings.address && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Store Address</p>
+                        <p className="text-gray-900">{storeSettings.address}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    {storeSettings.currency && (
+                      <div className="flex items-start gap-3">
+                        <DollarSign className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Currency</p>
+                          <p className="text-gray-900 font-mono">{storeSettings.currency}</p>
+                        </div>
+                      </div>
+                    )}
+                    {storeSettings.taxRate !== undefined && (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500 mb-0.5">Tax Rate</p>
+                        <p className="text-gray-900 font-semibold">{storeSettings.taxRate}%</p>
+                      </div>
+                    )}
+                  </div>
+                  {storeSettings.logoUrl && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Store Logo</p>
+                      <img
+                        src={storeSettings.logoUrl}
+                        alt="Store logo"
+                        className="max-h-20 object-contain rounded-lg border border-gray-100 p-2 bg-gray-50"
+                      />
+                    </div>
+                  )}
+                  {storeSettings.primaryColor && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Store Primary Color</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg border border-gray-200 shadow-sm" style={{ backgroundColor: storeSettings.primaryColor }} />
+                        <span className="font-mono text-sm text-gray-700">{storeSettings.primaryColor}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-6 text-center">
+                  <Store className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No store settings found in tenant database</p>
+                </div>
+              )}
+            </div>
+
+            {/* Manager Credentials */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 bg-indigo-50 rounded-lg">
+                  <User className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Manager Account</h2>
+                  {manager && <p className="text-xs text-gray-400">Current: {manager.name} · {manager.email}</p>}
+                </div>
+                {managerSaved && (
+                  <span className="ml-auto flex items-center gap-1 text-xs text-green-600 font-medium">
+                    <CheckCircle className="w-4 h-4" /> Saved
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text" value={managerForm.name}
+                      onChange={(e) => setManagerForm((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="Manager full name"
+                      className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="email" value={managerForm.email}
+                      onChange={(e) => setManagerForm((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="manager@store.com"
+                      className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {manager ? 'New Password' : 'Temporary Password'}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'} value={managerForm.password}
+                      onChange={(e) => setManagerForm((p) => ({ ...p, password: e.target.value }))}
+                      placeholder={manager ? 'Enter new password to change' : 'Set a temporary password'}
+                      className="w-full pl-9 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">The manager can change this after their first login.</p>
+                </div>
+                <button
+                  onClick={handleSaveManager} disabled={managerSaving}
+                  className="w-full py-2.5 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                  style={{ backgroundColor: '#151194' }}
+                >
+                  {managerSaving ? 'Saving...' : manager ? 'Update Credentials' : 'Set Credentials'}
+                </button>
+              </div>
+            </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-5">Subscription</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-500 mb-1">Plan</p>
-                  <p className="font-semibold text-gray-900 capitalize">{tenant.subscription?.plan || 'Free'}</p>
+                  <p className="font-semibold text-gray-900 capitalize">{tenant.subscription?.plan || 'Basic'}</p>
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-500 mb-1">Status</p>

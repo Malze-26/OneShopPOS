@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Upload, Building2, Mail, Palette } from 'lucide-react';
+import { ArrowLeft, Upload, Building2, Mail, Palette, User, Eye, EyeOff, KeyRound } from 'lucide-react';
 import MainLayout from '../../components/layout/MainLayout';
 import { tenantAPI } from '../../../utils/api';
 
@@ -15,6 +15,9 @@ interface FormData {
   primaryColor: string;
   activeStatus: boolean;
   subscriptionTier: string;
+  managerName: string;
+  managerEmail: string;
+  managerPassword: string;
 }
 
 export default function CreateTenantPage() {
@@ -27,10 +30,14 @@ export default function CreateTenantPage() {
     logo: null,
     primaryColor: '#3B82F6',
     activeStatus: true,
-    subscriptionTier: 'free',
+    subscriptionTier: 'basic',
+    managerName: '',
+    managerEmail: '',
+    managerPassword: '',
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [themePreview, setThemePreview] = useState<'primary' | 'badge'>('primary');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const quickColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#EF4444', '#84CC16'];
@@ -69,6 +76,9 @@ export default function CreateTenantPage() {
           status: formData.activeStatus ? 'active' : 'inactive',
         },
         status: formData.activeStatus ? 'active' : 'inactive',
+        ...(formData.managerName && formData.managerEmail && formData.managerPassword
+          ? { manager: { name: formData.managerName, email: formData.managerEmail, password: formData.managerPassword } }
+          : {}),
       };
       const data = await tenantAPI.create(tenantData);
       if (data.success) {
@@ -286,11 +296,68 @@ export default function CreateTenantPage() {
                   name="subscriptionTier" value={formData.subscriptionTier} onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
-                  <option value="free">Free Plan</option>
                   <option value="basic">Basic Plan</option>
                   <option value="premium">Premium Plan</option>
-                  <option value="enterprise">Enterprise Plan</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Manager Credentials */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-indigo-50 rounded-lg">
+                <User className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Manager Account</h2>
+                <p className="text-sm text-gray-500">Login credentials the manager will use to access their store dashboard</p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Manager Full Name <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text" name="managerName" value={formData.managerName} onChange={handleChange}
+                    placeholder="e.g. Kasun Perera" required
+                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Manager Email <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="email" name="managerEmail" value={formData.managerEmail} onChange={handleChange}
+                    placeholder="manager@store.com" required
+                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Temporary Password <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="managerPassword" value={formData.managerPassword} onChange={handleChange}
+                    placeholder="Set a temporary password" required
+                    className="w-full pl-11 pr-11 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  />
+                  <button
+                    type="button" onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">The manager can change this after their first login.</p>
               </div>
             </div>
           </div>

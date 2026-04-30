@@ -6,6 +6,9 @@ import {
   updateTenant,
   deleteTenant,
   getAnalytics,
+  getStoreSettings,
+  getManager,
+  setManager,
 } from '../controllers/tenantController';
 import { protect, authorize } from '../middleware/auth';
 
@@ -19,6 +22,10 @@ router
   .route('/')
   .get(authorize('superadmin'), getAllTenants)
   .post(authorize('superadmin'), createTenant);
+
+router.get('/:id/store-settings', getStoreSettings);
+router.get('/:id/manager', authorize('superadmin'), getManager);
+router.post('/:id/manager', authorize('superadmin'), setManager);
 
 router
   .route('/:id')

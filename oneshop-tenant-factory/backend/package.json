@@ -12,7 +12,10 @@
     "provision": "ts-node src/scripts/provisionExistingTenants.ts",
     "seed:open-door": "ts-node src/scripts/seedOpenDoorFromOneshop.ts",
     "update:open-door-settings": "ts-node src/scripts/updateOpenDoorSettings.ts",
-    "seed:tenant-users": "ts-node src/scripts/seedAllTenantUsers.ts"
+    "seed:tenant-users": "ts-node src/scripts/seedAllTenantUsers.ts",
+    "sync:open-door": "ts-node src/scripts/syncOpenDoorBusinessInfo.ts",
+    "migrate:super-user": "ts-node src/scripts/migrateToSuperUser.ts",
+    "backfill:plan": "ts-node src/scripts/backfillSubscriptionPlan.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

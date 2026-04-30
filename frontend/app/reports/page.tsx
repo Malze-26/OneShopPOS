@@ -16,7 +16,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface SalesSummary {
-  grossSales: number; refundsCount: number; refundTotal: number;
+  grossSales: number; discounts: number; refundsCount: number; refundTotal: number;
   netSales: number; transactionCount: number; avgOrderValue: number;
 }
 interface HourlyPoint { time: string; sales: number }
@@ -74,7 +74,7 @@ export default function ReportsPage() {
   const summary = data?.summary;
   const summaryCards = [
     { title: 'Gross Sales', value: fmt(summary?.grossSales ?? 0) },
-    { title: 'Discounts & Refunds', value: String(summary?.refundsCount ?? 0) },
+    { title: 'Discounts', value: fmt(summary?.discounts ?? 0) },
     { title: 'Net Sales', value: fmt(summary?.netSales ?? 0) },
     { title: 'Total Tax', value: fmt(0) },
     { title: 'Transactions', value: String(summary?.transactionCount ?? 0) },
@@ -137,7 +137,7 @@ export default function ReportsPage() {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar showRanges={['today', 'custom']} isSingleDate={true} onExport={handleExportPDF} />
+        <ReportsDateToolbar showRanges={['today', 'last-7-days', 'this-month', 'custom']} onExport={handleExportPDF} />
       </div>
 
       <div className="mb-6 flex items-center justify-between">
