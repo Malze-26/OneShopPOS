@@ -29,6 +29,7 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
 
   const [
     todaySalesAgg, yesterdaySalesAgg,
+    todayEcomSalesAgg, yesterdayEcomSalesAgg,
     todayTxnCount, yesterdayTxnCount,
     todayOnlineCount, yesterdayOnlineCount,
     customerCount,
@@ -44,6 +45,14 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     Transaction.aggregate([
       { $match: { status: 'success', createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
+    Order.aggregate([
+      { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', createdAt: { $gte: today.start, $lte: today.end } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalPrice', { $ifNull: ['$total', 0] }] } } } },
+    ]),
+    Order.aggregate([
+      { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalPrice', { $ifNull: ['$total', 0] }] } } } },
     ]),
     Transaction.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
     Transaction.countDocuments({ createdAt: { $gte: yesterday.start, $lte: yesterday.end } }),
@@ -63,8 +72,8 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     Customer.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
   ]);
 
-  const todaySales = todaySalesAgg[0]?.total ?? 0;
-  const yesterdaySales = yesterdaySalesAgg[0]?.total ?? 0;
+  const todaySales = (todaySalesAgg[0]?.total ?? 0) + (todayEcomSalesAgg[0]?.total ?? 0);
+  const yesterdaySales = (yesterdaySalesAgg[0]?.total ?? 0) + (yesterdayEcomSalesAgg[0]?.total ?? 0);
   const salesChange = yesterdaySales > 0
     ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
     : null;

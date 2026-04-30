@@ -52,9 +52,9 @@ export default function CheckoutModal({
       customer: state.customer?.name || "Guest Customer",
       ...(state.customer?._id ? { customerId: state.customer._id } : {}),
       paymentMethod: methodLabel,
-      subtotal,
+      amount: subtotal,
       discount: (state.discount ?? 0) + (state.loyaltyDiscount ?? 0),
-      amount: total,
+      total,
       status: "success",
       items: state.items.map(item => ({
         product:     item.id,

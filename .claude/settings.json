@@ -37,7 +37,15 @@
       "Bash(curl -s \"http://localhost:5000/api/stocks/grns\" -H \"Authorization: Bearer $\\(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' -d '{\\\\\"email\\\\\":\\\\\"mng01@opendoor.lk\\\\\",\\\\\"password\\\\\":\\\\\"Admin@1234\\\\\"}')",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'total: {d[\\\\\"total\\\\\"]}'\\); [print\\(f'  {g[\\\\\"grnNumber\\\\\"]} | {g[\\\\\"supplier\\\\\"]} | LKR {g[\\\\\"totalCost\\\\\"]:,}'\\) for g in d['data']]\")",
       "Read(//c/Users/ASUS/Downloads/**)",
-      "Bash(powershell -command \"\\(Get-Item 'C:\\\\Users\\\\ASUS\\\\Downloads\\\\Gemini_Generated_Image_w8894cw8894cw889.png'\\).length / 1KB\")"
+      "Bash(powershell -command \"\\(Get-Item 'C:\\\\Users\\\\ASUS\\\\Downloads\\\\Gemini_Generated_Image_w8894cw8894cw889.png'\\).length / 1KB\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5000)",
+      "Bash(findstr LISTENING)",
+      "Bash(taskkill /PID 20252 /F)",
+      "PowerShell(Stop-Process -Id 20252 -Force)",
+      "Read(//c/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/**)",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" log --oneline -- backend/src/controllers/orderController.ts)",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" show 071b0e9 -- backend/src/controllers/orderController.ts)"
     ],
     "additionalDirectories": [
       "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",

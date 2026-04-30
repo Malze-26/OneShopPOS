@@ -13,7 +13,7 @@ import { useFmt, useStore } from '@/app/contexts/StoreContext';
 
 type OrderSource   = 'physical' | 'online';
 type OrderStatus   = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'success';
-type PaymentStatus = 'pending' | 'paid' | 'failed' | 'success';
+type PaymentStatus = 'pending' | 'paid' | 'failed' | 'success' | 'voided' | 'declined';
 
 interface OrderItem {
   productName: string;
@@ -64,10 +64,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 const PAYMENT_STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-[#fff8e1] text-[#f59e0b]',
-  paid:    'bg-[#e8f5e9] text-[#12b76a]',
-  success: 'bg-[#e8f5e9] text-[#12b76a]',
-  failed:  'bg-[#fef3f2] text-[#f04438]',
+  pending:  'bg-[#fff8e1] text-[#f59e0b]',
+  paid:     'bg-[#e8f5e9] text-[#12b76a]',
+  success:  'bg-[#e8f5e9] text-[#12b76a]',
+  failed:   'bg-[#fef3f2] text-[#f04438]',
+  voided:   'bg-[#fef3f2] text-[#f04438]',
+  declined: 'bg-[#fef3f2] text-[#f04438]',
 };
 
 const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
@@ -106,10 +108,11 @@ function StatCard({ label, value, sub, icon: Icon, color }: {
 
 // ── Order Detail Modal ────────────────────────────────────────────────────────
 
-function OrderModal({ order, onClose, onStatusChange }: {
+function OrderModal({ order, onClose, onStatusChange, onDeliver }: {
   order: Order;
   onClose: () => void;
   onStatusChange: (id: string, status: OrderStatus) => void;
+  onDeliver: (id: string) => void;
 }) {
   const fmt = useFmt();
   const cfg      = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['pending'];
@@ -215,23 +218,16 @@ function OrderModal({ order, onClose, onStatusChange }: {
             </div>
           </div>
 
-          {/* Update Status — only for non-terminal online orders */}
-          {!isPhysical && !isDone && (
+          {/* Update Status — only for online orders in processing state */}
+          {!isPhysical && !isDone && order.status === 'processing' && (
             <div>
               <h3 className="text-sm font-semibold text-[#101828] mb-2">Update Status</h3>
-              <div className="flex flex-wrap gap-2">
-                {(['processing', 'shipped', 'delivered', 'cancelled'] as OrderStatus[])
-                  .filter(s => s !== order.status)
-                  .map(s => (
-                    <button
-                      key={s}
-                      onClick={() => onStatusChange(order._id, s)}
-                      className="px-3 py-1.5 text-xs font-medium border border-[#e4e7ec] rounded-lg hover:bg-[#f9fafb] text-[#4a5565] transition-colors"
-                    >
-                      {STATUS_CONFIG[s]?.label ?? s}
-                    </button>
-                  ))}
-              </div>
+              <button
+                onClick={() => { onDeliver(order._id); onClose(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#e8f5e9] text-[#12b76a] rounded-lg hover:bg-[#d1fae5] transition-colors"
+              >
+                <Truck className="w-3.5 h-3.5" /> Mark as Delivered
+              </button>
             </div>
           )}
 
@@ -295,13 +291,13 @@ export default function OrdersPage() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  // Confirm a COD online order — manager action
+  // Mark a COD online order as delivered (payment confirmed)
   const handleConfirm = async (id: string) => {
     setConfirming(prev => new Set(prev).add(id));
     try {
-      await api.patch(`/orders/${id}/confirm`);
-      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: 'success', paymentStatus: 'success' } : o));
-      if (selected?._id === id) setSelected(prev => prev ? { ...prev, status: 'success', paymentStatus: 'success' } : null);
+      await api.patch(`/orders/${id}/confirm`, { paymentStatus: 'paid' });
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: 'delivered', paymentStatus: 'paid' } : o));
+      if (selected?._id === id) setSelected(prev => prev ? { ...prev, status: 'delivered', paymentStatus: 'paid' } : null);
       fetchStats();
     } catch { /* silent */ } finally {
       setConfirming(prev => { const s = new Set(prev); s.delete(id); return s; });
@@ -403,10 +399,8 @@ export default function OrdersPage() {
                 const StatusIcon = cfg.icon;
                 const payColor   = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
                 const isPhysical = order.source === 'physical';
-                // Confirm button only for online COD orders that are still pending
-                const canConfirm = !isPhysical
-                  && order.status === 'pending'
-                  && order.paymentMethod?.toLowerCase() === 'cash-on-delivery';
+                // Delivered button for any online order in processing state
+                const canDeliver = !isPhysical && order.status === 'processing';
 
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">
@@ -450,14 +444,17 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        {canConfirm && (
+                        {canDeliver && (
                           <button
-                            onClick={() => handleConfirm(order._id)}
+                            onClick={() => {
+                              const isCOD = order.paymentMethod?.toLowerCase() === 'cash-on-delivery';
+                              isCOD ? handleConfirm(order._id) : handleStatusChange(order._id, 'delivered');
+                            }}
                             disabled={confirming.has(order._id)}
                             className="flex items-center gap-1 px-2.5 py-1.5 text-[#12b76a] hover:bg-[#e8f5e9] rounded-lg transition-colors text-xs font-medium disabled:opacity-50"
                           >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            {confirming.has(order._id) ? '...' : 'Confirm'}
+                            <Truck className="w-3.5 h-3.5" />
+                            {confirming.has(order._id) ? '...' : 'Delivered'}
                           </button>
                         )}
                         <button
@@ -505,6 +502,10 @@ export default function OrdersPage() {
           order={selected}
           onClose={() => setSelected(null)}
           onStatusChange={handleStatusChange}
+          onDeliver={(id) => {
+            const isCOD = selected.paymentMethod?.toLowerCase() === 'cash-on-delivery';
+            isCOD ? handleConfirm(id) : handleStatusChange(id, 'delivered');
+          }}
         />
       )}
     </div>

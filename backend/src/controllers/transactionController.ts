@@ -114,11 +114,12 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
   console.log('🔍 customer found:', customer?.name);
   
   if (customer) {
-    const pointsEarned = Math.floor(req.body.amount / 100);
+    const amountPaid = req.body.total ?? req.body.amount;
+    const pointsEarned = Math.floor(amountPaid / 100);
 
     const [agg] = await Transaction.aggregate([
       { $match: { customerId: req.body.customerId, status: 'success' } },
-      { $group: { _id: null, totalSpent: { $sum: '$amount' }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
+      { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
     ]);
 
     console.log('🔍 agg result:', agg);
@@ -142,9 +143,9 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
               customerEmail: customer.email,
               orderId:       txnId,
               items:         req.body.items || [],
-              subtotal:      req.body.subtotal || req.body.amount,
+              subtotal:      req.body.amount,
               discount:      req.body.discount || 0,
-              total:         req.body.amount,
+              total:         req.body.total ?? req.body.amount,
               paymentMethod: req.body.paymentMethod,
               date: new Date().toLocaleDateString('en-LK', {
                 day: '2-digit', month: 'short', year: 'numeric',

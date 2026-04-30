@@ -16,7 +16,7 @@ router.get('/',              asyncHandler(getOrders));
 router.get('/:id',           asyncHandler(getOrder));
 router.post('/',             asyncHandler(createOrder));
 router.post('/sync',         requireRole('Manager'), asyncHandler(syncEcomOrders));
-router.patch('/:id/confirm', requireRole('Manager'), asyncHandler(confirmOrder));
+router.patch('/:id/confirm', asyncHandler(confirmOrder));
 router.patch('/:id/status',  requireRole('Manager'), asyncHandler(updateOrderStatus));
 
 export default router;

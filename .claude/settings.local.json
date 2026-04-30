@@ -13,7 +13,11 @@
       "Bash(node_modules/.bin/next build *)",
       "Bash(timeout 8 node -e \"require\\('ts-node'\\).register\\({transpileOnly:true}\\); require\\('./src/index.ts'\\)\")",
       "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@oneshop.lk\",\"password\":\"admin123\"}')",
-      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@oneshop.lk\",\"password\":\"Admin@1234\"}')"
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@oneshop.lk\",\"password\":\"Admin@1234\"}')",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" log --oneline -10)",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" show HEAD --stat)",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" show HEAD -- backend/src/controllers/orderController.ts)",
+      "Bash(git -C \"c:/Users/ASUS/Desktop/BACKUPS/Studies/ITM_aca/L2-Software Project/OneShop_POS\" show HEAD -- frontend/app/orders/page.tsx)"
     ]
   }
 }
