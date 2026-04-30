@@ -71,7 +71,7 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Customer, Order, Product, StockHistory } = req.models!;
+    const { Transaction, Customer, Product, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
@@ -103,38 +103,33 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 
     // Recalculate customer stats and send receipt email
     if (req.body.customerId && req.body.customerId !== 'guest') {
-      const customer = await Customer.findById(req.body.customerId);
-      if (customer) {
-        const pointsEarned = Math.floor(req.body.amount / 100);
+  console.log('🔍 customerId:', req.body.customerId);
+  const customer = await Customer.findById(req.body.customerId);
+  console.log('🔍 customer found:', customer?.name);
+  
+  if (customer) {
+    const pointsEarned = Math.floor(req.body.amount / 100);
 
+    const [agg] = await Transaction.aggregate([
+      { $match: { customerId: req.body.customerId, status: 'success' } },
+      { $group: { _id: null, totalSpent: { $sum: '$amount' }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
+    ]);
+
+    console.log('🔍 agg result:', agg);
+
+    await Customer.findByIdAndUpdate(req.body.customerId, {
+      $set: {
+        totalSpent:   agg?.totalSpent  ?? 0,
+        totalOrders:  agg?.totalOrders ?? 0,
+        lastPurchase: agg?.lastPurchase ?? new Date(),
+      },
+      $inc: { loyaltyPoints: pointsEarned },
+    });
+
+    console.log('✅ Customer stats updated');
+
+        // Send receipt email if customer has email
         if (customer.email) {
-          // Recalculate from the Orders collection — single source of truth
-          const [agg] = await Order.aggregate<{
-            totalSpent: number;
-            totalOrders: number;
-            lastPurchase: Date | null;
-          }>([
-            { $match: { customerEmail: customer.email } },
-            {
-              $group: {
-                _id: null,
-                totalSpent:   { $sum: '$total' },
-                totalOrders:  { $sum: 1 },
-                lastPurchase: { $max: '$createdAt' },
-              },
-            },
-          ]);
-
-          await Customer.findByIdAndUpdate(req.body.customerId, {
-            $set: {
-              totalSpent:   agg?.totalSpent  ?? 0,
-              totalOrders:  agg?.totalOrders ?? 0,
-              lastPurchase: agg?.lastPurchase ?? new Date(),
-            },
-            $inc: { loyaltyPoints: pointsEarned },
-          });
-
-          // Send receipt email
           try {
             await sendReceiptEmail({
               customerName:  customer.name,
@@ -153,13 +148,6 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
             console.error('Failed to send receipt email:', emailErr);
             // don't fail the transaction if email fails
           }
-
-        } else {
-          // No email — fall back to incrementing
-          await Customer.findByIdAndUpdate(req.body.customerId, {
-            $inc: { loyaltyPoints: pointsEarned, totalOrders: 1, totalSpent: req.body.amount },
-            $set: { lastPurchase: new Date() },
-          });
         }
       }
     }

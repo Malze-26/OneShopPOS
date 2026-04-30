@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
+import { Transaction } from '../models/Transaction';
 
 // GET /api/customers
 export async function getCustomers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -147,23 +148,23 @@ export async function getCustomerOrders(req: AuthRequest, res: Response, next: N
 // POST /api/customers/recalc  — recompute totalSpent / totalOrders / lastPurchase from Orders
 export async function recalcCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Customer, Order } = req.models!;
+    const { Customer} = req.models!;
     const customers = await Customer.find({}).lean();
     let updated = 0;
 
     for (const c of customers) {
-      if (!c.email) continue;
+      
 
-      const [agg] = await Order.aggregate<{
+      const [agg] = await Transaction.aggregate<{
         totalSpent: number;
         totalOrders: number;
         lastPurchase: Date | null;
       }>([
-        { $match: { customerEmail: c.email } },
+        { $match: { customerId: c._id.toString(), status: 'success' } },
         {
           $group: {
             _id: null,
-            totalSpent:   { $sum: '$total' },
+            totalSpent:   { $sum: '$amount' },
             totalOrders:  { $sum: 1 },
             lastPurchase: { $max: '$createdAt' },
           },
@@ -191,24 +192,25 @@ export async function recalcCustomerStats(req: AuthRequest, res: Response, next:
 // GET /api/customers/stats
 export async function getCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Customer } = req.models!;
+    const { Customer  } = req.models!;
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [totalCount, newThisMonth, avgLifetimeValue] = await Promise.all([
+    const [totalCount, newThisMonth, revenueAgg] = await Promise.all([
       Customer.countDocuments({}),
       Customer.countDocuments({ createdAt: { $gte: startOfMonth } }),
       Customer.aggregate([
-        { $group: { _id: null, avg: { $avg: '$totalSpent' } } },
-      ]),
+    { $group: { _id: null, total: { $sum: '$totalSpent' }, avg: { $avg: '$totalSpent' } } },
+
+  ]),
     ]);
 
     res.json({
       totalCustomers: totalCount,
       newThisMonth,
-      avgLifetimeValue: Math.round(avgLifetimeValue[0]?.avg ?? 0),
-    });
+      totalRevenue: Math.round(revenueAgg[0]?.total ?? 0),
+      avgSpend: Math.round(revenueAgg[0]?.avg ?? 0),    });
   } catch (err) {
     next(err);
   }
