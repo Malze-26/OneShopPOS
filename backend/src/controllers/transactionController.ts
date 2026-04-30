@@ -77,11 +77,17 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 
     const txnId = generateTxnId();
 
+    const status = req.body.status || 'success';
+    const orderStatus   = status === 'voided' ? 'cancelled' : status;
+    const paymentStatus = status === 'success' ? 'paid' : status === 'voided' ? 'voided' : status;
+
     const transaction = await Transaction.create({
       ...req.body,
       txnId,
       storeId,
       createdBy: userId,
+      orderStatus,
+      paymentStatus,
     });
 
     // Deduct inventory for each item in the POS transaction
