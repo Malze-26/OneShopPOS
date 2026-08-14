@@ -42,8 +42,13 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
   try {
     const { Transaction } = req.models!;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const stats = await Transaction.aggregate([
-      { $match: { status: 'success' } },
+      { $match: { status: 'success', createdAt: { $gte: today, $lt: tomorrow } } },
       {
         $group: {
           _id: '$paymentMethod',
