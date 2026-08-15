@@ -289,7 +289,7 @@ export default function CustomersPage() {
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec]">
           <p className="text-xs text-[#4a5565] mb-1">Average Lifetime Value</p>
-          <h3 className="text-2xl font-bold text-[#101828]">{stats ? `${currency} ${stats.avgLifetimeValue.toLocaleString()}` : '—'}</h3>
+          <h3 className="text-2xl font-bold text-[#101828]">{stats ? `${currency} ${(stats.avgLifetimeValue ?? 0).toLocaleString()}` : '—'}</h3>
         </div>
       </div>
 
@@ -365,7 +365,7 @@ export default function CustomersPage() {
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.email ?? '—'}</td>
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.phone ?? '—'}</td>
                   <td className="px-5 py-4 text-sm font-medium text-[#101828]">{customer.totalOrders}</td>
-                  <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{currency} {customer.totalSpent.toLocaleString()}</td>
+                  <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{currency} {(customer.totalSpent ?? 0).toLocaleString()}</td>
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{fmtDate(customer.lastPurchase)}</td>
                   <td className="px-5 py-4">
                     <button

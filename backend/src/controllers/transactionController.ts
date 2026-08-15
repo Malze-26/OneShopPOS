@@ -42,8 +42,13 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
   try {
     const { Transaction } = req.models!;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const stats = await Transaction.aggregate([
-      { $match: { status: 'success' } },
+      { $match: { status: 'success', createdAt: { $gte: today, $lt: tomorrow } } },
       {
         $group: {
           _id: '$paymentMethod',
@@ -77,11 +82,17 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 
     const txnId = generateTxnId();
 
+    const status = req.body.status || 'success';
+    const orderStatus   = status === 'voided' ? 'cancelled' : status;
+    const paymentStatus = status === 'success' ? 'paid' : status === 'voided' ? 'voided' : status;
+
     const transaction = await Transaction.create({
       ...req.body,
       txnId,
       storeId,
       createdBy: userId,
+      orderStatus,
+      paymentStatus,
     });
 
     // Deduct inventory for each item in the POS transaction
@@ -108,11 +119,12 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
   console.log('🔍 customer found:', customer?.name);
   
   if (customer) {
-    const pointsEarned = Math.floor(req.body.amount / 100);
+    const amountPaid = req.body.total ?? req.body.amount;
+    const pointsEarned = Math.floor(amountPaid / 100);
 
     const [agg] = await Transaction.aggregate([
       { $match: { customerId: req.body.customerId, status: 'success' } },
-      { $group: { _id: null, totalSpent: { $sum: '$amount' }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
+      { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
     ]);
 
     console.log('🔍 agg result:', agg);
@@ -136,9 +148,9 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
               customerEmail: customer.email,
               orderId:       txnId,
               items:         req.body.items || [],
-              subtotal:      req.body.subtotal || req.body.amount,
+              subtotal:      req.body.amount,
               discount:      req.body.discount || 0,
-              total:         req.body.amount,
+              total:         req.body.total ?? req.body.amount,
               paymentMethod: req.body.paymentMethod,
               date: new Date().toLocaleDateString('en-LK', {
                 day: '2-digit', month: 'short', year: 'numeric',
@@ -196,7 +208,6 @@ export async function voidTransaction(req: AuthRequest, res: Response, next: Nex
       { $set: { status: 'voided', orderStatus: 'cancelled', paymentStatus: 'voided' } }
     );
 
-    // Restock inventory
     if (transaction.items?.length > 0) {
       for (const item of transaction.items) {
         await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });

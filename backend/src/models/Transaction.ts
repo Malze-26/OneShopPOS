@@ -22,6 +22,7 @@ export interface ITransaction extends Document {
   paymentMethod: PaymentMethod;
   amount: number;
   discount: number;
+  total: number;
   status: TransactionStatus;
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -75,6 +76,11 @@ export const transactionSchema = new Schema<ITransaction>(
       min: [0, 'Amount must be non-negative'],
     },
     discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    total: {
       type: Number,
       default: 0,
       min: 0,

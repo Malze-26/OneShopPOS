@@ -29,6 +29,7 @@ import TopBar from "./components/TopBar";
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
+  const { subscriptionPlan, refresh: refreshStore } = useStore();
   const isOnline = useOnlineStatus();
   const { storeName } = useStore();
 
@@ -226,6 +227,7 @@ export default function POSDashboard() {
         onSync={handleSync}
         onToggleMenu={() => setShowMenu(v => !v)}
         onLogout={handleLogout}
+        subscriptionPlan={subscriptionPlan}
       />
 
       <div className="flex flex-1 min-h-0">

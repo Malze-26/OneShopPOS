@@ -76,7 +76,7 @@ export function Sidebar() {
   return (
     <aside className="w-60 bg-white border-r border-[#e4e7ec] flex flex-col">
       {/* Logo & Store Name */}
-      <div className="h-16 flex items-center px-6 border-b border-[#e4e7ec]">
+      <div className="h-16 flex items-center justify-between px-6 border-b border-[#e4e7ec]">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-[var(--color-primary)]">
             {logoSrc && !logoError
@@ -93,6 +93,13 @@ export function Sidebar() {
             )}
           </div>
         </Link>
+        <button
+          onClick={() => alert('Button clicked!')}
+          className="p-1.5 text-[#4a5565] hover:text-[#101828] hover:bg-[#f9fafb] rounded-lg transition-colors"
+        >
+          {/* Replace with any Lucide icon or label */}
+          <span className="text-xs font-medium">+</span>
+        </button>
       </div>
 
       {/* Navigation */}
