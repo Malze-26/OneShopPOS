@@ -1,18 +1,7 @@
 "use client";
 
 import { C, CARD_GRADIENTS } from "../constants/tokens";
-
-interface Product {
-  _id: string;
-  name: string;
-  sellingPrice: number;
-  category: string;
-  stock: number;
-  status: string;
-  lowStockThreshold: number;
-  isWeightBased: boolean;
-  unit: string;
-}
+import { Product } from "@/app/hooks/useProductsData";
 
 interface ProductCardProps {
   product: Product;

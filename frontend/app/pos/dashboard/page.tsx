@@ -12,7 +12,7 @@ import { useCustomerManagement } from "@/app/hooks/useCustomerManagement";
 import { useDiscounts } from "@/app/hooks/useDiscounts";
 import { usePromoCode } from "@/app/hooks/usePromoCode";
 import { useWeightModal } from "@/app/hooks/useWeightModal";
-import { useProductsData } from "@/app/hooks/useProductsData";
+import { useProductsData, Product } from "@/app/hooks/useProductsData";
 import { useSyncState } from "@/app/hooks/useSyncState";
 import { usePOSUI } from "@/app/hooks/usePOSUI";
 import { fmt, genId } from "./constants/pos"; 
@@ -24,24 +24,6 @@ import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
 
 
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  sellingPrice: number;
-  category: string;
-  stock: number;
-  status: string;
-  lowStockThreshold: number;
-  isWeightBased: boolean;
-  unit: string;
-}
-
-interface Category {
-  _id: string;
-  name: string;
-  icon: string;
-}
 
 // Main POS Dashboard component that handles product listing, cart management, customer selection, and checkout flow
 export default function POSDashboard() {
