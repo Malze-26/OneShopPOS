@@ -57,7 +57,8 @@
       "Bash(Select-Object FullName)",
       "Bash(echo \"=== TSC EXIT: $? ===\")",
       "Bash(npx next *)",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "Bash(grep -o 'fnum\">5\\\\.4\\\\.3\\\\.[0-9]*</span>\\\\s*$\\\\|fnum\">5\\\\.4\\\\.3\\\\.[0-9]*' INVENTORY_MODULE_REPORT.html)"
     ],
     "additionalDirectories": [
       "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",
