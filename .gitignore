@@ -12,3 +12,7 @@ package-lock.json
 
 # Build artifacts
 *.tsbuildinfo
+
+# SST / OpenNext build output
+.sst/
+.open-next/

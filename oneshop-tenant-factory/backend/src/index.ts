@@ -8,7 +8,7 @@ import authRoutes from './routes/auth';
 import tenantRoutes from './routes/tenants';
 import notificationRoutes from './routes/notifications';
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT ?? 6000;
 
 app.use(
@@ -62,4 +62,8 @@ async function start() {
   });
 }
 
-start();
+// Under Lambda the handler owns connection setup and the runtime owns the
+// event loop, so no listener is started there.
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  start();
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type React from 'react';
 import { Building2, Users, TrendingUp, UserPlus, RefreshCw, CheckCircle, XCircle, Slash, Star, Award, Bell, Store, Trash2, AlertTriangle, CheckCheck } from 'lucide-react';
 import MainLayout from '../components/layout/MainLayout';
 import LineChart from '../components/charts/LineChart';
@@ -12,7 +13,7 @@ interface TenantListItem { _id: string; businessName: string; status: string; su
 interface Analytics { totalTenants: number; activeTenants: number; inactiveTenants: number; suspendedTenants: number; recentTenants: number; subscriptionDistribution: { _id: string; count: number }[]; monthlyGrowth: MonthlyGrowth[]; tenantList: TenantListItem[] }
 interface Notification { _id: string; type: string; title: string; message: string; tenantName?: string; read: boolean; createdAt: string }
 
-const notifIcon: Record<string, JSX.Element> = {
+const notifIcon: Record<string, React.JSX.Element> = {
   tenant_created: <Store className="w-4 h-4 text-green-600" />,
   tenant_deleted: <Trash2 className="w-4 h-4 text-red-500" />,
   tenant_suspended: <AlertTriangle className="w-4 h-4 text-yellow-500" />,
