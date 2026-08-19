@@ -8,6 +8,10 @@ import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
 
+import { useStore } from '@/app/contexts/StoreContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 interface Product {
   id: string; sku: string; name: string; category: string;
   cost: number; retail: number; stock: number; value: number; retailValue: number; status: string;
@@ -16,7 +20,7 @@ interface Summary {
   totalAssetValue: number; totalRetailValue: number;
   lowStockCount: number; outOfStockCount: number; totalProducts: number;
 }
-interface ApiResponse { summary: Summary; products: Product[] }
+interface ApiResponse { summary: Summary; products: Product[]; dateRange?: string }
 
 const statusConfig: Record<string, { bg: string; text: string }> = {
   'In Stock': { bg: '#ecfdf3', text: '#12b76a' },
@@ -25,6 +29,7 @@ const statusConfig: Record<string, { bg: string; text: string }> = {
 };
 
 export default function InventoryStatusPage() {
+  const store = useStore();
   const searchParams = useSearchParams();
   const preset = searchParams.get('preset') || 'today';
 
@@ -62,11 +67,69 @@ export default function InventoryStatusPage() {
       (p?.sku?.toLowerCase() ?? '').includes(searchTerm?.toLowerCase() ?? ''),
   );
 
+  const handleExport = () => {
+    if (!data) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Store Name & Header
+    doc.setFontSize(20);
+    doc.setTextColor(21, 93, 252); // var(--color-primary) #155dfc
+    doc.text(store.storeName || 'OneShop POS', pageWidth / 2, 20, { align: 'center' });
+
+    doc.setFontSize(14);
+    doc.setTextColor(16, 24, 40); // #101828
+    doc.text('Inventory Status Report', pageWidth / 2, 30, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(74, 85, 101); // #4a5565
+    doc.text(`Date: ${data.dateRange || new Date().toLocaleDateString()}`, pageWidth / 2, 38, { align: 'center' });
+
+    // Summary Section
+    doc.setDrawColor(228, 231, 236); // #e4e7ec
+    doc.line(15, 45, pageWidth - 15, 45);
+
+    doc.setFontSize(11);
+    doc.setTextColor(16, 24, 40);
+    doc.text('Inventory Summary', 15, 55);
+
+    doc.setFontSize(9);
+    doc.setTextColor(74, 85, 101);
+    doc.text(`Total Products: ${summary?.totalProducts ?? 0}`, 15, 62);
+    doc.text(`Total Asset Value: Rs. ${(summary?.totalAssetValue ?? 0).toLocaleString()}`, 15, 68);
+    doc.text(`Est. Retail Value: Rs. ${(summary?.totalRetailValue ?? 0).toLocaleString()}`, 15, 74);
+
+    doc.text(`Low Stock: ${summary?.lowStockCount ?? 0}`, pageWidth / 2, 62);
+    doc.text(`Out of Stock: ${summary?.outOfStockCount ?? 0}`, pageWidth / 2, 68);
+
+    // Table
+    autoTable(doc, {
+      startY: 85,
+      head: [['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Qty', 'Value (Rs.)', 'Retail Val', 'Status']],
+      body: filtered.map(p => [
+        p.sku,
+        p.name,
+        p.cost.toLocaleString(),
+        p.retail.toLocaleString(),
+        p.stock.toString(),
+        p.value.toLocaleString(),
+        p.retailValue.toLocaleString(),
+        p.status
+      ]),
+      headStyles: { fillColor: [21, 93, 252], textColor: 255 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+    });
+
+    doc.save(`Inventory_Report_${preset}_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   return (
     <div className="p-6 max-w-[1400px]">
       <div className="mb-4">
         <ReportsTabs />
-        <ReportsDateToolbar showRanges={['today', 'custom']} />
+        <ReportsDateToolbar showRanges={['today', 'custom']} onExport={handleExport} />
       </div>
 
       <div className="mb-6">
@@ -182,7 +245,7 @@ export default function InventoryStatusPage() {
               <tr>
                 {['SKU', 'Product Name', 'Cost (Rs.)', 'Retail (Rs.)', 'Quantity',
                   'Cost Value (Rs.)', 'Retail Value (Rs.)', 'Status'].map((h) => (
-                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
                       {h}
                     </th>
                   ))}

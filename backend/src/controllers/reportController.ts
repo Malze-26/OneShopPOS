@@ -13,7 +13,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     const dateFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    const includePOS  = !sourceFilter || sourceFilter === 'physical';
+    const includePOS = !sourceFilter || sourceFilter === 'physical';
     const includeEcom = !sourceFilter || sourceFilter === 'online';
 
     // E-com orders: identified by orderStatus field + paymentStatus='paid'
@@ -22,9 +22,9 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 
     const [
       posSummaryAgg, ecomSummaryAgg,
-      posHourlyAgg,  ecomHourlyAgg,
+      posHourlyAgg, ecomHourlyAgg,
       posPaymentAgg, ecomPaymentAgg,
-      posDailyAgg,   ecomDailyAgg,
+      posDailyAgg, ecomDailyAgg,
     ] = await Promise.all([
       // POS summary (Transaction collection)
       includePOS ? Transaction.aggregate([
@@ -32,11 +32,11 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
-            refundTotal:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
-            refundCount:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
+            grossSales: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            refundTotal: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            refundCount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
             transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
-            discounts:        { $sum: { $cond: [{ $eq: ['$status', 'success'] }, { $ifNull: ['$discount', 0] }, 0] } },
+            discounts: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, { $ifNull: ['$discount', 0] }, 0] } },
           },
         },
       ]) : Promise.resolve([]),
@@ -47,7 +47,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: ecomAmountExpr },
+            grossSales: { $sum: ecomAmountExpr },
             transactionCount: { $sum: 1 },
           },
         },
@@ -84,10 +84,10 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         { $match: { ...dateFilter, status: 'success' } },
         {
           $group: {
-            _id:       { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            posSales:  { $sum: '$amount' },
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            posSales: { $sum: '$amount' },
             discounts: { $sum: { $ifNull: ['$discount', 0] } },
-            count:     { $sum: 1 },
+            count: { $sum: 1 },
           },
         },
         { $sort: { _id: 1 } },
@@ -98,10 +98,10 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         { $match: ecomMatch },
         {
           $group: {
-            _id:         { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
             onlineSales: { $sum: ecomAmountExpr },
-            discounts:   { $sum: { $ifNull: ['$discount', 0] } },
-            count:       { $sum: 1 },
+            discounts: { $sum: { $ifNull: ['$discount', 0] } },
+            count: { $sum: 1 },
           },
         },
         { $sort: { _id: 1 } },
@@ -109,16 +109,16 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     ]);
 
     // Merge summaries
-    const posS  = posSummaryAgg[0]  ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0, discounts: 0 };
+    const posS = posSummaryAgg[0] ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0, discounts: 0 };
     const ecomS = ecomSummaryAgg[0] ?? { grossSales: 0, transactionCount: 0, discounts: 0 };
 
-    const totalGross     = posS.grossSales + ecomS.grossSales;
-    const totalRefund    = posS.refundTotal ?? 0;
+    const totalGross = posS.grossSales + ecomS.grossSales;
+    const totalRefund = posS.refundTotal ?? 0;
     const totalRefundCnt = posS.refundCount ?? 0;
-    const totalTxnCount  = posS.transactionCount + ecomS.transactionCount;
+    const totalTxnCount = posS.transactionCount + ecomS.transactionCount;
     const totalDiscounts = (posS.discounts ?? 0) + (ecomS.discounts ?? 0);
-    const netSales       = totalGross - totalRefund - totalDiscounts;
-    const avgOrder       = totalTxnCount > 0 ? Math.round(totalGross / totalTxnCount) : 0;
+    const netSales = totalGross - totalRefund - totalDiscounts;
+    const avgOrder = totalTxnCount > 0 ? Math.round(totalGross / totalTxnCount) : 0;
 
     // Merge hourly — fill hours 0–23
     const hourMap = new Map<number, number>();
@@ -161,13 +161,13 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         const grossSales = d.posSales + d.onlineSales;
         return {
           date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          posSales:    d.posSales,
+          posSales: d.posSales,
           onlineSales: d.onlineSales,
-          discounts:   d.discounts,
-          tax:         0,
+          discounts: d.discounts,
+          tax: 0,
           grossSales,
-          netSales:    grossSales - d.discounts,
-          count:       d.count,
+          netSales: grossSales - d.discounts,
+          count: d.count,
         };
       });
 
@@ -180,13 +180,13 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     res.json({
       dateRange: dateLabel,
       summary: {
-        grossSales:       totalGross,
-        discounts:        totalDiscounts,
-        refundsCount:     totalRefundCnt,
-        refundTotal:      totalRefund,
+        grossSales: totalGross,
+        discounts: totalDiscounts,
+        refundsCount: totalRefundCnt,
+        refundTotal: totalRefund,
         netSales,
         transactionCount: totalTxnCount,
-        avgOrderValue:    avgOrder,
+        avgOrderValue: avgOrder,
       },
       hourlySales,
       paymentMethods,
@@ -202,117 +202,189 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 // ============= Sales by Product Report =============
 export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { Order, Product } = req.models!;
+    const { Order, Transaction } = req.models!;
     const { preset, startDate, endDate, channel } = req.query;
 
     const { buildDateFilter, getDateRangeLabel } = await import('../utils/dateRange');
-    const dateMatchFilter = buildDateFilter(
-      preset as string,
-      startDate as string,
-      endDate as string
-    );
+    const dateMatchFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Map frontend channel names to backend OrderSource
     const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
+    const includePOS = !sourceFilter || sourceFilter === 'physical';
+    const includeEcom = !sourceFilter || sourceFilter === 'online';
 
-    // Build the finalized sales match
-    const finalizedMatch = {
-      ...dateMatchFilter,
-      status: 'success',
-      paymentStatus: { $in: ['paid', 'success'] }
-    };
-    if (sourceFilter) {
-      (finalizedMatch as any).source = sourceFilter;
+    // POS: Transaction collection, status=success, items[]
+    const posProductPipeline: any[] = [
+      { $match: { ...dateMatchFilter, status: 'success' } },
+      { $unwind: '$items' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'items.product',
+          foreignField: '_id',
+          as: 'productInfo',
+        },
+      },
+      { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQty: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+          avgUnitPrice: { $avg: '$items.unitPrice' },
+          productName: { $first: '$items.productName' },
+          sku: { $first: '$items.sku' },
+          category: { $first: '$productInfo.category' },
+          stock: { $first: '$productInfo.stock' },
+        },
+      },
+    ];
+
+    // E-com: Order collection — identified by orderStatus field (written by the e-com website)
+    // Items may be in 'orderItems' OR 'items'; price in 'price' or 'unitPrice'; name in 'name' or 'productName'
+    const ecomProductPipeline: any[] = [
+      {
+        $match: {
+          ...dateMatchFilter,
+          orderStatus: { $exists: true },
+          paymentStatus: { $in: ['paid', 'success'] },
+        },
+      },
+      // Normalise: merge orderItems/items into a single 'allItems' array
+      {
+        $addFields: {
+          allItems: {
+            $ifNull: [
+              { $cond: [{ $isArray: '$orderItems' }, '$orderItems', null] },
+              { $ifNull: ['$items', []] },
+            ],
+          },
+        },
+      },
+      { $unwind: '$allItems' },
+      // Resolve product reference — could be in allItems.product or allItems._id
+      {
+        $addFields: {
+          'allItems.resolvedProductId': {
+            $ifNull: ['$allItems.product', '$allItems._id'],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'allItems.resolvedProductId',
+          foreignField: '_id',
+          as: 'productInfo',
+        },
+      },
+      { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+      // Resolve name, sku, price with fallbacks
+      {
+        $addFields: {
+          'allItems.resolvedName': {
+            $let: {
+              vars: {
+                n: { $ifNull: ['$allItems.name', { $ifNull: ['$allItems.productName', ''] }] },
+              },
+              in: {
+                $cond: [{ $eq: ['$$n', ''] }, { $ifNull: ['$productInfo.name', 'Unknown Product'] }, '$$n'],
+              },
+            },
+          },
+          'allItems.resolvedSku': {
+            $let: {
+              vars: { s: { $ifNull: ['$allItems.sku', ''] } },
+              in: {
+                $cond: [{ $eq: ['$$s', ''] }, { $ifNull: ['$productInfo.sku', 'N/A'] }, '$$s'],
+              },
+            },
+          },
+          'allItems.resolvedPrice': {
+            $let: {
+              vars: {
+                p: { $ifNull: ['$allItems.price', { $ifNull: ['$allItems.unitPrice', 0] }] },
+              },
+              in: {
+                $cond: [{ $eq: ['$$p', 0] }, { $ifNull: ['$productInfo.sellingPrice', 0] }, '$$p'],
+              },
+            },
+          },
+          'allItems.resolvedQty': {
+            $ifNull: ['$allItems.qty', { $ifNull: ['$allItems.quantity', 1] }],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$allItems.resolvedProductId',
+          totalQty: { $sum: '$allItems.resolvedQty' },
+          totalRevenue: { $sum: { $multiply: ['$allItems.resolvedQty', '$allItems.resolvedPrice'] } },
+          avgUnitPrice: { $avg: '$allItems.resolvedPrice' },
+          productName: { $first: '$allItems.resolvedName' },
+          sku: { $first: '$allItems.resolvedSku' },
+          category: { $first: '$productInfo.category' },
+          stock: { $first: '$productInfo.stock' },
+        },
+      },
+    ];
+
+
+
+
+    const [posData, ecomData] = await Promise.all([
+      includePOS ? Transaction.aggregate(posProductPipeline) : Promise.resolve([]),
+      includeEcom ? Order.aggregate(ecomProductPipeline) : Promise.resolve([]),
+    ]);
+
+    // Merge POS + E-com by product _id
+    const productMap = new Map<string, {
+      _id: any; totalQty: number; totalRevenue: number; avgUnitPrice: number;
+      productName: string; sku: string; category: string; stock: number;
+    }>();
+
+    for (const item of [...posData, ...ecomData]) {
+      const key = item._id?.toString() ?? item.productName ?? 'unknown';
+      const prev = productMap.get(key);
+      if (prev) {
+        prev.totalQty += item.totalQty;
+        prev.totalRevenue += item.totalRevenue;
+        prev.avgUnitPrice = item.avgUnitPrice;
+      } else {
+        productMap.set(key, { ...item });
+      }
     }
 
-    const [salesData, topGrossingItem, totalUnitsSoldAgg, topCategoryByRevenue] = await Promise.all([
-      // Product-level sales data
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.product',
-            foreignField: '_id',
-            as: 'productInfo',
-          },
-        },
-        { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
-        {
-          $group: {
-            _id: '$items.product',
-            totalQty: { $sum: '$items.quantity' },
-            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-            avgUnitPrice: { $avg: '$items.unitPrice' },
-            productName: { $first: '$items.productName' },
-            sku: { $first: '$items.sku' },
-            category: { $first: '$productInfo.category' },
-            stock: { $first: '$productInfo.stock' },
-          },
-        },
-        { $sort: { totalQty: -1 } },
-        { $limit: 100 },
-      ]),
+    // Sort by qty sold descending — no limit, all products shown
+    const mergedProducts = Array.from(productMap.values())
+      .sort((a, b) => b.totalQty - a.totalQty);
 
-      // Top grossing item
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        {
-          $group: {
-            _id: '$items.product',
-            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-            productName: { $first: '$items.productName' },
-          },
-        },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 1 },
-      ]),
+    const totalUnitsSold = mergedProducts.reduce((s, p) => s + p.totalQty, 0);
 
-      // Total units sold
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        { $group: { _id: null, total: { $sum: '$items.quantity' } } },
-      ]),
+    const topGrossing = [...mergedProducts].sort((a, b) => b.totalRevenue - a.totalRevenue)[0];
 
-      // Top category by revenue
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.product',
-            foreignField: '_id',
-            as: 'productDetails',
-          },
-        },
-        { $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true } },
-        {
-          $group: {
-            _id: '$productDetails.category',
-            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-          },
-        },
-        { $match: { _id: { $ne: null } } },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 1 },
-      ]),
-    ]);
+    // Top category by revenue
+    const catMap = new Map<string, number>();
+    for (const p of mergedProducts) {
+      const cat = p.category || 'Uncategorized';
+      catMap.set(cat, (catMap.get(cat) ?? 0) + p.totalRevenue);
+    }
+    let topCategory = 'N/A';
+    let topCategoryRevenue = 0;
+    for (const [cat, rev] of catMap.entries()) {
+      if (rev > topCategoryRevenue) { topCategory = cat; topCategoryRevenue = rev; }
+    }
 
     res.json({
       dateRange: dateLabel,
       summary: {
-        totalUnitsSold: totalUnitsSoldAgg[0]?.total || 0,
-        topGrossingItem: topGrossingItem[0]?.productName || 'N/A',
-        topGrossingAmount: topGrossingItem[0]?.totalRevenue || 0,
-        topCategory: topCategoryByRevenue[0]?._id || 'N/A',
-        topCategoryRevenue: topCategoryByRevenue[0]?.totalRevenue || 0,
+        totalUnitsSold,
+        topGrossingItem: topGrossing?.productName || 'N/A',
+        topGrossingAmount: topGrossing?.totalRevenue || 0,
+        topCategory,
+        topCategoryRevenue,
       },
-      products: salesData.map((item: any) => ({
+      products: mergedProducts.map((item) => ({
         id: item._id ? String(item._id) : null,
         sku: item.sku || 'N/A',
         name: item.productName || 'Unknown Product',
@@ -352,10 +424,10 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            grossSales: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
             transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
-            refundAmount:     { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
-            voidAmount:       { $sum: { $cond: [{ $eq: ['$status', 'voided'] }, '$amount', 0] } },
+            refundAmount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            voidAmount: { $sum: { $cond: [{ $eq: ['$status', 'voided'] }, '$amount', 0] } },
           },
         },
       ]),
@@ -366,8 +438,8 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: ecomAmountExpr },
-            discounts:        { $sum: { $ifNull: ['$discount', 0] } },
+            grossSales: { $sum: ecomAmountExpr },
+            discounts: { $sum: { $ifNull: ['$discount', 0] } },
             transactionCount: { $sum: 1 },
           },
         },
@@ -386,13 +458,13 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
       ]),
     ]);
 
-    const posS  = posSummaryAgg[0]  || { grossSales: 0, transactionCount: 0, refundAmount: 0, voidAmount: 0 };
+    const posS = posSummaryAgg[0] || { grossSales: 0, transactionCount: 0, refundAmount: 0, voidAmount: 0 };
     const ecomS = ecomSummaryAgg[0] || { grossSales: 0, discounts: 0, transactionCount: 0 };
 
-    const totalGross    = posS.grossSales + ecomS.grossSales;
+    const totalGross = posS.grossSales + ecomS.grossSales;
     const totalDiscounts = ecomS.discounts ?? 0;
-    const totalRefunds  = posS.refundAmount ?? 0;
-    const netSales      = totalGross - totalDiscounts - totalRefunds;
+    const totalRefunds = posS.refundAmount ?? 0;
+    const netSales = totalGross - totalDiscounts - totalRefunds;
 
     // Merge payment methods
     const payMap = new Map<string, { amount: number; count: number }>();
@@ -407,7 +479,7 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
     }));
 
     // Cash reconciliation
-    const cashSales   = payMap.get('Cash')?.amount ?? 0;
+    const cashSales = payMap.get('Cash')?.amount ?? 0;
     const openingFloat = 0;
 
     const generatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -417,18 +489,18 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
       generatedAt,
       shiftInfo: {
         storeName: 'OneShop Store',
-        storeId:   req.user!.storeId || '---',
-        register:  'Terminal 01',
-        cashier:   req.user!.email   || 'Unknown',
-        cashierId: req.user!.id      || '---',
-        openedAt:  '--:--',
+        storeId: req.user!.storeId || '---',
+        register: 'Terminal 01',
+        cashier: req.user!.email || 'Unknown',
+        cashierId: req.user!.id || '---',
+        openedAt: '--:--',
       },
       summary: {
-        grossSales:        totalGross,
-        discounts:         totalDiscounts,
-        refunds:           totalRefunds,
+        grossSales: totalGross,
+        discounts: totalDiscounts,
+        refunds: totalRefunds,
         netSales,
-        taxCollected:      0,
+        taxCollected: 0,
         totalTransactions: posS.transactionCount + ecomS.transactionCount,
       },
       paymentBreakdown: paymentMethods,
@@ -576,7 +648,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
 // ============= Employee Activity Report =============
 export const getEmployeeActivityReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { User, Transaction } = req.models!;
+    const { User, Transaction, Customer } = req.models!;
     const { preset, startDate, endDate, role } = req.query;
 
     const dateMatchFilter = buildDateFilter(
@@ -586,19 +658,89 @@ export const getEmployeeActivityReport = async (req: AuthRequest, res: Response)
     );
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Build the user match filter
+    // If preset is custom, show registered relevant customers
+    if (preset === 'custom') {
+      const customerMatch: any = {};
+      if (dateMatchFilter.createdAt) {
+        customerMatch.createdAt = dateMatchFilter.createdAt;
+      }
+
+      const customerStats = await Customer.aggregate([
+        { $match: customerMatch },
+        {
+          $lookup: {
+            from: 'transactions',
+            let: { custId: { $toString: '$_id' } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$customerId', '$$custId'] },
+                  status: 'success',
+                  ...dateMatchFilter,
+                },
+              },
+            ],
+            as: 'transactions',
+          },
+        },
+        {
+          $addFields: {
+            orderCount: { $size: '$transactions' },
+            totalSales: { $sum: '$transactions.amount' },
+            lastActive: { $max: '$transactions.createdAt' },
+          },
+        },
+        { $project: { transactions: 0, password: 0 } },
+        { $sort: { totalSales: -1, name: 1 } },
+      ]);
+
+      const activeCustomers = customerStats.filter(c => c.orderCount > 0).length;
+      let topCustName = 'N/A';
+      let topCustSales = 0;
+      let totalSpentAll = 0;
+
+      const customersList = customerStats.map((c) => {
+        totalSpentAll += c.totalSales;
+        if (c.totalSales > topCustSales) {
+          topCustSales = c.totalSales;
+          topCustName = c.name || 'Unknown';
+        }
+
+        return {
+          id: c._id,
+          name: c.name || 'Unknown',
+          email: c.email || 'N/A',
+          role: 'Customer',
+          orderCount: c.orderCount || 0,
+          totalSales: c.totalSales || 0,
+          lastActive: c.lastActive || null,
+        };
+      });
+
+      const avgSpent = activeCustomers > 0 ? Math.round(totalSpentAll / activeCustomers) : 0;
+
+      return res.json({
+        dateRange: dateLabel,
+        summary: {
+          activeEmployees: activeCustomers,
+          topPerformer: topCustName,
+          topPerformerSales: topCustSales,
+          avgSalesPerEmployee: avgSpent,
+        },
+        employees: customersList,
+        isCustomerReport: true,
+      });
+    }
+
+    // Default: Employee activity (Today, 7 Days, This Month)
+    // Always show all active employees — only filter transactions by date
     const userMatch: any = { isActive: true };
 
-    // Always exclude Manager unless specifically requested
     if (role && role !== 'all') {
       userMatch.role = role;
     } else {
-      userMatch.role = { $ne: 'Manager' };
-    }
-
-    // Filter employees by their registration date (createdAt)
-    if (preset !== 'all-time' && dateMatchFilter.createdAt) {
-      userMatch.createdAt = dateMatchFilter.createdAt;
+      // Show Cashier and Sales Representative roles
+      userMatch.role = { $in: ['Cashier', 'Sales Representative'] };
     }
 
     const employeeStats = await User.aggregate([

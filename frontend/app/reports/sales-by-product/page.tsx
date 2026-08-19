@@ -198,7 +198,7 @@ export default function SalesByProductPage() {
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
-<NativeSelectOption value="">All Categories</NativeSelectOption>
+              <NativeSelectOption value="">All Categories</NativeSelectOption>
               <NativeSelectOption value="Vegetables">Vegetables</NativeSelectOption>
               <NativeSelectOption value="Fruits">Fruits</NativeSelectOption>
               <NativeSelectOption value="Bakery">Bakery</NativeSelectOption>
@@ -233,7 +233,7 @@ export default function SalesByProductPage() {
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
                 {['SKU', 'Product Name', 'Category', 'Unit Price', 'Stock', 'Qty Sold', 'Net Sales'].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
                     {h}
                   </th>
                 ))}

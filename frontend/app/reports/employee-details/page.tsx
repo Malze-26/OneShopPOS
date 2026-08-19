@@ -30,6 +30,7 @@ interface ApiResponse {
   dateRange: string;
   summary: Summary;
   employees: EmployeeRow[];
+  isCustomerReport?: boolean;
 }
 
 export default function EmployeeDetailsPage() {
@@ -71,7 +72,9 @@ export default function EmployeeDetailsPage() {
   const exportToCsv = () => {
     if (!data?.employees || filtered.length === 0) return;
 
-    const headers = ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'];
+    const headers = data?.isCustomerReport
+      ? ['Customer Name', 'Email', 'Role', 'Orders', 'Total Spent', 'Last Purchase']
+      : ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'];
     
     const rows = filtered.map(emp => [
       `"${emp.name.replace(/"/g, '""')}"`,
@@ -104,14 +107,55 @@ export default function EmployeeDetailsPage() {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#101828]">Employee Details</h1>
+        <h1 className="text-xl font-bold text-[#101828]">
+          {data?.isCustomerReport ? 'Customer Details' : 'Employee Details'}
+        </h1>
         <p className="text-sm text-[#4a5565] mt-1">
-          {loading ? 'Loading...' : `Overview of employee performance — ${data?.dateRange ?? ''}`}
+          {loading ? 'Loading...' : `${data?.isCustomerReport ? 'Overview of registered customers' : 'Overview of employee performance'} — ${data?.dateRange ?? ''}`}
         </p>
       </div>
 
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <User className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Active Employees</p>
+          </div>
+          <h3 className="text-2xl font-bold text-[#101828]">{s?.activeEmployees ?? 0}</h3>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <Star className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Top Performer</p>
+          </div>
+          <h3 className="text-xl font-bold text-[#101828] truncate">{s?.topPerformer ?? '—'}</h3>
+          <p className="text-xs text-[#4a5565] mt-1">{fmt(s?.topPerformerSales ?? 0)}</p>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <Activity className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Avg Sales / Employee</p>
+          </div>
+          <h3 className="text-2xl font-bold text-[#101828]">{fmt(s?.avgSalesPerEmployee ?? 0)}</h3>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <Activity className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Total Employees Listed</p>
+          </div>
+          <h3 className="text-2xl font-bold text-[#101828]">{(data?.employees ?? []).length}</h3>
+        </div>
+      </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-[#e4e7ec] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-[#e4e7ec] flex flex-wrap gap-3 items-center justify-between">
           <div className="flex flex-wrap gap-3 items-center">
@@ -126,15 +170,17 @@ export default function EmployeeDetailsPage() {
               />
             </div>
 
-            <NativeSelect
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-44"
-            >
-              <NativeSelectOption value="all">All Roles</NativeSelectOption>
-              <NativeSelectOption value="Cashier">Cashier</NativeSelectOption>
-              <NativeSelectOption value="Sales Representative">Sales Representative</NativeSelectOption>
-            </NativeSelect>
+            {!data?.isCustomerReport && (
+              <NativeSelect
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-44"
+              >
+                <NativeSelectOption value="all">All Roles</NativeSelectOption>
+                <NativeSelectOption value="Cashier">Cashier</NativeSelectOption>
+                <NativeSelectOption value="Sales Representative">Sales Representative</NativeSelectOption>
+              </NativeSelect>
+            )}
           </div>
         </div>
 
@@ -142,8 +188,11 @@ export default function EmployeeDetailsPage() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active'].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
+                {(data?.isCustomerReport
+                  ? ['Customer Name', 'Email', 'Role', 'Orders', 'Total Spent', 'Last Purchase']
+                  : ['Employee Name', 'Email', 'Role', 'Orders Processed', 'Total Sales', 'Last Active']
+                ).map((h) => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
@@ -174,7 +223,7 @@ export default function EmployeeDetailsPage() {
 
         <div className="px-5 py-4 border-t border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565]">
-            Showing {filtered.length} of {(data?.employees ?? []).length} employees
+            Showing {filtered.length} of {(data?.employees ?? []).length} {data?.isCustomerReport ? 'customers' : 'employees'}
           </p>
         </div>
       </div>
