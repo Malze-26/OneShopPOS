@@ -313,6 +313,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
         topCategoryRevenue: topCategoryByRevenue[0]?.totalRevenue || 0,
       },
       products: salesData.map((item: any) => ({
+        id: item._id ? String(item._id) : null,
         sku: item.sku || 'N/A',
         name: item.productName || 'Unknown Product',
         category: item.category || 'Uncategorized',

@@ -99,15 +99,30 @@ export async function updateCategory(req: AuthRequest, res: Response, next: Next
 // ── DELETE /api/categories/:id ─────────────────────────────────────────────
 export async function deleteCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Category } = req.models!;
-    const category = await Category.findByIdAndDelete(req.params.id);
+    const { Category, Product, StockHistory } = req.models!;
+    const category = await Category.findById(req.params.id);
 
     if (!category) {
       res.status(404).json({ message: 'Category not found' });
       return;
     }
 
-    res.json({ message: 'Category deleted successfully' });
+    // Cascade: products cannot outlive their category, or they would become
+    // orphans that no longer appear under any category on the categories page.
+    const doomed = await Product.find({ category: category.name }).select('_id').lean();
+    const productIds = doomed.map((p) => p._id);
+
+    if (productIds.length > 0) {
+      await StockHistory.deleteMany({ product: { $in: productIds } });
+      await Product.deleteMany({ _id: { $in: productIds } });
+    }
+
+    await Category.findByIdAndDelete(category._id);
+
+    res.json({
+      message: 'Category deleted successfully',
+      deletedProducts: productIds.length,
+    });
   } catch (err) {
     next(err);
   }

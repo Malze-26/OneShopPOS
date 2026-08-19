@@ -17,6 +17,7 @@ interface SummaryData {
 }
 
 interface ProductRow {
+  id?: string | null;
   sku: string;
   name: string;
   category: string;
@@ -244,8 +245,8 @@ export default function SalesByProductPage() {
                   <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#4a5565]">Loading...</td>
                 </tr>
               ) : filtered.length > 0 ? (
-                filtered.map((product) => (
-                  <tr key={product.sku} className="hover:bg-[#f9fafb] transition-colors">
+                filtered.map((product, index) => (
+                  <tr key={product.id ?? `${product.sku}-${index}`} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-5 py-4 text-sm font-medium" style={{ color: 'var(--color-primary)' }}>{product.sku}</td>
                     <td className="px-5 py-4 text-sm text-[#101828]">{product.name}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{product.category}</td>

@@ -18,15 +18,15 @@ const CURRENCIES = [
 ];
 
 const COLOR_PRESETS = [
-  { label: 'Blue',   value: '#155dfc' },
-  { label: 'Indigo', value: '#4f46e5' },
-  { label: 'Purple', value: '#7c3aed' },
-  { label: 'Pink',   value: '#db2777' },
-  { label: 'Red',    value: '#dc2626' },
-  { label: 'Orange', value: '#ea580c' },
-  { label: 'Green',  value: '#059669' },
-  { label: 'Teal',   value: '#0891b2' },
-  { label: 'Dark',   value: '#1e293b' },
+  { label: 'Blue',   value: '#0052FF' },
+  { label: 'Indigo', value: '#0F172A' },
+  { label: 'Purple', value: '#7C3AED' },
+  { label: 'Pink',   value: '#059669' },
+  { label: 'Red',    value: '#DC2626' },
+  { label: 'Orange', value: '#D97706' },
+  { label: 'Green',  value: '#06B6D4' },
+  { label: 'Teal',   value: '#E11D48' },
+  { label: 'Dark',   value: '#475569' },
 ];
 
 type Tab = 'store' | 'appearance' | 'account';

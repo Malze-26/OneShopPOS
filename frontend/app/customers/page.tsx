@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Search, Eye, X, Mail, Phone, MapPin,
   ShoppingBag, Store, Globe, Clock, CheckCircle,
@@ -230,15 +231,21 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function CustomersPage() {
+function CustomersPageInner() {
   const { currency } = useStore();
+  const searchParams = useSearchParams();
+  // Seeded by the header's global search, which links here as /customers?search=…
+  const urlSearch = searchParams.get('search') ?? '';
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stats, setStats]         = useState<CustomerStats | null>(null);
-  const [search, setSearch]       = useState('');
+  const [search, setSearch]       = useState(urlSearch);
   const [sort, setSort]           = useState<SortKey>('recent');
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [selected, setSelected]   = useState<Customer | null>(null);
+
+  // Re-apply when the header search navigates here while this page is already mounted.
+  useEffect(() => { setSearch(urlSearch); }, [urlSearch]);
 
   useEffect(() => {
     async function load() {
@@ -393,5 +400,13 @@ export default function CustomersPage() {
         <CustomerPanel customer={selected} onClose={() => setSelected(null)} />
       )}
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-[#4a5565]">Loading customers...</div>}>
+      <CustomersPageInner />
+    </Suspense>
   );
 }

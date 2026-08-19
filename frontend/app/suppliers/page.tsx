@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Search, X, ChevronLeft, ChevronRight, Building2, CheckCircle, XCircle, Tag } from 'lucide-react';
 import api from '@/app/lib/api';
 
@@ -37,11 +38,14 @@ const emptyForm = {
   status: 'active' as 'active' | 'inactive',
 };
 
-export default function SuppliersPage() {
+function SuppliersPageInner() {
+  const searchParams = useSearchParams();
+  // Seeded by the header's global search, which links here as /suppliers?search=…
+  const urlSearch = searchParams.get('search') ?? '';
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [stats, setStats] = useState<SupplierStats>({ total: 0, active: 0, inactive: 0, categoriesSupplied: 0 });
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch);
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
 
@@ -68,6 +72,9 @@ export default function SuppliersPage() {
       .catch(() => setSuppliers([]))
       .finally(() => setLoading(false));
   }, [search, statusFilter]);
+
+  // Re-apply when the header search navigates here while this page is already mounted.
+  useEffect(() => { setSearch(urlSearch); }, [urlSearch]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchSuppliers(); setPage(1); }, [fetchSuppliers]);
@@ -480,5 +487,13 @@ function Section({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-[#4a5565] mb-0.5">{label}</p>
       <p className="text-sm text-[#101828]">{value}</p>
     </div>
+  );
+}
+
+export default function SuppliersPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-[#4a5565]">Loading suppliers...</div>}>
+      <SuppliersPageInner />
+    </Suspense>
   );
 }
