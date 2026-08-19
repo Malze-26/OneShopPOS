@@ -286,7 +286,7 @@ export default function ReportsPage() {
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
                 {['Date', 'POS (In-store)', 'E-Commerce', 'Gross Sales', 'Discounts', 'Net Sales'].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
                     {h}
                   </th>
                 ))}

@@ -13,7 +13,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     const dateFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    const includePOS  = !sourceFilter || sourceFilter === 'physical';
+    const includePOS = !sourceFilter || sourceFilter === 'physical';
     const includeEcom = !sourceFilter || sourceFilter === 'online';
 
     // E-com orders: identified by orderStatus field + paymentStatus='paid'
@@ -22,9 +22,9 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 
     const [
       posSummaryAgg, ecomSummaryAgg,
-      posHourlyAgg,  ecomHourlyAgg,
+      posHourlyAgg, ecomHourlyAgg,
       posPaymentAgg, ecomPaymentAgg,
-      posDailyAgg,   ecomDailyAgg,
+      posDailyAgg, ecomDailyAgg,
     ] = await Promise.all([
       // POS summary (Transaction collection)
       includePOS ? Transaction.aggregate([
@@ -32,11 +32,11 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
-            refundTotal:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
-            refundCount:      { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
+            grossSales: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            refundTotal: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            refundCount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, 1, 0] } },
             transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
-            discounts:        { $sum: { $cond: [{ $eq: ['$status', 'success'] }, { $ifNull: ['$discount', 0] }, 0] } },
+            discounts: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, { $ifNull: ['$discount', 0] }, 0] } },
           },
         },
       ]) : Promise.resolve([]),
@@ -47,7 +47,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: ecomAmountExpr },
+            grossSales: { $sum: ecomAmountExpr },
             transactionCount: { $sum: 1 },
           },
         },
@@ -84,10 +84,10 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         { $match: { ...dateFilter, status: 'success' } },
         {
           $group: {
-            _id:       { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            posSales:  { $sum: '$amount' },
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            posSales: { $sum: '$amount' },
             discounts: { $sum: { $ifNull: ['$discount', 0] } },
-            count:     { $sum: 1 },
+            count: { $sum: 1 },
           },
         },
         { $sort: { _id: 1 } },
@@ -98,10 +98,10 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         { $match: ecomMatch },
         {
           $group: {
-            _id:         { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
             onlineSales: { $sum: ecomAmountExpr },
-            discounts:   { $sum: { $ifNull: ['$discount', 0] } },
-            count:       { $sum: 1 },
+            discounts: { $sum: { $ifNull: ['$discount', 0] } },
+            count: { $sum: 1 },
           },
         },
         { $sort: { _id: 1 } },
@@ -109,16 +109,16 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     ]);
 
     // Merge summaries
-    const posS  = posSummaryAgg[0]  ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0, discounts: 0 };
+    const posS = posSummaryAgg[0] ?? { grossSales: 0, refundTotal: 0, refundCount: 0, transactionCount: 0, discounts: 0 };
     const ecomS = ecomSummaryAgg[0] ?? { grossSales: 0, transactionCount: 0, discounts: 0 };
 
-    const totalGross     = posS.grossSales + ecomS.grossSales;
-    const totalRefund    = posS.refundTotal ?? 0;
+    const totalGross = posS.grossSales + ecomS.grossSales;
+    const totalRefund = posS.refundTotal ?? 0;
     const totalRefundCnt = posS.refundCount ?? 0;
-    const totalTxnCount  = posS.transactionCount + ecomS.transactionCount;
+    const totalTxnCount = posS.transactionCount + ecomS.transactionCount;
     const totalDiscounts = (posS.discounts ?? 0) + (ecomS.discounts ?? 0);
-    const netSales       = totalGross - totalRefund - totalDiscounts;
-    const avgOrder       = totalTxnCount > 0 ? Math.round(totalGross / totalTxnCount) : 0;
+    const netSales = totalGross - totalRefund - totalDiscounts;
+    const avgOrder = totalTxnCount > 0 ? Math.round(totalGross / totalTxnCount) : 0;
 
     // Merge hourly — fill hours 0–23
     const hourMap = new Map<number, number>();
@@ -161,13 +161,13 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         const grossSales = d.posSales + d.onlineSales;
         return {
           date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          posSales:    d.posSales,
+          posSales: d.posSales,
           onlineSales: d.onlineSales,
-          discounts:   d.discounts,
-          tax:         0,
+          discounts: d.discounts,
+          tax: 0,
           grossSales,
-          netSales:    grossSales - d.discounts,
-          count:       d.count,
+          netSales: grossSales - d.discounts,
+          count: d.count,
         };
       });
 
@@ -180,13 +180,13 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     res.json({
       dateRange: dateLabel,
       summary: {
-        grossSales:       totalGross,
-        discounts:        totalDiscounts,
-        refundsCount:     totalRefundCnt,
-        refundTotal:      totalRefund,
+        grossSales: totalGross,
+        discounts: totalDiscounts,
+        refundsCount: totalRefundCnt,
+        refundTotal: totalRefund,
         netSales,
         transactionCount: totalTxnCount,
-        avgOrderValue:    avgOrder,
+        avgOrderValue: avgOrder,
       },
       hourlySales,
       paymentMethods,
@@ -210,7 +210,7 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
     const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
-    const includePOS  = !sourceFilter || sourceFilter === 'physical';
+    const includePOS = !sourceFilter || sourceFilter === 'physical';
     const includeEcom = !sourceFilter || sourceFilter === 'online';
 
     // POS: Transaction collection, status=success, items[]
@@ -229,13 +229,13 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
       {
         $group: {
           _id: '$items.product',
-          totalQty:     { $sum: '$items.quantity' },
+          totalQty: { $sum: '$items.quantity' },
           totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
           avgUnitPrice: { $avg: '$items.unitPrice' },
-          productName:  { $first: '$items.productName' },
-          sku:          { $first: '$items.sku' },
-          category:     { $first: '$productInfo.category' },
-          stock:        { $first: '$productInfo.stock' },
+          productName: { $first: '$items.productName' },
+          sku: { $first: '$items.sku' },
+          category: { $first: '$productInfo.category' },
+          stock: { $first: '$productInfo.stock' },
         },
       },
     ];
@@ -318,13 +318,13 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
       {
         $group: {
           _id: '$allItems.resolvedProductId',
-          totalQty:     { $sum: '$allItems.resolvedQty' },
+          totalQty: { $sum: '$allItems.resolvedQty' },
           totalRevenue: { $sum: { $multiply: ['$allItems.resolvedQty', '$allItems.resolvedPrice'] } },
           avgUnitPrice: { $avg: '$allItems.resolvedPrice' },
-          productName:  { $first: '$allItems.resolvedName' },
-          sku:          { $first: '$allItems.resolvedSku' },
-          category:     { $first: '$productInfo.category' },
-          stock:        { $first: '$productInfo.stock' },
+          productName: { $first: '$allItems.resolvedName' },
+          sku: { $first: '$allItems.resolvedSku' },
+          category: { $first: '$productInfo.category' },
+          stock: { $first: '$productInfo.stock' },
         },
       },
     ];
@@ -333,8 +333,8 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
 
 
     const [posData, ecomData] = await Promise.all([
-      includePOS  ? Transaction.aggregate(posProductPipeline) : Promise.resolve([]),
-      includeEcom ? Order.aggregate(ecomProductPipeline)      : Promise.resolve([]),
+      includePOS ? Transaction.aggregate(posProductPipeline) : Promise.resolve([]),
+      includeEcom ? Order.aggregate(ecomProductPipeline) : Promise.resolve([]),
     ]);
 
     // Merge POS + E-com by product _id
@@ -347,9 +347,9 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
       const key = item._id?.toString() ?? item.productName ?? 'unknown';
       const prev = productMap.get(key);
       if (prev) {
-        prev.totalQty     += item.totalQty;
+        prev.totalQty += item.totalQty;
         prev.totalRevenue += item.totalRevenue;
-        prev.avgUnitPrice  = item.avgUnitPrice;
+        prev.avgUnitPrice = item.avgUnitPrice;
       } else {
         productMap.set(key, { ...item });
       }
@@ -379,19 +379,19 @@ export const getSalesByProductReport = async (req: AuthRequest, res: Response) =
       dateRange: dateLabel,
       summary: {
         totalUnitsSold,
-        topGrossingItem:   topGrossing?.productName  || 'N/A',
+        topGrossingItem: topGrossing?.productName || 'N/A',
         topGrossingAmount: topGrossing?.totalRevenue || 0,
         topCategory,
         topCategoryRevenue,
       },
       products: mergedProducts.map((item) => ({
-        sku:       item.sku       || 'N/A',
-        name:      item.productName || 'Unknown Product',
-        category:  item.category  || 'Uncategorized',
-        qty:       item.totalQty  || 0,
-        sales:     item.totalRevenue || 0,
+        sku: item.sku || 'N/A',
+        name: item.productName || 'Unknown Product',
+        category: item.category || 'Uncategorized',
+        qty: item.totalQty || 0,
+        sales: item.totalRevenue || 0,
         unitPrice: item.avgUnitPrice || 0,
-        stock:     item.stock     || 0,
+        stock: item.stock || 0,
       })),
     });
   } catch (error) {
@@ -423,10 +423,10 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
+            grossSales: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$amount', 0] } },
             transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
-            refundAmount:     { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
-            voidAmount:       { $sum: { $cond: [{ $eq: ['$status', 'voided'] }, '$amount', 0] } },
+            refundAmount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+            voidAmount: { $sum: { $cond: [{ $eq: ['$status', 'voided'] }, '$amount', 0] } },
           },
         },
       ]),
@@ -437,8 +437,8 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
         {
           $group: {
             _id: null,
-            grossSales:       { $sum: ecomAmountExpr },
-            discounts:        { $sum: { $ifNull: ['$discount', 0] } },
+            grossSales: { $sum: ecomAmountExpr },
+            discounts: { $sum: { $ifNull: ['$discount', 0] } },
             transactionCount: { $sum: 1 },
           },
         },
@@ -457,13 +457,13 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
       ]),
     ]);
 
-    const posS  = posSummaryAgg[0]  || { grossSales: 0, transactionCount: 0, refundAmount: 0, voidAmount: 0 };
+    const posS = posSummaryAgg[0] || { grossSales: 0, transactionCount: 0, refundAmount: 0, voidAmount: 0 };
     const ecomS = ecomSummaryAgg[0] || { grossSales: 0, discounts: 0, transactionCount: 0 };
 
-    const totalGross    = posS.grossSales + ecomS.grossSales;
+    const totalGross = posS.grossSales + ecomS.grossSales;
     const totalDiscounts = ecomS.discounts ?? 0;
-    const totalRefunds  = posS.refundAmount ?? 0;
-    const netSales      = totalGross - totalDiscounts - totalRefunds;
+    const totalRefunds = posS.refundAmount ?? 0;
+    const netSales = totalGross - totalDiscounts - totalRefunds;
 
     // Merge payment methods
     const payMap = new Map<string, { amount: number; count: number }>();
@@ -478,7 +478,7 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
     }));
 
     // Cash reconciliation
-    const cashSales   = payMap.get('Cash')?.amount ?? 0;
+    const cashSales = payMap.get('Cash')?.amount ?? 0;
     const openingFloat = 0;
 
     const generatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -488,18 +488,18 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
       generatedAt,
       shiftInfo: {
         storeName: 'OneShop Store',
-        storeId:   req.user!.storeId || '---',
-        register:  'Terminal 01',
-        cashier:   req.user!.email   || 'Unknown',
-        cashierId: req.user!.id      || '---',
-        openedAt:  '--:--',
+        storeId: req.user!.storeId || '---',
+        register: 'Terminal 01',
+        cashier: req.user!.email || 'Unknown',
+        cashierId: req.user!.id || '---',
+        openedAt: '--:--',
       },
       summary: {
-        grossSales:        totalGross,
-        discounts:         totalDiscounts,
-        refunds:           totalRefunds,
+        grossSales: totalGross,
+        discounts: totalDiscounts,
+        refunds: totalRefunds,
         netSales,
-        taxCollected:      0,
+        taxCollected: 0,
         totalTransactions: posS.transactionCount + ecomS.transactionCount,
       },
       paymentBreakdown: paymentMethods,
