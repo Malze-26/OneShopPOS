@@ -115,8 +115,47 @@ export default function EmployeeDetailsPage() {
         </p>
       </div>
 
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <User className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Active Employees</p>
+          </div>
+          <h3 className="text-2xl font-bold text-[#101828]">{s?.activeEmployees ?? 0}</h3>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <Star className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Top Performer</p>
+          </div>
+          <h3 className="text-xl font-bold text-[#101828] truncate">{s?.topPerformer ?? '—'}</h3>
+          <p className="text-xs text-[#4a5565] mt-1">{fmt(s?.topPerformerSales ?? 0)}</p>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <Activity className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Avg Sales / Employee</p>
+          </div>
+          <h3 className="text-2xl font-bold text-[#101828]">{fmt(s?.avgSalesPerEmployee ?? 0)}</h3>
+        </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary-light)' }}>
+              <Activity className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <p className="text-sm text-[#4a5565]">Total Employees Listed</p>
+          </div>
+          <h3 className="text-2xl font-bold text-[#101828]">{(data?.employees ?? []).length}</h3>
+        </div>
+      </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-[#e4e7ec] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-[#e4e7ec] flex flex-wrap gap-3 items-center justify-between">
           <div className="flex flex-wrap gap-3 items-center">

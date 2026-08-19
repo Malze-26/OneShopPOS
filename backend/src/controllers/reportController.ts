@@ -202,124 +202,196 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
 // ============= Sales by Product Report =============
 export const getSalesByProductReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { Order, Product } = req.models!;
+    const { Order, Transaction } = req.models!;
     const { preset, startDate, endDate, channel } = req.query;
 
     const { buildDateFilter, getDateRangeLabel } = await import('../utils/dateRange');
-    const dateMatchFilter = buildDateFilter(
-      preset as string,
-      startDate as string,
-      endDate as string
-    );
+    const dateMatchFilter = buildDateFilter(preset as string, startDate as string, endDate as string);
     const dateLabel = getDateRangeLabel(preset as string, startDate as string, endDate as string);
 
-    // Map frontend channel names to backend OrderSource
     const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
+    const includePOS  = !sourceFilter || sourceFilter === 'physical';
+    const includeEcom = !sourceFilter || sourceFilter === 'online';
 
-    // Build the finalized sales match
-    const finalizedMatch = {
-      ...dateMatchFilter,
-      status: 'success',
-      paymentStatus: { $in: ['paid', 'success'] }
-    };
-    if (sourceFilter) {
-      (finalizedMatch as any).source = sourceFilter;
+    // POS: Transaction collection, status=success, items[]
+    const posProductPipeline: any[] = [
+      { $match: { ...dateMatchFilter, status: 'success' } },
+      { $unwind: '$items' },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'items.product',
+          foreignField: '_id',
+          as: 'productInfo',
+        },
+      },
+      { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQty:     { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
+          avgUnitPrice: { $avg: '$items.unitPrice' },
+          productName:  { $first: '$items.productName' },
+          sku:          { $first: '$items.sku' },
+          category:     { $first: '$productInfo.category' },
+          stock:        { $first: '$productInfo.stock' },
+        },
+      },
+    ];
+
+    // E-com: Order collection — identified by orderStatus field (written by the e-com website)
+    // Items may be in 'orderItems' OR 'items'; price in 'price' or 'unitPrice'; name in 'name' or 'productName'
+    const ecomProductPipeline: any[] = [
+      {
+        $match: {
+          ...dateMatchFilter,
+          orderStatus: { $exists: true },
+          paymentStatus: { $in: ['paid', 'success'] },
+        },
+      },
+      // Normalise: merge orderItems/items into a single 'allItems' array
+      {
+        $addFields: {
+          allItems: {
+            $ifNull: [
+              { $cond: [{ $isArray: '$orderItems' }, '$orderItems', null] },
+              { $ifNull: ['$items', []] },
+            ],
+          },
+        },
+      },
+      { $unwind: '$allItems' },
+      // Resolve product reference — could be in allItems.product or allItems._id
+      {
+        $addFields: {
+          'allItems.resolvedProductId': {
+            $ifNull: ['$allItems.product', '$allItems._id'],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'allItems.resolvedProductId',
+          foreignField: '_id',
+          as: 'productInfo',
+        },
+      },
+      { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+      // Resolve name, sku, price with fallbacks
+      {
+        $addFields: {
+          'allItems.resolvedName': {
+            $let: {
+              vars: {
+                n: { $ifNull: ['$allItems.name', { $ifNull: ['$allItems.productName', ''] }] },
+              },
+              in: {
+                $cond: [{ $eq: ['$$n', ''] }, { $ifNull: ['$productInfo.name', 'Unknown Product'] }, '$$n'],
+              },
+            },
+          },
+          'allItems.resolvedSku': {
+            $let: {
+              vars: { s: { $ifNull: ['$allItems.sku', ''] } },
+              in: {
+                $cond: [{ $eq: ['$$s', ''] }, { $ifNull: ['$productInfo.sku', 'N/A'] }, '$$s'],
+              },
+            },
+          },
+          'allItems.resolvedPrice': {
+            $let: {
+              vars: {
+                p: { $ifNull: ['$allItems.price', { $ifNull: ['$allItems.unitPrice', 0] }] },
+              },
+              in: {
+                $cond: [{ $eq: ['$$p', 0] }, { $ifNull: ['$productInfo.sellingPrice', 0] }, '$$p'],
+              },
+            },
+          },
+          'allItems.resolvedQty': {
+            $ifNull: ['$allItems.qty', { $ifNull: ['$allItems.quantity', 1] }],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$allItems.resolvedProductId',
+          totalQty:     { $sum: '$allItems.resolvedQty' },
+          totalRevenue: { $sum: { $multiply: ['$allItems.resolvedQty', '$allItems.resolvedPrice'] } },
+          avgUnitPrice: { $avg: '$allItems.resolvedPrice' },
+          productName:  { $first: '$allItems.resolvedName' },
+          sku:          { $first: '$allItems.resolvedSku' },
+          category:     { $first: '$productInfo.category' },
+          stock:        { $first: '$productInfo.stock' },
+        },
+      },
+    ];
+
+
+
+
+    const [posData, ecomData] = await Promise.all([
+      includePOS  ? Transaction.aggregate(posProductPipeline) : Promise.resolve([]),
+      includeEcom ? Order.aggregate(ecomProductPipeline)      : Promise.resolve([]),
+    ]);
+
+    // Merge POS + E-com by product _id
+    const productMap = new Map<string, {
+      _id: any; totalQty: number; totalRevenue: number; avgUnitPrice: number;
+      productName: string; sku: string; category: string; stock: number;
+    }>();
+
+    for (const item of [...posData, ...ecomData]) {
+      const key = item._id?.toString() ?? item.productName ?? 'unknown';
+      const prev = productMap.get(key);
+      if (prev) {
+        prev.totalQty     += item.totalQty;
+        prev.totalRevenue += item.totalRevenue;
+        prev.avgUnitPrice  = item.avgUnitPrice;
+      } else {
+        productMap.set(key, { ...item });
+      }
     }
 
-    const [salesData, topGrossingItem, totalUnitsSoldAgg, topCategoryByRevenue] = await Promise.all([
-      // Product-level sales data
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.product',
-            foreignField: '_id',
-            as: 'productInfo',
-          },
-        },
-        { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
-        {
-          $group: {
-            _id: '$items.product',
-            totalQty: { $sum: '$items.quantity' },
-            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-            avgUnitPrice: { $avg: '$items.unitPrice' },
-            productName: { $first: '$items.productName' },
-            sku: { $first: '$items.sku' },
-            category: { $first: '$productInfo.category' },
-            stock: { $first: '$productInfo.stock' },
-          },
-        },
-        { $sort: { totalQty: -1 } },
-        { $limit: 100 },
-      ]),
+    // Sort by qty sold descending — no limit, all products shown
+    const mergedProducts = Array.from(productMap.values())
+      .sort((a, b) => b.totalQty - a.totalQty);
 
-      // Top grossing item
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        {
-          $group: {
-            _id: '$items.product',
-            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-            productName: { $first: '$items.productName' },
-          },
-        },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 1 },
-      ]),
+    const totalUnitsSold = mergedProducts.reduce((s, p) => s + p.totalQty, 0);
 
-      // Total units sold
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        { $group: { _id: null, total: { $sum: '$items.quantity' } } },
-      ]),
+    const topGrossing = [...mergedProducts].sort((a, b) => b.totalRevenue - a.totalRevenue)[0];
 
-      // Top category by revenue
-      Order.aggregate([
-        { $match: finalizedMatch },
-        { $unwind: '$items' },
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'items.product',
-            foreignField: '_id',
-            as: 'productDetails',
-          },
-        },
-        { $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true } },
-        {
-          $group: {
-            _id: '$productDetails.category',
-            totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
-          },
-        },
-        { $match: { _id: { $ne: null } } },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 1 },
-      ]),
-    ]);
+    // Top category by revenue
+    const catMap = new Map<string, number>();
+    for (const p of mergedProducts) {
+      const cat = p.category || 'Uncategorized';
+      catMap.set(cat, (catMap.get(cat) ?? 0) + p.totalRevenue);
+    }
+    let topCategory = 'N/A';
+    let topCategoryRevenue = 0;
+    for (const [cat, rev] of catMap.entries()) {
+      if (rev > topCategoryRevenue) { topCategory = cat; topCategoryRevenue = rev; }
+    }
 
     res.json({
       dateRange: dateLabel,
       summary: {
-        totalUnitsSold: totalUnitsSoldAgg[0]?.total || 0,
-        topGrossingItem: topGrossingItem[0]?.productName || 'N/A',
-        topGrossingAmount: topGrossingItem[0]?.totalRevenue || 0,
-        topCategory: topCategoryByRevenue[0]?._id || 'N/A',
-        topCategoryRevenue: topCategoryByRevenue[0]?.totalRevenue || 0,
+        totalUnitsSold,
+        topGrossingItem:   topGrossing?.productName  || 'N/A',
+        topGrossingAmount: topGrossing?.totalRevenue || 0,
+        topCategory,
+        topCategoryRevenue,
       },
-      products: salesData.map((item: any) => ({
-        sku: item.sku || 'N/A',
-        name: item.productName || 'Unknown Product',
-        category: item.category || 'Uncategorized',
-        qty: item.totalQty || 0,
-        sales: item.totalRevenue || 0,
+      products: mergedProducts.map((item) => ({
+        sku:       item.sku       || 'N/A',
+        name:      item.productName || 'Unknown Product',
+        category:  item.category  || 'Uncategorized',
+        qty:       item.totalQty  || 0,
+        sales:     item.totalRevenue || 0,
         unitPrice: item.avgUnitPrice || 0,
-        stock: item.stock || 0,
+        stock:     item.stock     || 0,
       })),
     });
   } catch (error) {
@@ -660,17 +732,14 @@ export const getEmployeeActivityReport = async (req: AuthRequest, res: Response)
     }
 
     // Default: Employee activity (Today, 7 Days, This Month)
+    // Always show all active employees — only filter transactions by date
     const userMatch: any = { isActive: true };
 
     if (role && role !== 'all') {
       userMatch.role = role;
     } else {
-      // User requested only Cashier and Sales Representative for Today/7D/Month
+      // Show Cashier and Sales Representative roles
       userMatch.role = { $in: ['Cashier', 'Sales Representative'] };
-    }
-
-    if (preset !== 'all-time' && dateMatchFilter.createdAt) {
-      userMatch.createdAt = dateMatchFilter.createdAt;
     }
 
     const employeeStats = await User.aggregate([

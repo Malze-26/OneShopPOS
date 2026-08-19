@@ -26,7 +26,6 @@ interface DailyRow {
   posSales: number;
   onlineSales: number;
   discounts: number;
-  tax: number;
   grossSales: number;
   netSales: number;
   count: number;
@@ -76,7 +75,6 @@ export default function ReportsPage() {
     { title: 'Gross Sales', value: fmt(summary?.grossSales ?? 0) },
     { title: 'Discounts', value: fmt(summary?.discounts ?? 0) },
     { title: 'Net Sales', value: fmt(summary?.netSales ?? 0) },
-    { title: 'Total Tax', value: fmt(0) },
     { title: 'Transactions', value: String(summary?.transactionCount ?? 0) },
     { title: 'Avg. Order Value', value: fmt(summary?.avgOrderValue ?? 0) },
   ];
@@ -99,10 +97,9 @@ export default function ReportsPage() {
       onlineSales: acc.onlineSales + row.onlineSales,
       grossSales: acc.grossSales + row.grossSales,
       discounts: acc.discounts + row.discounts,
-      tax: acc.tax + row.tax,
       netSales: acc.netSales + row.netSales,
     }),
-    { posSales: 0, onlineSales: 0, grossSales: 0, discounts: 0, tax: 0, netSales: 0 }
+    { posSales: 0, onlineSales: 0, grossSales: 0, discounts: 0, netSales: 0 }
   );
 
   const handleExportPDF = () => {
