@@ -45,13 +45,15 @@ export default $config({
       runtime: "nodejs22.x",
       memory: "512 MB",
       timeout: "30 seconds",
-      url: true,
+      url: { cors: false },
       environment: {
         NODE_ENV: "production",
         MONGODB_URI: env("MONGODB_URI"),
         JWT_SECRET: env("JWT_SECRET"),
         JWT_EXPIRES_IN: "7d",
         TENANT_FACTORY_DB: "oneshop-tenant-factory",
+        // Tenants are subdomains, so CORS is validated against this suffix.
+        PLATFORM_DOMAIN: "allinoneshop.store",
         // CloudFront rewrites Host; the tenant subdomain arrives here.
         TRUST_PROXY_HOST: "true",
         S3_BUCKET: env("S3_BUCKET"),
@@ -88,7 +90,7 @@ export default $config({
       runtime: "nodejs22.x",
       memory: "512 MB",
       timeout: "30 seconds",
-      url: true,
+      url: { cors: false },
       environment: {
         NODE_ENV: "production",
         MONGODB_URI: env("MONGODB_URI", FACTORY_ENV),

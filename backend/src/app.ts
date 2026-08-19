@@ -23,15 +23,37 @@ import { tenantMiddleware } from './middleware/tenantMiddleware';
 
 const app = express();
 
+/**
+ * Every tenant lives on its own subdomain, so the set of valid origins is not
+ * a fixed list — it grows each time a shop is provisioned. Accept the platform
+ * domain and anything below it (keels.pos.allinoneshop.store included), plus
+ * localhost for development.
+ *
+ * This is not the tenant boundary: tenantMiddleware still resolves the tenant
+ * from the hostname and 404s unknown shops. This only decides whose browser
+ * may call the API.
+ */
+function isAllowedOrigin(origin: string): boolean {
+  let hostname: string;
+  try {
+    hostname = new URL(origin).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+
+  const platform = (process.env.PLATFORM_DOMAIN ?? '').toLowerCase();
+  if (!platform) return false;
+
+  return hostname === platform || hostname.endsWith(`.${platform}`);
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowed = new Set([
-        'http://localhost:3000',
-        'http://localhost:3001',
-        ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-      ]);
-      if (!origin || allowed.has(origin)) {
+      // No Origin header: same-origin navigations, curl, server-to-server.
+      if (!origin || isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin '${origin}' not allowed`));
