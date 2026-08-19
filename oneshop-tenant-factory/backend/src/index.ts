@@ -6,6 +6,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth';
 import tenantRoutes from './routes/tenants';
+import notificationRoutes from './routes/notifications';
 
 const app = express();
 const PORT = process.env.PORT ?? 6000;
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'OK', message: 'Tenant Factory running', timestamp: new Date().toISOString() });

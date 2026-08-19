@@ -33,8 +33,10 @@ export interface PaymentEntry {
 /** A row in the top-selling products table. */
 export interface TopProduct {
   rank: number;
+  id: string;
   name: string;
-  image: string;
+  /** Server-relative path to the product's first image, or null if it has none. */
+  image: string | null;
   units: number;
   revenue: number;
 }

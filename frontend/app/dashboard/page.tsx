@@ -22,8 +22,11 @@ import type {
 } from '@/app/components/dashboard/types';
 
 const PAYMENT_COLORS: Record<string, string> = {
-  Cash: '#12b76a',
-  Card: 'var(--color-primary)',
+  Cash:               '#12b76a',
+  Card:               'var(--color-primary)',
+  Online:             '#7c3aed',
+  'Cash on Delivery': '#f59e0b',
+  'Bank Transfer':    '#0891b2',
 };
 
 export default function DashboardPage() {
@@ -45,16 +48,14 @@ export default function DashboardPage() {
       .then(({ data }) => setSalesTrend(data.data))
       .catch(() => {});
 
-    api.get<{ data: Record<string, { total: number; count: number }> }>('/transactions/stats')
+    api.get<{ data: { method: string; count: number; total: number; percentage: number }[] }>('/dashboard/payment-methods')
       .then(({ data: res }) => {
-        const totalAmount = Object.values(res.data).reduce((sum, v) => sum + v.total, 0);
-        const entries: PaymentEntry[] = Object.entries(res.data)
-          .map(([name, v]) => ({
-            name,
-            amount: v.total,
-            value: totalAmount > 0 ? Math.round((v.total / totalAmount) * 100) : 0,
-            color: PAYMENT_COLORS[name] ?? '#ccc',
-          }));
+        const entries: PaymentEntry[] = res.data.map((m) => ({
+          name:   m.method,
+          amount: m.total,
+          value:  m.percentage,
+          color:  PAYMENT_COLORS[m.method] ?? '#98a2b3',
+        }));
         setPaymentData(entries);
       })
       .catch(() => {});
@@ -136,7 +137,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-        <TopProductsTable products={topProducts} currency={currency} />
+        <TopProductsTable products={topProducts} />
         <EmployeePerformanceList employees={employees} currency={currency} />
         <RecentOrdersList orders={recentOrders} currency={currency} />
       </div>

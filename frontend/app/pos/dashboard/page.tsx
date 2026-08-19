@@ -2,6 +2,7 @@
 import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useStore } from "@/app/contexts/StoreContext";
 import api from "@/app/lib/api";
 import { getPendingCount } from "@/app/lib/offlineDB";
 import { syncPendingTransactions } from "@/app/lib/syncManager";
@@ -11,7 +12,7 @@ import { useCustomerManagement } from "@/app/hooks/useCustomerManagement";
 import { useDiscounts } from "@/app/hooks/useDiscounts";
 import { usePromoCode } from "@/app/hooks/usePromoCode";
 import { useWeightModal } from "@/app/hooks/useWeightModal";
-import { useProductsData } from "@/app/hooks/useProductsData";
+import { useProductsData, Product } from "@/app/hooks/useProductsData";
 import { useSyncState } from "@/app/hooks/useSyncState";
 import { usePOSUI } from "@/app/hooks/usePOSUI";
 import { fmt, genId } from "./constants/pos"; 
@@ -21,32 +22,14 @@ import PromoModal from "./components/PromoModal";
 import ProductCard from "./components/ProductCard";
 import CartSidebar from "./components/CartSidebar";
 import TopBar from "./components/TopBar";
-import { useStore } from "@/app/contexts/StoreContext";
 
 
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  sellingPrice: number;
-  category: string;
-  stock: number;
-  status: string;
-  lowStockThreshold: number;
-  isWeightBased: boolean;
-  unit: string;
-}
-
-interface Category {
-  _id: string;
-  name: string;
-  icon: string;
-}
 
 // Main POS Dashboard component that handles product listing, cart management, customer selection, and checkout flow
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
+  const { subscriptionPlan, refresh: refreshStore } = useStore();
   const isOnline = useOnlineStatus();
   const { storeName } = useStore();
 
@@ -244,6 +227,7 @@ export default function POSDashboard() {
         onSync={handleSync}
         onToggleMenu={() => setShowMenu(v => !v)}
         onLogout={handleLogout}
+        subscriptionPlan={subscriptionPlan}
       />
 
       <div className="flex flex-1 min-h-0">

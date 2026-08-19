@@ -15,16 +15,11 @@ interface NoSalesAlert {
 interface InactiveStaff {
   id: string; name: string; role: string; lastLogin: string; daysInactive: number;
 }
-interface HighRefund {
-  id: string; refundId: string; orderId: string; customer: string; amount: number; reason: string;
-}
-
 export default function AlertsPage() {
   const { currency } = useStore();
   const [lowStock, setLowStock]         = useState<LowStockAlert[]>([]);
   const [noSales, setNoSales]           = useState<NoSalesAlert[]>([]);
   const [inactiveStaff, setInactiveStaff] = useState<InactiveStaff[]>([]);
-  const [highRefunds, setHighRefunds]   = useState<HighRefund[]>([]);
   const [loading, setLoading]           = useState(true);
 
   useEffect(() => {
@@ -32,7 +27,6 @@ export default function AlertsPage() {
       api.get<{ data: LowStockAlert[] }>('/alerts/low-stock').then(r => setLowStock(r.data.data)).catch(() => {}),
       api.get<{ data: NoSalesAlert[] }>('/alerts/no-sales').then(r => setNoSales(r.data.data)).catch(() => {}),
       api.get<{ data: InactiveStaff[] }>('/alerts/inactive-staff').then(r => setInactiveStaff(r.data.data)).catch(() => {}),
-      api.get<{ data: HighRefund[] }>('/alerts/high-refunds').then(r => setHighRefunds(r.data.data)).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -51,7 +45,7 @@ export default function AlertsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec]">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="w-4 h-4 text-[#f04438]" />
@@ -72,13 +66,6 @@ export default function AlertsPage() {
             <p className="text-xs text-[#4a5565] font-semibold">Inactive Employees</p>
           </div>
           <h3 className="text-2xl font-bold text-[#f79009]">{inactiveStaff.length}</h3>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec]">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-[#f04438]" />
-            <p className="text-xs text-[#4a5565] font-semibold">High Refunds</p>
-          </div>
-          <h3 className="text-2xl font-bold text-[#f04438]">{highRefunds.length}</h3>
         </div>
       </div>
 
@@ -213,41 +200,6 @@ export default function AlertsPage() {
           </div>
         </div>
 
-        {/* High Refunds */}
-        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec] overflow-hidden">
-          <div className="px-5 py-4 bg-[#fef3f2] border-b border-[#e4e7ec] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-[#f04438]" />
-              <h2 className="text-base font-semibold text-[#101828]">High Refund Alerts</h2>
-              <span className="px-2 py-0.5 bg-[#f04438] text-white text-xs font-medium rounded-full">
-                {highRefunds.length}
-              </span>
-            </div>
-          </div>
-          <div className="p-5 space-y-3">
-            {highRefunds.length === 0 ? (
-              <p className="text-sm text-[#4a5565] text-center py-4">No high-value refunds</p>
-            ) : (
-              highRefunds.map((refund) => (
-                <div key={refund.id} className="p-4 bg-[#fef3f2] border border-[#f04438]/20 rounded-lg flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="text-sm font-medium text-[var(--color-primary)]">{refund.refundId}</div>
-                      <span className="text-xs text-[#4a5565]">({refund.orderId})</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="text-[#4a5565]">Customer: {refund.customer}</span>
-                      <span className="font-semibold text-[#f04438]">
-                        {currency} {refund.amount.toLocaleString()}
-                      </span>
-                      <span className="text-[#4a5565]">{refund.reason}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

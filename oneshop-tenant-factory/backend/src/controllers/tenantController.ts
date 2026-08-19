@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Tenant from '../models/Tenant';
-import { provisionTenantDatabase, dropTenantDatabase } from '../utils/tenantProvisioner';
+import { provisionTenantDatabase, dropTenantDatabase, getTenantDbUri, setManagerInTenantDb, getManagerFromTenantDb, syncPlanToTenantDb } from '../utils/tenantProvisioner';
+import { createNotification } from './notificationController';
 
 export const getAllTenants = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -36,7 +38,7 @@ export const getTenant = async (req: Request, res: Response): Promise<void> => {
 
 export const createTenant = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { businessName, businessAddress, phoneNumber, email, logo, primaryColor, subscription, status } =
+    const { businessName, businessAddress, phoneNumber, email, logo, primaryColor, subscription, status, manager } =
       req.body as {
         businessName: string;
         businessAddress: string;
@@ -46,6 +48,7 @@ export const createTenant = async (req: Request, res: Response): Promise<void> =
         primaryColor?: string;
         subscription?: object;
         status?: string;
+        manager?: { name: string; email: string; password: string };
       };
 
     const tenantExists = await Tenant.findOne({ email });
@@ -73,6 +76,10 @@ export const createTenant = async (req: Request, res: Response): Promise<void> =
       const dbName = await provisionTenantDatabase(tenant);
       tenant.databaseName = dbName;
       await tenant.save();
+
+      if (manager?.name && manager?.email && manager?.password) {
+        await setManagerInTenantDb(dbName, tenant._id.toString(), manager);
+      }
     } catch (provisionErr) {
       await tenant.deleteOne();
       res.status(500).json({
@@ -82,6 +89,14 @@ export const createTenant = async (req: Request, res: Response): Promise<void> =
       });
       return;
     }
+
+    createNotification(
+      'tenant_created',
+      'New Tenant Created',
+      `${tenant.businessName} has been registered on the platform.`,
+      tenant._id.toString(),
+      tenant.businessName
+    ).catch(() => {});
 
     res.status(201).json({ success: true, message: 'Tenant created successfully', tenant });
   } catch (error) {
@@ -102,11 +117,28 @@ export const updateTenant = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const prevStatus = (await Tenant.findById(req.params.id))?.status;
     tenant = await Tenant.findByIdAndUpdate(
       req.params.id,
       { ...req.body, updatedAt: new Date() },
       { new: true, runValidators: true }
     );
+
+    if (req.body.subscription?.plan && tenant!.databaseName) {
+      syncPlanToTenantDb(tenant!.databaseName, req.body.subscription.plan).catch(() => {});
+    }
+
+    if (req.body.status && req.body.status !== prevStatus) {
+      const type = req.body.status === 'suspended' ? 'tenant_suspended' : 'tenant_activated';
+      const title = req.body.status === 'suspended' ? 'Tenant Suspended' : 'Tenant Activated';
+      createNotification(
+        type,
+        title,
+        `${tenant!.businessName} status changed to ${req.body.status}.`,
+        tenant!._id.toString(),
+        tenant!.businessName
+      ).catch(() => {});
+    }
 
     res.json({ success: true, message: 'Tenant updated successfully', tenant });
   } catch (error) {
@@ -127,6 +159,7 @@ export const deleteTenant = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const dbName = tenant.databaseName;
     await tenant.deleteOne();
 
     if (dbName) {
@@ -137,6 +170,14 @@ export const deleteTenant = async (req: Request, res: Response): Promise<void> =
       }
     }
 
+    createNotification(
+      'tenant_deleted',
+      'Tenant Deleted',
+      `${tenant.businessName} and its database have been removed from the platform.`,
+      tenant._id.toString(),
+      tenant.businessName
+    ).catch(() => {});
+
     res.json({ success: true, message: 'Tenant deleted successfully' });
   } catch (error) {
     res.status(500).json({
@@ -144,6 +185,62 @@ export const deleteTenant = async (req: Request, res: Response): Promise<void> =
       message: 'Server error',
       error: (error as Error).message,
     });
+  }
+};
+
+export const getStoreSettings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tenant = await Tenant.findById(req.params.id);
+    if (!tenant) {
+      res.status(404).json({ success: false, message: 'Tenant not found' });
+      return;
+    }
+    if (!tenant.databaseName) {
+      res.status(404).json({ success: false, message: 'Tenant database not provisioned yet' });
+      return;
+    }
+
+    const uri = getTenantDbUri(tenant.databaseName);
+    const conn = await mongoose.createConnection(uri).asPromise();
+    try {
+      const settings = await conn.db!.collection('storesettings').findOne({});
+      res.json({ success: true, settings });
+    } finally {
+      await conn.close();
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+  }
+};
+
+export const getManager = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tenant = await Tenant.findById(req.params.id);
+    if (!tenant) { res.status(404).json({ success: false, message: 'Tenant not found' }); return; }
+    if (!tenant.databaseName) { res.status(404).json({ success: false, message: 'Tenant database not provisioned' }); return; }
+    const manager = await getManagerFromTenantDb(tenant.databaseName);
+    res.json({ success: true, manager });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+  }
+};
+
+export const setManager = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tenant = await Tenant.findById(req.params.id);
+    if (!tenant) { res.status(404).json({ success: false, message: 'Tenant not found' }); return; }
+    if (!tenant.databaseName) { res.status(404).json({ success: false, message: 'Tenant database not provisioned' }); return; }
+
+    const { name, email, password } = req.body as { name: string; email: string; password: string };
+    if (!name || !email || !password) {
+      res.status(400).json({ success: false, message: 'Name, email and password are required' });
+      return;
+    }
+
+    await setManagerInTenantDb(tenant.databaseName, tenant._id.toString(), { name, email, password });
+    res.json({ success: true, message: 'Manager credentials set successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
   }
 };
 

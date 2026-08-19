@@ -36,8 +36,13 @@ export default function ActionModal({
     try {
       await api.patch(`/transactions/${liveTxn._id}/void`);
       onActionMessage("Transaction voided successfully");
+      // Update all three status fields so UI reflects correctly
       onUpdateTransactions((prev) =>
-        prev.map((t) => t._id === liveTxn._id ? { ...t, status: "voided" } : t)
+        prev.map((t) =>
+          t._id === liveTxn._id
+            ? { ...t, status: "voided", orderStatus: "cancelled", paymentStatus: "voided" }
+            : t
+        )
       );
     } catch (err: any) {
       onActionError(err.response?.data?.message || "Failed to void. Please try again.");
@@ -69,10 +74,11 @@ export default function ActionModal({
         {/* Transaction Info */}
         <div className="bg-[#F7F8FC] rounded-xl px-4 py-3 mb-5 border border-[#E3E6F0]">
           {[
-            { label: "Transaction", value: `#${liveTxn.txnId}` },
-            { label: "Customer",    value: liveTxn.customer },
-            { label: "Amount",      value: `Rs. ${liveTxn.amount.toLocaleString()}` },
-            { label: "Status",      value: liveTxn.status.charAt(0).toUpperCase() + liveTxn.status.slice(1) },
+            { label: "Transaction",    value: `#${liveTxn.txnId}` },
+            { label: "Customer",       value: liveTxn.customer },
+            { label: "Amount",         value: `Rs. ${liveTxn.amount.toLocaleString()}` },
+            { label: "Order Status",   value: (liveTxn.orderStatus ?? liveTxn.status).charAt(0).toUpperCase() + (liveTxn.orderStatus ?? liveTxn.status).slice(1) },
+            { label: "Payment Status", value: (liveTxn.paymentStatus ?? (liveTxn.status === 'success' ? 'paid' : 'voided')).charAt(0).toUpperCase() + (liveTxn.paymentStatus ?? (liveTxn.status === 'success' ? 'paid' : 'voided')).slice(1) },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between mb-1.5">
               <span className="text-[12px] text-[#6B7280]">{label}</span>
@@ -93,11 +99,12 @@ export default function ActionModal({
           </div>
         )}
 
-        {/* Actions for success status */}
+        {/* Void action — only for success transactions */}
         {liveTxn.status === "success" && !actionMessage && (
           <div className="flex flex-col gap-2.5">
-            <p className="text-[12px] text-[#6B7280] m-0 text-center">What would you like to do with this transaction?</p>
-
+            <p className="text-[12px] text-[#6B7280] m-0 text-center">
+              What would you like to do with this transaction?
+            </p>
             <button
               disabled={actionLoading}
               onClick={handleVoid}
@@ -116,25 +123,11 @@ export default function ActionModal({
           </div>
         )}
 
-        {/* Status messages for non-actionable states */}
+        {/* Already voided */}
         {liveTxn.status === "voided" && !actionMessage && (
           <div className="px-3 py-3 bg-gray-100 rounded-xl text-center">
             <p className="text-[13px] text-[#6B7280] m-0">
-              This transaction has already been <strong>{liveTxn.status}</strong>.
-            </p>
-          </div>
-        )}
-        {liveTxn.status === "failed" && !actionMessage && (
-          <div className="px-3 py-3 bg-red-50 border border-red-100 rounded-xl text-center">
-            <p className="text-[13px] text-red-600 m-0">
-              This transaction <strong>failed</strong> and cannot be modified.
-            </p>
-          </div>
-        )}
-        {liveTxn.status === "pending" && !actionMessage && (
-          <div className="px-3 py-3 bg-yellow-50 border border-yellow-100 rounded-xl text-center">
-            <p className="text-[13px] text-yellow-700 m-0">
-              This transaction is still <strong>pending</strong>.
+              This transaction has already been <strong>voided</strong>.
             </p>
           </div>
         )}

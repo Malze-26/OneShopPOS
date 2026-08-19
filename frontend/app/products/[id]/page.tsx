@@ -53,6 +53,13 @@ export default function ProductDetailPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [page, setPage] = useState(1);
 
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustType, setAdjustType] = useState<'add' | 'remove'>('add');
+  const [adjustQty, setAdjustQty] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjustLoading, setAdjustLoading] = useState(false);
+  const [adjustError, setAdjustError] = useState('');
+
   useEffect(() => {
     const id = params.id as string;
     api
@@ -64,6 +71,40 @@ export default function ProductDetailPage() {
       .catch(() => setError('Product not found'))
       .finally(() => setFetchLoading(false));
   }, [params.id]);
+
+  const openAdjustModal = () => {
+    setAdjustType('add');
+    setAdjustQty('');
+    setAdjustReason('');
+    setAdjustError('');
+    setShowAdjustModal(true);
+  };
+
+  const handleAdjustStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const qty = parseInt(adjustQty);
+    if (!adjustReason.trim()) { setAdjustError('Reason is required'); return; }
+    setAdjustLoading(true);
+    setAdjustError('');
+    try {
+      await api.post(`/products/${params.id}/adjust-stock`, {
+        type: adjustType,
+        quantity: qty,
+        reason: adjustReason.trim(),
+      });
+      // Re-fetch to get updated stock + history
+      const res = await api.get(`/products/${params.id}`);
+      setProduct(res.data.data);
+      setStockHistory(res.data.stockHistory ?? []);
+      setPage(1);
+      setShowAdjustModal(false);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setAdjustError(axiosErr?.response?.data?.message || 'Failed to adjust stock');
+    } finally {
+      setAdjustLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleteLoading(true);
@@ -117,7 +158,10 @@ export default function ProductDetailPage() {
             <Edit className="w-4 h-4" />
             Edit Product
           </Link>
-          <button className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors">
+          <button
+            onClick={openAdjustModal}
+            className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
+          >
             <ArrowLeftRight className="w-4 h-4" />
             Adjust Stock
           </button>
@@ -285,6 +329,97 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Stock Adjustment Modal */}
+      {showAdjustModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-[#101828] mb-1">Adjust Stock</h3>
+            <p className="text-sm text-[#4a5565] mb-5">
+              Current stock: <span className="font-semibold text-[#101828]">{product.stock}</span>
+            </p>
+
+            <form onSubmit={handleAdjustStock} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAdjustType('add')}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-medium transition-colors ${
+                    adjustType === 'add'
+                      ? 'border-[#12b76a] bg-[#ecfdf3] text-[#12b76a]'
+                      : 'border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb]'
+                  }`}
+                >
+                  <ArrowUp className="w-4 h-4" /> Add Stock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdjustType('remove')}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-medium transition-colors ${
+                    adjustType === 'remove'
+                      ? 'border-[#f04438] bg-[#fef3f2] text-[#f04438]'
+                      : 'border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb]'
+                  }`}
+                >
+                  <ArrowDown className="w-4 h-4" /> Remove Stock
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#101828] mb-1">Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  placeholder="Enter quantity"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#101828] mb-1">Reason</label>
+                <input
+                  type="text"
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  required
+                  className="w-full border border-[#e4e7ec] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                  placeholder="e.g. Restock, Spoilage, Damage"
+                />
+              </div>
+
+              {adjustError && (
+                <p className="text-sm text-[#f04438]">{adjustError}</p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAdjustModal(false)}
+                  disabled={adjustLoading}
+                  className="px-4 py-2 text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adjustLoading}
+                  className={`px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
+                    adjustType === 'add'
+                      ? 'bg-[#12b76a] hover:bg-[#0a9a59]'
+                      : 'bg-[#f04438] hover:bg-[#d03030]'
+                  }`}
+                >
+                  {adjustLoading ? 'Saving...' : adjustType === 'add' ? 'Add Stock' : 'Remove Stock'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (

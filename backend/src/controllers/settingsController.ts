@@ -24,9 +24,9 @@ export async function getSettings(req: AuthRequest, res: Response): Promise<void
       const factoryConn = mongoose.connection.useDb(factoryDb, { useCache: true });
       const tenant = await factoryConn.collection('tenants').findOne(
         { databaseName: tenantId },
-        { projection: { subscriptionPlan: 1 } }
+        { projection: { 'subscription.plan': 1 } }
       );
-      if (tenant?.subscriptionPlan) subscriptionPlan = tenant.subscriptionPlan as string;
+      if (tenant?.subscription?.plan) subscriptionPlan = tenant.subscription.plan as string;
     } catch { /* keep default */ }
   }
 

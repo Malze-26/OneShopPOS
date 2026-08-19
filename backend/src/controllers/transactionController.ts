@@ -42,8 +42,13 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
   try {
     const { Transaction } = req.models!;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const stats = await Transaction.aggregate([
-      { $match: { status: 'success' } },
+      { $match: { status: 'success', createdAt: { $gte: today, $lt: tomorrow } } },
       {
         $group: {
           _id: '$paymentMethod',
@@ -71,17 +76,23 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Customer, Order, Product, StockHistory } = req.models!;
+    const { Transaction, Customer, Product, StockHistory } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
     const txnId = generateTxnId();
+
+    const status = req.body.status || 'success';
+    const orderStatus   = status === 'voided' ? 'cancelled' : status;
+    const paymentStatus = status === 'success' ? 'paid' : status === 'voided' ? 'voided' : status;
 
     const transaction = await Transaction.create({
       ...req.body,
       txnId,
       storeId,
       createdBy: userId,
+      orderStatus,
+      paymentStatus,
     });
 
     // Deduct inventory for each item in the POS transaction
@@ -103,47 +114,43 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 
     // Recalculate customer stats and send receipt email
     if (req.body.customerId && req.body.customerId !== 'guest') {
-      const customer = await Customer.findById(req.body.customerId);
-      if (customer) {
-        const pointsEarned = Math.floor(req.body.amount / 100);
+  console.log('🔍 customerId:', req.body.customerId);
+  const customer = await Customer.findById(req.body.customerId);
+  console.log('🔍 customer found:', customer?.name);
+  
+  if (customer) {
+    const amountPaid = req.body.total ?? req.body.amount;
+    const pointsEarned = Math.floor(amountPaid / 100);
 
+    const [agg] = await Transaction.aggregate([
+      { $match: { customerId: req.body.customerId, status: 'success' } },
+      { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
+    ]);
+
+    console.log('🔍 agg result:', agg);
+
+    await Customer.findByIdAndUpdate(req.body.customerId, {
+      $set: {
+        totalSpent:   agg?.totalSpent  ?? 0,
+        totalOrders:  agg?.totalOrders ?? 0,
+        lastPurchase: agg?.lastPurchase ?? new Date(),
+      },
+      $inc: { loyaltyPoints: pointsEarned },
+    });
+
+    console.log('✅ Customer stats updated');
+
+        // Send receipt email if customer has email
         if (customer.email) {
-          // Recalculate from the Orders collection — single source of truth
-          const [agg] = await Order.aggregate<{
-            totalSpent: number;
-            totalOrders: number;
-            lastPurchase: Date | null;
-          }>([
-            { $match: { customerEmail: customer.email } },
-            {
-              $group: {
-                _id: null,
-                totalSpent:   { $sum: '$total' },
-                totalOrders:  { $sum: 1 },
-                lastPurchase: { $max: '$createdAt' },
-              },
-            },
-          ]);
-
-          await Customer.findByIdAndUpdate(req.body.customerId, {
-            $set: {
-              totalSpent:   agg?.totalSpent  ?? 0,
-              totalOrders:  agg?.totalOrders ?? 0,
-              lastPurchase: agg?.lastPurchase ?? new Date(),
-            },
-            $inc: { loyaltyPoints: pointsEarned },
-          });
-
-          // Send receipt email
           try {
             await sendReceiptEmail({
               customerName:  customer.name,
               customerEmail: customer.email,
               orderId:       txnId,
               items:         req.body.items || [],
-              subtotal:      req.body.subtotal || req.body.amount,
+              subtotal:      req.body.amount,
               discount:      req.body.discount || 0,
-              total:         req.body.amount,
+              total:         req.body.total ?? req.body.amount,
               paymentMethod: req.body.paymentMethod,
               date: new Date().toLocaleDateString('en-LK', {
                 day: '2-digit', month: 'short', year: 'numeric',
@@ -153,13 +160,6 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
             console.error('Failed to send receipt email:', emailErr);
             // don't fail the transaction if email fails
           }
-
-        } else {
-          // No email — fall back to incrementing
-          await Customer.findByIdAndUpdate(req.body.customerId, {
-            $inc: { loyaltyPoints: pointsEarned, totalOrders: 1, totalSpent: req.body.amount },
-            $set: { lastPurchase: new Date() },
-          });
         }
       }
     }
@@ -188,34 +188,49 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 }
 
 // DELETE /api/transactions/:id/void — Void transaction
-export async function voidTransaction(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, Product, StockHistory } = req.models!;
-  const transaction = await Transaction.findById(req.params.id);
-  if (!transaction) {
-    res.status(404).json({ message: 'Transaction not found' });
-    return;
-  }
-  if (transaction.status === 'voided') {
-    res.status(400).json({ message: 'Transaction already voided' });
-    return;
-  }
+export async function voidTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { Transaction, Product, StockHistory } = req.models!;
+    const transaction = await Transaction.findById(req.params.id);
 
-  // Restore inventory from items stored on the transaction
-  if (transaction.items && transaction.items.length > 0) {
-    for (const item of transaction.items) {
-      await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
-      await StockHistory.create({
-        product:  item.product,
-        type:     'add',
-        quantity: item.quantity,
-        reason:   `Transaction voided: ${transaction.txnId}`,
-        by:       req.user!.id,
-        storeId:  transaction.storeId,
-      });
+    if (!transaction) {
+      res.status(404).json({ message: 'Transaction not found' });
+      return;
     }
-  }
 
-  transaction.status = 'voided';
-  await transaction.save();
-  res.status(200).json({ message: 'Transaction voided successfully', data: transaction });
+    if (transaction.paymentStatus === 'voided') {
+      res.status(400).json({ message: 'Transaction already voided' });
+      return;
+    }
+
+    await Transaction.collection.updateOne(
+      { _id: transaction._id },
+      { $set: { status: 'voided', orderStatus: 'cancelled', paymentStatus: 'voided' } }
+    );
+
+    if (transaction.items?.length > 0) {
+      for (const item of transaction.items) {
+        await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+
+        await StockHistory.create({
+          product: item.product,
+          type: 'add',
+          quantity: item.quantity,
+          reason: `Transaction voided: ${transaction.txnId}`,
+          by: req.user!.id,
+          storeId: transaction.storeId,
+        });
+      }
+    }
+
+    const updated = await Transaction.findById(transaction._id).lean();
+
+    res.status(200).json({
+      message: 'Transaction voided successfully',
+      data: updated,
+    });
+
+  } catch (error) {
+    next(error);
+  }
 }

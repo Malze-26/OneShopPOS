@@ -37,7 +37,7 @@ const pageTitle: Record<string, string> = {
   '/dashboard/reports': 'Reports',
   '/dashboard/alerts': 'Alerts',
   '/dashboard/settings': 'Settings',
-  '/settings': 'Settings',
+  
 };
 
 export function TopHeader() {

@@ -131,7 +131,7 @@ const seedDatabase = async (): Promise<void> => {
         logo: 'https://placehold.co/200x200/10B981/ffffff?text=BM',
         backgroundImage: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80',
         primaryColor: '#10B981',
-        subscription: { plan: 'free', status: 'trial' },
+        subscription: { plan: 'basic', status: 'trial' },
         status: 'active',
         ownerId: superAdmin._id,
         users: [

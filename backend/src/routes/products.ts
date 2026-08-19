@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { protect, requireRole } from '../middleware/authMiddleware';
+import { requireTenant } from '../middleware/tenantMiddleware';
 import {
   getProducts,
   getProduct,
@@ -21,7 +22,8 @@ function asyncHandler(fn: (req: Request | AuthRequest, res: Response, next: Next
   return (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 }
 
-// All product routes require authentication
+// All product routes require a tenant and authentication
+router.use(requireTenant);
 router.use(protect);
 
 router.get('/', asyncHandler(getProducts));

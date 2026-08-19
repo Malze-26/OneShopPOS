@@ -1,27 +1,27 @@
 'use client';
 
 import Link from 'next/link';
+import { Package as PackageIcon } from 'lucide-react';
 import { TopProduct } from './types';
+
+const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
 interface TopProductsTableProps {
   products: TopProduct[];
-  currency: string;
 }
 
 /**
- * Ranked list of the best-selling products for the current week.
- * Shows rank, emoji icon, name, units sold, and revenue per product.
- *
- * TODO: Wire up a real API endpoint (e.g. GET /api/products/top-selling?limit=5)
- *       to replace the placeholder data.
+ * Ranked list of the best-selling products over the last 30 days
+ * (GET /api/dashboard/top-products).
+ * Shows rank, product image, name, and units sold per product.
  */
-export function TopProductsTable({ products, currency }: TopProductsTableProps) {
+export function TopProductsTable({ products }: TopProductsTableProps) {
   return (
     <div className="lg:col-span-4 bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-base font-semibold text-[#101828]">Top Selling Products</h2>
-          <p className="text-xs text-[#4a5565] mt-1">This week&apos;s best performers</p>
+          <p className="text-xs text-[#4a5565] mt-1">Last 30 days&apos; best performers</p>
         </div>
         <Link
           href="/products"
@@ -32,25 +32,37 @@ export function TopProductsTable({ products, currency }: TopProductsTableProps) 
       </div>
 
       <div className="space-y-3">
+        {products.length === 0 && (
+          <p className="text-sm text-[#4a5565] py-4 text-center">No sales in the last 30 days.</p>
+        )}
         {products.map((product) => (
-          <div
-            key={product.rank}
+          <Link
+            key={product.id}
+            href={`/products/${product.id}`}
             className="flex items-center gap-3 p-2 hover:bg-[#f9fafb] rounded-lg transition-colors"
           >
             <div className="w-6 h-6 flex items-center justify-center bg-[#f9fafb] rounded text-xs font-semibold text-[#4a5565]">
               {product.rank}
             </div>
-            <div className="w-8 h-8 flex items-center justify-center bg-[var(--color-primary-light)] rounded text-lg">
-              {product.image}
+            <div className="w-8 h-8 flex items-center justify-center bg-[var(--color-primary-light)] rounded overflow-hidden flex-shrink-0">
+              {product.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`${SERVER_URL}${product.image}`}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <PackageIcon className="w-4 h-4 text-[var(--color-primary)]" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-[#101828] truncate">{product.name}</div>
-              <div className="text-xs text-[#4a5565]">{product.units} units sold</div>
             </div>
-            <div className="text-sm font-semibold text-[#101828]">
-              {currency} {product.revenue.toLocaleString()}
+            <div className="text-sm font-semibold text-[#101828] flex-shrink-0">
+              {product.units} units sold
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
