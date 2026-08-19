@@ -13,7 +13,6 @@ import {
   uploadProductImages,
   deleteProductImage,
 } from '../controllers/productController';
-import { uploadMiddleware } from '../middleware/upload';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -40,7 +39,7 @@ router.delete('/:id', requireRole('Manager'), asyncHandler(deleteProduct));
 router.post('/:id/adjust-stock', requireRole('Manager'), asyncHandler(adjustStock));
 
 // Image upload / delete (Manager only)
-router.post('/:id/images', requireRole('Manager'), uploadMiddleware.array('images', 10), asyncHandler(uploadProductImages));
-router.delete('/:id/images/:filename', requireRole('Manager'), asyncHandler(deleteProductImage));
+router.post('/:id/images', requireRole('Manager'), asyncHandler(uploadProductImages));
+router.delete('/:id/images', requireRole('Manager'), asyncHandler(deleteProductImage));
 
 export default router;

@@ -2,13 +2,25 @@ import { Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../types';
+import { keyBelongsToTenant, publicUrl } from '../storage/s3';
 
-function signToken(id: string, email: string, role: string, storeId: string): string {
+/**
+ * Tokens carry the tenant database they were minted against. `protect` rejects
+ * a token presented to any other tenant, so a manager at one store cannot
+ * replay their session against another by swapping the tenant header.
+ */
+function signToken(
+  id: string,
+  email: string,
+  role: string,
+  storeId: string,
+  tenant: string | undefined
+): string {
   const secret = process.env.JWT_SECRET as jwt.Secret;
   const expiresIn = (process.env.JWT_EXPIRES_IN ?? '7d') as jwt.SignOptions['expiresIn'];
 
   return jwt.sign(
-    { id, email, role, storeId },
+    { id, email, role, storeId, tenant },
     secret,
     { expiresIn }
   );
@@ -53,7 +65,7 @@ export async function login(req: AuthRequest, res: Response): Promise<void> {
   user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
 
-  const token = signToken(user.id as string, user.email, user.role, user.storeId);
+  const token = signToken(user.id as string, user.email, user.role, user.storeId, req.tenantDbName);
 
   res.status(200).json({
     token,
@@ -97,7 +109,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
     storeId: storeId ?? req.user?.storeId ?? process.env.DEFAULT_STORE_ID ?? 'STORE-2025-001',
   });
 
-  const token = signToken(user.id as string, user.email, user.role, user.storeId);
+  const token = signToken(user.id as string, user.email, user.role, user.storeId, req.tenantDbName);
 
   res.status(201).json({
     token,
@@ -199,8 +211,15 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
 // POST /api/auth/profile/avatar  (protected)
 export async function uploadAvatar(req: AuthRequest, res: Response): Promise<void> {
   const { User } = req.models!;
-  if (!req.file) {
-    res.status(400).json({ message: 'No file uploaded' });
+  const { key } = req.body as { key?: string };
+
+  if (!key) {
+    res.status(400).json({ message: 'key is required (upload the file to S3 first)' });
+    return;
+  }
+
+  if (!keyBelongsToTenant(key, req.tenantDbName!)) {
+    res.status(403).json({ message: 'Upload key does not belong to this store' });
     return;
   }
 
@@ -210,7 +229,7 @@ export async function uploadAvatar(req: AuthRequest, res: Response): Promise<voi
     return;
   }
 
-  user.avatar = `/uploads/avatars/${req.file.filename}`;
+  user.avatar = publicUrl(key);
   await user.save({ validateBeforeSave: false });
 
   res.json({ avatar: user.avatar });

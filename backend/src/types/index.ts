@@ -15,6 +15,12 @@ export interface TokenPayload extends JwtPayload {
   email: string;
   role: UserRole;
   storeId: string;
+  /**
+   * Tenant database this token was issued for. `protect` refuses a token
+   * presented against any other tenant — without it, one JWT_SECRET shared
+   * across all tenants lets a session from one store drive another.
+   */
+  tenant?: string;
 }
 
 /**
@@ -25,5 +31,7 @@ export interface TokenPayload extends JwtPayload {
 export interface AuthRequest extends Request {
   user?: TokenPayload;
   tenantDb?: Connection;
+  /** Name of the tenant database, used to scope S3 object keys. */
+  tenantDbName?: string;
   models?: TenantModels;
 }

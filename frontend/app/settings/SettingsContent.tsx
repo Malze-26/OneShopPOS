@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Store, Palette, KeyRound, Upload, Check, Eye, EyeOff, Loader2, User } from 'lucide-react';
 import api from '@/app/lib/api';
+import { uploadToS3 } from '@/app/lib/uploadToS3';
 import { useStore } from '@/app/contexts/StoreContext';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { avatarSrc } from '@/app/lib/avatarUtils';
@@ -142,14 +143,11 @@ export default function SettingsContent() {
       // Upload logo first if a new file was selected
       if (logoFile) {
         setUploadingLogo(true);
-        const form = new FormData();
-        form.append('logo', logoFile);
-        const uploadRes = await api.post('/settings/logo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const key = await uploadToS3(logoFile, 'logo');
+        const uploadRes = await api.post('/settings/logo', { key });
         const serverLogoUrl = uploadRes.data?.data?.logoUrl as string | undefined;
-        if (serverLogoUrl) {
-          const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
-          setLogoPreview(`${apiBase}${serverLogoUrl}`);
-        }
+        // Now an absolute S3/CDN URL — no API base to prepend.
+        if (serverLogoUrl) setLogoPreview(serverLogoUrl);
         setLogoFile(null);
         setUploadingLogo(false);
       }
@@ -187,9 +185,8 @@ export default function SettingsContent() {
     try {
       if (avatarFile) {
         setUploadingAvatar(true);
-        const form = new FormData();
-        form.append('avatar', avatarFile);
-        const { data } = await api.post('/auth/profile/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const key = await uploadToS3(avatarFile, 'avatar');
+        const { data } = await api.post('/auth/profile/avatar', { key });
         setAvatarPreview(avatarSrc(data.avatar));
         setAvatarFile(null);
         setUploadingAvatar(false);

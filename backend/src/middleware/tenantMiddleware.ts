@@ -25,6 +25,7 @@ export function tenantMiddleware(req: AuthRequest, res: Response, next: NextFunc
 
   const conn = getTenantConnection(tenantId);
   req.tenantDb = conn;
+  req.tenantDbName = tenantId;
   req.models = getModels(conn);
   next();
 }

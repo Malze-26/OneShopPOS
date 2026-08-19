@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { AuthRequest } from '../types';
+import { deleteObject, keyBelongsToTenant, publicUrl } from '../storage/s3';
 import {
   DEFAULT_CATEGORY_NAME,
   DEFAULT_LOW_STOCK_THRESHOLD,
@@ -327,21 +328,32 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
 export async function uploadProductImages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { Product } = req.models!;
-    const files = req.files as Express.Multer.File[] | undefined;
+    const { keys } = req.body as { keys?: string[] };
 
-    if (!files || files.length === 0) {
-      res.status(400).json({ message: 'No files uploaded' });
+    if (!Array.isArray(keys) || keys.length === 0) {
+      res.status(400).json({ message: 'keys must be a non-empty array (upload the files to S3 first)' });
+      return;
+    }
+
+    if (keys.length > 10) {
+      res.status(400).json({ message: 'At most 10 images may be attached at once' });
+      return;
+    }
+
+    if (!keys.every((k) => typeof k === 'string' && keyBelongsToTenant(k, req.tenantDbName!))) {
+      res.status(403).json({ message: 'Upload key does not belong to this store' });
       return;
     }
 
     const product = await Product.findById(req.params.id);
     if (!product) {
-      files.forEach((f) => { try { fs.unlinkSync(f.path); } catch { /* ignore */ } });
+      // Orphan the objects rather than leaving them attached to nothing.
+      await Promise.all(keys.map((k) => deleteObject(k)));
       res.status(404).json({ message: 'Product not found' });
       return;
     }
 
-    const newPaths = files.map((f) => `/uploads/products/${f.filename}`);
+    const newPaths = keys.map((k) => publicUrl(k));
     product.images = [...product.images, ...newPaths];
     await product.save();
 
@@ -355,8 +367,17 @@ export async function uploadProductImages(req: AuthRequest, res: Response, next:
 export async function deleteProductImage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { Product } = req.models!;
-    const { filename } = req.params;
-    const imagePath = `/uploads/products/${filename}`;
+    const key = req.query.key as string | undefined;
+
+    if (!key) {
+      res.status(400).json({ message: 'key query parameter is required' });
+      return;
+    }
+
+    if (!keyBelongsToTenant(key, req.tenantDbName!)) {
+      res.status(403).json({ message: 'Upload key does not belong to this store' });
+      return;
+    }
 
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -364,11 +385,12 @@ export async function deleteProductImage(req: AuthRequest, res: Response, next: 
       return;
     }
 
-    product.images = product.images.filter((img) => img !== imagePath);
+    // Stored URLs may carry a cache-busting query string; match on the key.
+    const url = publicUrl(key);
+    product.images = product.images.filter((img) => img.split('?')[0] !== url);
     await product.save();
 
-    const fullPath = path.join(process.cwd(), 'uploads', 'products', filename as string);
-    try { fs.unlinkSync(fullPath); } catch { /* file may not exist */ }
+    await deleteObject(key);
 
     res.json({ data: product });
   } catch (err) {

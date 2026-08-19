@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { login, register, getMe, changePassword, updateProfile, uploadAvatar } from '../controllers/authController';
 import { protect, requireRole } from '../middleware/authMiddleware';
-import { uploadAvatarMiddleware } from '../middleware/uploadAvatar';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -23,6 +22,6 @@ router.post('/register', protect, requireRole('Manager'), asyncHandler(register)
 router.post('/change-password', protect, asyncHandler((req, res) => changePassword(req as AuthRequest, res)));
 router.get('/me', protect, asyncHandler((req, res) => getMe(req as AuthRequest, res)));
 router.patch('/profile', protect, asyncHandler((req, res) => updateProfile(req as AuthRequest, res)));
-router.post('/profile/avatar', protect, uploadAvatarMiddleware.single('avatar'), asyncHandler((req, res) => uploadAvatar(req as AuthRequest, res)));
+router.post('/profile/avatar', protect, asyncHandler((req, res) => uploadAvatar(req as AuthRequest, res)));
 
 export default router;
