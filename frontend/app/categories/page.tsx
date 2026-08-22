@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Loader2, Tag } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, Edit, Trash2, Loader2, Tag, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import api from '@/app/lib/api';
 
@@ -23,6 +23,7 @@ const emptyForm = { name: '', icon: '', color: colorOptions[0] };
 export default function CategoriesPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -47,6 +48,13 @@ export default function CategoriesPage() {
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  // Categories are loaded in full, so filter locally — no extra request per keystroke.
+  const query = search.trim().toLowerCase();
+  const visibleCategories = useMemo(
+    () => (query ? categories.filter((c) => c.name.toLowerCase().includes(query)) : categories),
+    [categories, query]
+  );
 
   const openAdd = () => {
     setEditTarget(null);
@@ -97,10 +105,17 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (cat: Category) => {
-    if (!confirm(`Delete "${cat.name}"? Products in this category will not be deleted.`)) return;
+    const warning = cat.productCount > 0
+      ? `Delete "${cat.name}"?\n\nThis will ALSO PERMANENTLY DELETE the ${cat.productCount} product${cat.productCount === 1 ? '' : 's'} in this category, along with their stock history.\n\nThis cannot be undone.`
+      : `Delete "${cat.name}"?\n\nThis category has no products.`;
+    if (!confirm(warning)) return;
     try {
-      await api.delete(`/categories/${cat._id}`);
+      const res = await api.delete(`/categories/${cat._id}`);
       setCategories((prev) => prev.filter((c) => c._id !== cat._id));
+      const removed = res.data?.deletedProducts ?? 0;
+      if (removed > 0) {
+        alert(`Deleted "${cat.name}" and ${removed} product${removed === 1 ? '' : 's'}.`);
+      }
     } catch {
       alert('Failed to delete category');
     }
@@ -140,6 +155,35 @@ export default function CategoriesPage() {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5565] pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search categories..."
+            aria-label="Search categories by name"
+            className="w-full pl-9 pr-9 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#9aa3ae] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              aria-label="Clear category search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[#4a5565] hover:text-[#101828] rounded"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        {query && !loading && !error && (
+          <p className="mt-2 text-sm text-[#4a5565]">
+            {visibleCategories.length} of {categories.length} categories
+          </p>
+        )}
+      </div>
+
       {/* Body */}
       {loading ? (
         <div className="flex items-center justify-center p-20">
@@ -156,9 +200,20 @@ export default function CategoriesPage() {
             Retry
           </button>
         </div>
+      ) : visibleCategories.length === 0 && query ? (
+        <div className="text-center p-16 bg-white rounded-xl border border-dashed border-[#e4e7ec]">
+          <Tag className="w-8 h-8 text-[#9aa3ae] mx-auto mb-3" />
+          <p className="text-sm text-[#4a5565]">No categories match &ldquo;{search.trim()}&rdquo;</p>
+          <button
+            onClick={() => setSearch('')}
+            className="mt-3 text-sm font-medium text-[var(--color-primary)] hover:underline"
+          >
+            Clear search
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((category) => (
+          {visibleCategories.map((category) => (
             <div
               key={category._id}
               onClick={() => router.push(`/products?category=${encodeURIComponent(category.name)}`)}
@@ -205,16 +260,18 @@ export default function CategoriesPage() {
             </div>
           ))}
 
-          {/* Add New Category Card */}
-          <button
-            onClick={openAdd}
-            className="bg-white rounded-xl p-5 shadow-sm border-2 border-dashed border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all flex flex-col items-center justify-center min-h-[140px] group"
-          >
-            <Plus className="w-8 h-8 text-[#4a5565] group-hover:text-[var(--color-primary)] mb-2" />
-            <span className="text-sm font-medium text-[#4a5565] group-hover:text-[var(--color-primary)]">
-              Add New Category
-            </span>
-          </button>
+          {/* Add New Category Card — hidden while filtering so results stay clean */}
+          {!query && (
+            <button
+              onClick={openAdd}
+              className="bg-white rounded-xl p-5 shadow-sm border-2 border-dashed border-[#e4e7ec] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-all flex flex-col items-center justify-center min-h-[140px] group"
+            >
+              <Plus className="w-8 h-8 text-[#4a5565] group-hover:text-[var(--color-primary)] mb-2" />
+              <span className="text-sm font-medium text-[#4a5565] group-hover:text-[var(--color-primary)]">
+                Add New Category
+              </span>
+            </button>
+          )}
         </div>
       )}
 

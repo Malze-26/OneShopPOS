@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   ShoppingBag, Store, Globe, Search, ChevronDown,
   Package, Clock, CheckCircle, Truck, XCircle,
@@ -245,13 +246,16 @@ function OrderModal({ order, onClose, onStatusChange, onDeliver }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function OrdersPage() {
+function OrdersPageInner() {
   const fmt = useFmt();
   const { currencyLocale } = useStore();
+  const searchParams = useSearchParams();
+  // Seeded by the header's global search, which links here as /orders?search=…
+  const urlSearch = searchParams.get('search') ?? '';
   const [orders, setOrders]       = useState<Order[]>([]);
   const [stats, setStats]         = useState<Stats | null>(null);
   const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState('');
+  const [search, setSearch]       = useState(urlSearch);
   const [sourceFilter, setSource] = useState<'all' | OrderSource>('all');
   const [statusFilter, setStatus] = useState('all');
   const [selected, setSelected]   = useState<Order | null>(null);
@@ -287,6 +291,9 @@ export default function OrdersPage() {
       setLoading(false);
     }
   }, [page, sourceFilter, statusFilter, search]);
+
+  // Re-apply when the header search navigates here while this page is already mounted.
+  useEffect(() => { setSearch(urlSearch); setPage(1); }, [urlSearch]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
@@ -511,5 +518,13 @@ export default function OrdersPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-[#4a5565]">Loading orders...</div>}>
+      <OrdersPageInner />
+    </Suspense>
   );
 }

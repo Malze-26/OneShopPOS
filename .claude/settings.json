@@ -57,7 +57,14 @@
       "Bash(Select-Object FullName)",
       "Bash(echo \"=== TSC EXIT: $? ===\")",
       "Bash(npx next *)",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "Bash(grep -o 'fnum\">5\\\\.4\\\\.3\\\\.[0-9]*</span>\\\\s*$\\\\|fnum\">5\\\\.4\\\\.3\\\\.[0-9]*' INVENTORY_MODULE_REPORT.html)",
+      "Bash(python -c \"import docx; print\\('python-docx ok'\\)\")",
+      "Bash(grep -iE \"^\\(jszip|adm-zip|archiver|docx\\)$\")",
+      "Bash(node \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/ef9c841f-59b5-4c91-a3f2-ea301aa983b2/scratchpad/md2docx.js\" INVENTORY_TEST_CASES.md INVENTORY_TEST_CASES.docx)",
+      "Bash(npx tsx *)",
+      "Bash(cp \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/f3ac7103-58b7-4fc3-af00-e4fca3ff9cf1/scratchpad/diag-payments.ts\" ./diag-payments.ts)",
+      "Bash(cp \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/f3ac7103-58b7-4fc3-af00-e4fca3ff9cf1/scratchpad/verify-payments.ts\" ./verify-payments.ts)"
     ],
     "additionalDirectories": [
       "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",

@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, User, ChevronDown, Search } from 'lucide-react';
+import { Bell, User, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { avatarSrc } from '@/app/lib/avatarUtils';
+import { GlobalSearch } from '@/app/components/layout/GlobalSearch';
 
 const pageTitle: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -66,14 +67,7 @@ export function TopHeader() {
         {/* Right - Search, Notifications & User */}
         <div className="flex items-center gap-3">
           {/* Global Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5565]" />
-            <input
-              type="text"
-              placeholder="Search anything..."
-              className="w-[280px] pl-10 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all bg-white"
-            />
-          </div>
+          <GlobalSearch />
 
           {/* Notification Bell */}
           <button className="relative p-2 text-[#4a5565] hover:text-[#101828] hover:bg-[#f9fafb] rounded-lg transition-colors">

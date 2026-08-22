@@ -1,9 +1,10 @@
 import { Response, NextFunction } from 'express';
+import { Model } from 'mongoose';
 import path from 'path';
 import fs from 'fs';
 import { AuthRequest } from '../types';
+import { ICategory } from '../models/Category';
 import {
-  DEFAULT_CATEGORY_NAME,
   DEFAULT_LOW_STOCK_THRESHOLD,
   DEFAULT_COST_PRICE,
   DEFAULT_STOCK,
@@ -25,6 +26,25 @@ interface StockAdjustBody {
   type: 'add' | 'remove';
   quantity: number;
   reason: string;
+}
+
+/**
+ * Resolves a user-supplied category name to an existing Category document name.
+ * Products must always belong to a category that appears on the categories page,
+ * so an unknown name is rejected rather than stored as free text.
+ *
+ * Matching is case/whitespace-insensitive and returns the canonical stored name,
+ * so "  dairy " is accepted and normalised to "Dairy".
+ */
+async function resolveCategoryName(
+  CategoryModel: Model<ICategory>,
+  name: string | undefined | null
+): Promise<string | null> {
+  if (!name?.trim()) return null;
+  const wanted = name.trim().toLowerCase();
+  const categories = await CategoryModel.find({}).select('name').lean();
+  const match = categories.find((c) => c.name.trim().toLowerCase() === wanted);
+  return match ? match.name : null;
 }
 
 // ── GET /api/products ──────────────────────────────────────────────────────
@@ -115,6 +135,17 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       images?: string[];
     };
 
+    // Every product must belong to a category that exists on the categories page.
+    const resolvedCategory = await resolveCategoryName(Category, category);
+    if (!resolvedCategory) {
+      res.status(400).json({
+        message: category?.trim()
+          ? `Category "${category.trim()}" does not exist. Create it on the Categories page first.`
+          : 'Category is required',
+      });
+      return;
+    }
+
     const product = await Product.create({
       name,
       sku,
@@ -123,14 +154,14 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       costPrice: costPrice ?? DEFAULT_COST_PRICE,
       stock: stock ?? DEFAULT_STOCK,
       lowStockThreshold: lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
-      category,
+      category: resolvedCategory,
       images: images ?? [],
       storeId,
       createdBy: userId,
     });
 
     await Category.findOneAndUpdate(
-      { name: category },
+      { name: resolvedCategory },
       { $inc: { productCount: 1 } }
     );
 
@@ -154,7 +185,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 // ── PUT /api/products/:id ──────────────────────────────────────────────────
 export async function updateProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product } = req.models!;
+    const { Product, Category } = req.models!;
 
     const {
       name,
@@ -176,9 +207,24 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       category?: string;
     };
 
+    // A product may only be moved into a category that exists on the categories page.
+    let resolvedCategory: string | undefined;
+    if (category !== undefined) {
+      const resolved = await resolveCategoryName(Category, category);
+      if (!resolved) {
+        res.status(400).json({
+          message: category?.trim()
+            ? `Category "${category.trim()}" does not exist. Create it on the Categories page first.`
+            : 'Category is required',
+        });
+        return;
+      }
+      resolvedCategory = resolved;
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, sku, description, sellingPrice, costPrice, stock, lowStockThreshold, category },
+      { name, sku, description, sellingPrice, costPrice, stock, lowStockThreshold, category: resolvedCategory },
       { new: true, runValidators: true }
     );
 
@@ -268,7 +314,7 @@ export async function adjustStock(req: AuthRequest, res: Response, next: NextFun
 // ── POST /api/products/bulk/import-csv ────────────────────────────────────
 export async function importCSV(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product } = req.models!;
+    const { Product, Category } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user!.id;
     const rows: CSVRow[] = req.body.rows;
@@ -277,6 +323,10 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
       res.status(400).json({ message: 'No rows provided' });
       return;
     }
+
+    // Fetch once rather than per row — imports can be large.
+    const categoryDocs = await Category.find({}).select('name').lean();
+    const categoryByLower = new Map(categoryDocs.map((c) => [c.name.trim().toLowerCase(), c.name]));
 
     const results = {
       imported: 0,
@@ -292,6 +342,17 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
       if (!row.sku?.trim()) rowErrors.push('SKU is required');
       if (!row.selling_price || row.selling_price <= 0) rowErrors.push('Selling price must be greater than 0');
 
+      // Imported products must land in an existing category, not a free-text value.
+      const rawCategory = row.category?.trim();
+      const resolvedCategory = rawCategory
+        ? categoryByLower.get(rawCategory.toLowerCase())
+        : undefined;
+      if (!rawCategory) {
+        rowErrors.push('Category is required');
+      } else if (!resolvedCategory) {
+        rowErrors.push(`Category "${rawCategory}" does not exist. Create it on the Categories page first.`);
+      }
+
       if (rowErrors.length > 0) {
         results.failed++;
         results.errors.push({ row: i + 1, errors: rowErrors });
@@ -302,7 +363,7 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
         await Product.create({
           name: row.name.trim(),
           sku: row.sku.trim().toUpperCase(),
-          category: row.category?.trim() || DEFAULT_CATEGORY_NAME,
+          category: resolvedCategory,
           sellingPrice: row.selling_price,
           costPrice: row.cost_price ?? DEFAULT_COST_PRICE,
           stock: row.stock ?? DEFAULT_STOCK,
