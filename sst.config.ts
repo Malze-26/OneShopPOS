@@ -13,14 +13,24 @@
  * so both share a hostname and the API sees the tenant in the Host header.
  */
 
-/** Reads a value from an .env at deploy time. Keeps secrets out of git. */
-function env(key: string, file = "backend/.env"): string {
+/**
+ * Resolves a secret. Prefers the process environment so CI can inject values
+ * through repository secrets, and falls back to a local .env otherwise.
+ *
+ * The POS and the Tenant Factory each carry their own credentials, so in CI
+ * they need distinct variable names — `envVar` supplies the one to read.
+ */
+function env(key: string, file = "backend/.env", envVar = key): string {
+  if (process.env[envVar]) return process.env[envVar] as string;
+
   const fs = require("fs");
-  const line = fs.readFileSync(file, "utf8")
-    .split("\n")
-    .find((l: string) => l.startsWith(key + "="));
-  if (!line) throw new Error(`${key} missing from backend/.env`);
-  return line.slice(key.length + 1).trim();
+  if (fs.existsSync(file)) {
+    const line = fs.readFileSync(file, "utf8")
+      .split("\n")
+      .find((l: string) => l.startsWith(key + "="));
+    if (line) return line.slice(key.length + 1).trim();
+  }
+  throw new Error(`${envVar} is not set — export it or add ${key} to ${file}`);
 }
 
 const ZONE = "Z04324423NALZ4VWGZ6FR";
@@ -93,8 +103,8 @@ export default $config({
       url: { cors: false },
       environment: {
         NODE_ENV: "production",
-        MONGODB_URI: env("MONGODB_URI", FACTORY_ENV),
-        JWT_SECRET: env("JWT_SECRET", FACTORY_ENV),
+        MONGODB_URI: env("MONGODB_URI", FACTORY_ENV, "FACTORY_MONGODB_URI"),
+        JWT_SECRET: env("JWT_SECRET", FACTORY_ENV, "FACTORY_JWT_SECRET"),
         JWT_EXPIRES_IN: "7d",
         FRONTEND_URL: "https://admin.allinoneshop.store",
       },
