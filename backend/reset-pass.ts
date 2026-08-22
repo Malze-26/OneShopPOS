@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { getTenantConnection } from './src/db/connectionManager';
 import { getModels } from './src/db/tenantModels';
 
 async function run() {
-  await mongoose.connect('mongodb+srv://OneShop_db_user:OneShop%402526@cluster-oneshop.497kaq6.mongodb.net/oneshop_open_door?retryWrites=true&w=majority&appName=Cluster-OneShop');
+  await mongoose.connect(process.env.MONGODB_URI as string);
   const conn = getTenantConnection('oneshop_open_door');
   const { User } = getModels(conn);
   
