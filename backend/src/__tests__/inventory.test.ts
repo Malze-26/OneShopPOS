@@ -33,6 +33,15 @@ beforeAll(async () => {
     storeId: 'STORE-TEST-001',
   });
 
+  // Products must reference a category that already exists, so seed the one
+  // the product tests use.
+  await models.Category.create({
+    name: 'Groceries',
+    icon: 'shopping-basket',
+    color: '#155dfc',
+    storeId: 'STORE-TEST-001',
+  });
+
   const managerRes = await request(app)
     .post('/api/auth/login')
     .set('OneShop-Tenant-ID', TENANT)
