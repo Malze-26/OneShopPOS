@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, Undo2 } from 'lucide-react';
 import api from '@/app/lib/api';
 
 interface GRNRecord {
@@ -90,13 +90,22 @@ export default function StocksPage() {
    
           <p className="text-sm text-[#4a5565] mt-0.5">Manage goods received notes and stock movements</p>
         </div>
-        <Link
-          href="/stocks/receive"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Receive Goods
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/stocks/returns"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-[#e4e7ec] text-[#4a5565] hover:bg-[#f9fafb] hover:text-[var(--color-primary)] rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+          >
+            <Undo2 className="w-4 h-4" />
+            Supplier Returns
+          </Link>
+          <Link
+            href="/stocks/receive"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Receive Goods
+          </Link>
+        </div>
       </div>
 
       {/* Tabs */}

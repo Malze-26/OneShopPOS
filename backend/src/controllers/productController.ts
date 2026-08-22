@@ -123,6 +123,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       lowStockThreshold,
       category,
       images,
+      expiryDate,
     } = req.body as {
       name: string;
       sku: string;
@@ -133,6 +134,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       lowStockThreshold?: number;
       category: string;
       images?: string[];
+      expiryDate?: string | null;
     };
 
     // Every product must belong to a category that exists on the categories page.
@@ -156,6 +158,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       lowStockThreshold: lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
       category: resolvedCategory,
       images: images ?? [],
+      expiryDate: expiryDate ? new Date(expiryDate) : null,
       storeId,
       createdBy: userId,
     });
@@ -196,6 +199,7 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       stock,
       lowStockThreshold,
       category,
+      expiryDate,
     } = req.body as {
       name?: string;
       sku?: string;
@@ -205,6 +209,7 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       stock?: number;
       lowStockThreshold?: number;
       category?: string;
+      expiryDate?: string | null;
     };
 
     // A product may only be moved into a category that exists on the categories page.
@@ -224,7 +229,12 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, sku, description, sellingPrice, costPrice, stock, lowStockThreshold, category: resolvedCategory },
+      {
+        name, sku, description, sellingPrice, costPrice, stock, lowStockThreshold,
+        category: resolvedCategory,
+        // Undefined leaves the stored date alone; an empty string clears it.
+        expiryDate: expiryDate === undefined ? undefined : expiryDate ? new Date(expiryDate) : null,
+      },
       { new: true, runValidators: true }
     );
 

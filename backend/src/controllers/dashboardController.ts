@@ -20,7 +20,7 @@ function yesterdayRange() {
 
 // GET /api/dashboard/summary
 export async function getDashboardSummary(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, Order, Customer, Product } = req.models!;
+  const { Transaction, Order, Customer, Product, SupplierReturn } = req.models!;
   const today = todayRange();
   const yesterday = yesterdayRange();
 
@@ -37,6 +37,7 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     pendingTxnCount,
     pendingOnlineCount,
     newCustomerCount,
+    todayReturnsAgg, yesterdayReturnsAgg,
   ] = await Promise.all([
     Transaction.aggregate([
       { $match: { status: 'success', createdAt: { $gte: today.start, $lte: today.end } } },
@@ -70,12 +71,31 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
       createdAt: { $gte: today.start, $lte: today.end },
     }),
     Customer.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
+    // Expired/damaged stock sent back to suppliers is booked as a loss against
+    // the day's revenue the moment the return is saved.
+    SupplierReturn.aggregate([
+      { $match: { createdAt: { $gte: today.start, $lte: today.end } } },
+      { $group: { _id: null, total: { $sum: '$totalLossValue' } } },
+    ]),
+    SupplierReturn.aggregate([
+      { $match: { createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
+      { $group: { _id: null, total: { $sum: '$totalLossValue' } } },
+    ]),
   ]);
 
-  const todaySales = (todaySalesAgg[0]?.total ?? 0) + (todayEcomSalesAgg[0]?.total ?? 0);
-  const yesterdaySales = (yesterdaySalesAgg[0]?.total ?? 0) + (yesterdayEcomSalesAgg[0]?.total ?? 0);
-  const salesChange = yesterdaySales > 0
-    ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
+  const todayGrossSales = (todaySalesAgg[0]?.total ?? 0) + (todayEcomSalesAgg[0]?.total ?? 0);
+  const yesterdayGrossSales = (yesterdaySalesAgg[0]?.total ?? 0) + (yesterdayEcomSalesAgg[0]?.total ?? 0);
+
+  const todayReturnsLoss = todayReturnsAgg[0]?.total ?? 0;
+  const yesterdayReturnsLoss = yesterdayReturnsAgg[0]?.total ?? 0;
+
+  // Headline revenue is net of supplier returns, so writing off expired or
+  // damaged stock moves the number on the next dashboard load.
+  const todaySales = todayGrossSales - todayReturnsLoss;
+  const yesterdaySales = yesterdayGrossSales - yesterdayReturnsLoss;
+
+  const salesChange = yesterdaySales !== 0
+    ? Math.round(((todaySales - yesterdaySales) / Math.abs(yesterdaySales)) * 100)
     : null;
 
   const todayOrderCount = todayTxnCount + todayOnlineCount;
@@ -87,6 +107,8 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
 
   res.json({
     todaySales,
+    todayGrossSales,
+    todayReturnsLoss,
     salesChange,
     todayOrders: todayOrderCount,
     ordersChange,
@@ -100,7 +122,7 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
 // GET /api/dashboard/sales-trend
 export async function getSalesTrend(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { Transaction, Order } = req.models!;
+    const { Transaction, Order, SupplierReturn } = req.models!;
     const days = parseInt((req.query.days as string) ?? '7');
 
     const since = new Date();
@@ -109,7 +131,7 @@ export async function getSalesTrend(req: AuthRequest, res: Response): Promise<vo
 
     const dateGroup = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
 
-    const [txnRaw, orderRaw] = await Promise.all([
+    const [txnRaw, orderRaw, returnRaw] = await Promise.all([
       Transaction.aggregate([
         { $match: { status: 'success', createdAt: { $gte: since } } },
         { $group: { _id: dateGroup, sales: { $sum: '$amount' } } },
@@ -118,11 +140,19 @@ export async function getSalesTrend(req: AuthRequest, res: Response): Promise<vo
         { $match: { status: { $nin: ['cancelled', 'refunded'] }, paymentStatus: 'paid', createdAt: { $gte: since } } },
         { $group: { _id: dateGroup, sales: { $sum: '$total' } } },
       ]),
+      SupplierReturn.aggregate([
+        { $match: { createdAt: { $gte: since } } },
+        { $group: { _id: dateGroup, loss: { $sum: '$totalLossValue' } } },
+      ]),
     ]);
 
     const byDay = new Map<string, number>();
     for (const r of [...txnRaw, ...orderRaw]) {
       byDay.set(r._id, (byDay.get(r._id) ?? 0) + r.sales);
+    }
+    // Same netting as the summary card, so the trend line and the headline agree.
+    for (const r of returnRaw) {
+      byDay.set(r._id, (byDay.get(r._id) ?? 0) - r.loss);
     }
 
     const trend = [];

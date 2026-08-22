@@ -28,6 +28,7 @@ export default function AddProductPage() {
     costPrice: '',
     initialStock: '',
     lowStockThreshold: '',
+    expiryDate: '',
     category: '',
     isWeightBased: false,
     unit: 'item' as 'kg' | 'item',
@@ -89,6 +90,7 @@ export default function AddProductPage() {
         costPrice: Number(formData.costPrice),
         stock: Number(formData.initialStock),
         lowStockThreshold: Number(formData.lowStockThreshold),
+        expiryDate: formData.expiryDate || null,
         category: formData.category,
         isWeightBased: formData.isWeightBased,
         unit: formData.unit,
@@ -241,6 +243,21 @@ export default function AddProductPage() {
                     className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
+                </div>
+                <div className="col-span-2">
+                  <label htmlFor="expiryDate" className="block text-sm font-medium text-[#101828] mb-2">
+                    Expiry Date <span className="text-xs font-normal text-[#4a5565]">(leave blank for non-perishables)</span>
+                  </label>
+                  <input
+                    id="expiryDate"
+                    type="date"
+                    value={formData.expiryDate}
+                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                  />
+                  <p className="text-xs text-[#4a5565] mt-1.5">
+                    Once this date passes, the remaining stock must be returned to the supplier.
+                  </p>
                 </div>
               </div>
             </div>

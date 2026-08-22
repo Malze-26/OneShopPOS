@@ -10,6 +10,7 @@ import { IOrder, orderSchema } from '../models/Order';
 import { IPromo, promoSchema } from '../models/Promo';
 import { ISupplier, supplierSchema } from '../models/Supplier';
 import { IGRN, grnSchema } from '../models/GRN';
+import { ISupplierReturn, supplierReturnSchema } from '../models/SupplierReturn';
 import { IShift, shiftSchema } from '../models/Shift';
 
 export interface TenantModels {
@@ -24,6 +25,7 @@ export interface TenantModels {
   Promo: Model<IPromo>;
   Supplier: Model<ISupplier>;
   GRN: Model<IGRN>;
+  SupplierReturn: Model<ISupplierReturn>;
   Shift: Model<IShift>;
 }
 
@@ -40,6 +42,7 @@ export function getModels(conn: Connection): TenantModels {
     Promo: conn.models['Promo'] ?? conn.model<IPromo>('Promo', promoSchema),
     Supplier: conn.models['Supplier'] ?? conn.model<ISupplier>('Supplier', supplierSchema),
     GRN: conn.models['GRN'] ?? conn.model<IGRN>('GRN', grnSchema),
+    SupplierReturn: conn.models['SupplierReturn'] ?? conn.model<ISupplierReturn>('SupplierReturn', supplierReturnSchema),
     Shift: conn.models['Shift'] ?? conn.model<IShift>('Shift', shiftSchema),
   };
 }

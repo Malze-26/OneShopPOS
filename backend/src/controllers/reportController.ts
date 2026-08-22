@@ -5,7 +5,7 @@ import { buildDateFilter, getDateRangeLabel } from '../utils/dateRange';
 // ============= Sales Summary Report =============
 export const getSalesSummary = async (req: AuthRequest, res: Response) => {
   try {
-    const { Transaction, Order } = req.models!;
+    const { Transaction, Order, SupplierReturn } = req.models!;
     const { preset, startDate, endDate, channel } = req.query;
 
     const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
@@ -25,6 +25,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       posHourlyAgg, ecomHourlyAgg,
       posPaymentAgg, ecomPaymentAgg,
       posDailyAgg, ecomDailyAgg,
+      returnsAgg, returnsDailyAgg,
     ] = await Promise.all([
       // POS summary (Transaction collection)
       includePOS ? Transaction.aggregate([
@@ -106,6 +107,30 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         },
         { $sort: { _id: 1 } },
       ]) : Promise.resolve([]),
+
+      // Expired/damaged stock returned to suppliers over the same window. It is
+      // not tied to a sales channel, so it is counted whichever channel is shown.
+      SupplierReturn.aggregate([
+        { $match: { ...dateFilter } },
+        {
+          $group: {
+            _id: null,
+            lossValue: { $sum: '$totalLossValue' },
+            units: { $sum: '$totalItems' },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      SupplierReturn.aggregate([
+        { $match: { ...dateFilter } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            lossValue: { $sum: '$totalLossValue' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
 
     // Merge summaries
@@ -117,8 +142,16 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     const totalRefundCnt = posS.refundCount ?? 0;
     const totalTxnCount = posS.transactionCount + ecomS.transactionCount;
     const totalDiscounts = (posS.discounts ?? 0) + (ecomS.discounts ?? 0);
-    const netSales = totalGross - totalRefund - totalDiscounts;
+    const returnsS = returnsAgg[0] ?? { lossValue: 0, units: 0, count: 0 };
+    const supplierReturnLoss = returnsS.lossValue ?? 0;
+
+    // Supplier returns reduce net sales alongside refunds and discounts.
+    const netSales = totalGross - totalRefund - totalDiscounts - supplierReturnLoss;
     const avgOrder = totalTxnCount > 0 ? Math.round(totalGross / totalTxnCount) : 0;
+
+    const returnLossByDay = new Map<string, number>(
+      returnsDailyAgg.map((r) => [r._id as string, r.lossValue as number])
+    );
 
     // Merge hourly — fill hours 0–23
     const hourMap = new Map<number, number>();
@@ -155,10 +188,19 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       dayMap.set(d._id, { ...prev, onlineSales: prev.onlineSales + (d.onlineSales ?? 0), discounts: prev.discounts + (d.discounts ?? 0), count: prev.count + (d.count ?? 0) });
     }
 
+    // Days with returns but no sales still belong in the breakdown — otherwise a
+    // write-off on a quiet day silently disappears from the table.
+    for (const dateStr of returnLossByDay.keys()) {
+      if (!dayMap.has(dateStr)) {
+        dayMap.set(dateStr, { posSales: 0, onlineSales: 0, discounts: 0, count: 0 });
+      }
+    }
+
     const salesBreakdown = Array.from(dayMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([dateStr, d]) => {
         const grossSales = d.posSales + d.onlineSales;
+        const supplierReturns = returnLossByDay.get(dateStr) ?? 0;
         return {
           date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           posSales: d.posSales,
@@ -166,7 +208,8 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
           discounts: d.discounts,
           tax: 0,
           grossSales,
-          netSales: grossSales - d.discounts,
+          supplierReturns,
+          netSales: grossSales - d.discounts - supplierReturns,
           count: d.count,
         };
       });
@@ -184,6 +227,9 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         discounts: totalDiscounts,
         refundsCount: totalRefundCnt,
         refundTotal: totalRefund,
+        supplierReturnLoss,
+        supplierReturnUnits: returnsS.units ?? 0,
+        supplierReturnCount: returnsS.count ?? 0,
         netSales,
         transactionCount: totalTxnCount,
         avgOrderValue: avgOrder,

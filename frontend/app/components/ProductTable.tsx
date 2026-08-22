@@ -18,6 +18,8 @@ interface Product {
   stock: number;
   lowStockThreshold: number;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
+  expiryDate: string | null;
+  expiryStatus: 'expired' | 'expiring-soon' | 'fresh' | null;
   images: string[];
 }
 
@@ -32,6 +34,11 @@ const statusStyles: Record<string, { bg: string; text: string; label: string }> 
   'in-stock':     { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'In Stock' },
   'low-stock':    { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Low Stock' },
   'out-of-stock': { bg: 'bg-red-100',     text: 'text-red-700',     label: 'Out of Stock' },
+};
+
+const expiryStyles: Record<string, string> = {
+  'expired':       'bg-red-100 text-red-700',
+  'expiring-soon': 'bg-amber-100 text-amber-700',
 };
 
 export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps) {
@@ -123,7 +130,7 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              {['Product', 'SKU', 'Category', 'Price', 'Stock Quantity', 'Status', 'Actions'].map((h) => (
+              {['Product', 'SKU', 'Category', 'Price', 'Stock Quantity', 'Expiry', 'Status', 'Actions'].map((h) => (
                 <th key={h} className="px-6 py-4 text-left text-xs text-gray-600 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
@@ -132,12 +139,18 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
             {paginated.map((product) => {
               const style = statusStyles[product.status] ?? statusStyles['in-stock'];
               const isLow = product.status === 'low-stock';
+              const isExpired = product.expiryStatus === 'expired';
+
+              // Expired stock is unsellable, so it outranks the low-stock tint.
+              const rowTint = isExpired
+                ? 'bg-red-50/40 hover:bg-red-50/60'
+                : isLow ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-gray-50';
 
               return (
                 <tr
                   key={product._id}
                   onClick={() => router.push(`/products/${product._id}`)}
-                  className={`cursor-pointer transition-colors ${isLow ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-gray-50'}`}
+                  className={`cursor-pointer transition-colors ${rowTint}`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -169,6 +182,22 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                     <span className={`${isLow ? 'text-amber-700' : 'text-gray-900'}`}>
                       {product.stock} units
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {product.expiryDate ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-gray-900 text-sm">
+                          {new Date(product.expiryDate).toLocaleDateString('en-CA')}
+                        </span>
+                        {product.expiryStatus && product.expiryStatus !== 'fresh' && (
+                          <span className={`px-2 py-0.5 rounded text-xs w-fit ${expiryStyles[product.expiryStatus]}`}>
+                            {product.expiryStatus === 'expired' ? 'Expired' : 'Expiring soon'}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">—</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1.5 rounded-lg text-sm ${style.bg} ${style.text}`}>

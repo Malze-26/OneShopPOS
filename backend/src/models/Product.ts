@@ -1,4 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { EXPIRY_SOON_DAYS } from '../constants';
+
+export type ExpiryStatus = 'expired' | 'expiring-soon' | 'fresh';
 
 export interface IProduct extends Document {
   name: string;
@@ -17,7 +20,9 @@ export interface IProduct extends Document {
   rating: number;
   numReviews: number;
   storeId: string;
+  expiryDate?: Date | null;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
+  expiryStatus: ExpiryStatus | null;
   createdBy: mongoose.Types.ObjectId;
   isWeightBased: boolean;
   unit: 'kg' | 'item';
@@ -67,6 +72,12 @@ export const productSchema = new Schema<IProduct>(
       type: Number,
       default: 10,
       min: [0, 'Low stock threshold must be non-negative'],
+    },
+    // Expiry date of the stock currently on the shelf. Null for non-perishables.
+    // Once it passes, the remaining stock must be returned to the supplier.
+    expiryDate: {
+      type: Date,
+      default: null,
     },
     category: {
       type: String,
@@ -144,8 +155,26 @@ productSchema.virtual('status').get(function (this: IProduct) {
   return 'in-stock';
 });
 
+// Virtual for expiry status — null when the product does not track expiry
+productSchema.virtual('expiryStatus').get(function (this: IProduct) {
+  if (!this.expiryDate) return null;
+
+  // Compare on date boundaries so a product expiring later today still reads as
+  // 'expiring-soon' instead of flipping to 'expired' partway through the day.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = new Date(this.expiryDate);
+  expiry.setHours(0, 0, 0, 0);
+
+  if (expiry.getTime() < today.getTime()) return 'expired';
+
+  const daysLeft = Math.round((expiry.getTime() - today.getTime()) / 86400000);
+  return daysLeft <= EXPIRY_SOON_DAYS ? 'expiring-soon' : 'fresh';
+});
+
 // Index for fast lookups
 productSchema.index({ storeId: 1, sku: 1 });
 productSchema.index({ storeId: 1, category: 1 });
+productSchema.index({ storeId: 1, expiryDate: 1 });
 
 export const Product = mongoose.model<IProduct>('Product', productSchema);

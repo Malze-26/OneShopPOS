@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
+import { EXPIRY_SOON_DAYS } from '../constants';
 
 // GET /api/alerts/low-stock
 export async function getLowStockAlerts(req: AuthRequest, res: Response): Promise<void> {
@@ -47,6 +48,45 @@ export async function getOutOfStockAlerts(req: AuthRequest, res: Response): Prom
     .lean();
 
   res.json({ data: products });
+}
+
+// GET /api/alerts/expiry  — stock that has expired or is about to
+// Expired rows are the ones that must be returned to the supplier; the
+// atRiskValue on each is exactly what the return will deduct from revenue.
+export async function getExpiryAlerts(req: AuthRequest, res: Response): Promise<void> {
+  const { Product } = req.models!;
+  const days = Math.max(0, parseInt((req.query.days as string) ?? '', 10) || EXPIRY_SOON_DAYS);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() + days);
+  cutoff.setHours(23, 59, 59, 999);
+
+  const products = await Product.find({ stock: { $gt: 0 }, expiryDate: { $ne: null, $lte: cutoff } })
+    .select('name sku category stock costPrice expiryDate')
+    .sort({ expiryDate: 1 })
+    .limit(50)
+    .lean();
+
+  res.json({
+    data: products.map((p) => {
+      const expiry = new Date(p.expiryDate as Date);
+      expiry.setHours(0, 0, 0, 0);
+      const daysLeft = Math.round((expiry.getTime() - today.getTime()) / 86400000);
+      return {
+        id: p._id,
+        product: p.name,
+        sku: p.sku,
+        category: p.category,
+        stock: p.stock,
+        expiryDate: p.expiryDate,
+        daysLeft,
+        status: daysLeft < 0 ? 'expired' : 'expiring-soon',
+        atRiskValue: p.stock * p.costPrice,
+      };
+    }),
+  });
 }
 
 // GET /api/alerts/no-sales  — products not sold in the last N days
