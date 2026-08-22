@@ -57,7 +57,7 @@ export default function TransactionsPage() {
 
   if (authLoading || loadingData) return (
     <div className="flex items-center justify-center h-screen bg-[#F0F2F8]">
-      <div className="animate-spin w-10 h-10 border-4 border-[#1B1A55] border-t-transparent rounded-full" />
+      <div className="animate-spin w-10 h-10 border-4 border-[#065F46] border-t-transparent rounded-full" />
     </div>
   );
 
@@ -71,7 +71,7 @@ export default function TransactionsPage() {
         <div className="flex items-center gap-1.5 text-[13px] text-[#6B7280] mb-5">
           <button
             onClick={() => router.push("/pos/dashboard")}
-            className="bg-transparent border-none cursor-pointer text-[#6B7280] font-sans hover:text-[#1B1A55] transition-colors"
+            className="bg-transparent border-none cursor-pointer text-[#6B7280] font-sans hover:text-[#065F46] transition-colors"
           >
             Home
           </button>
