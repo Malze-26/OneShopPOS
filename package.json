@@ -36,6 +36,7 @@
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "msw": "^2.14.2",
+    "sst": "^4.17.1",
     "tailwindcss": "^4.2.2"
   }
 }

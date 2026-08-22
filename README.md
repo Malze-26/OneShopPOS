@@ -138,6 +138,65 @@ NEXT_PUBLIC_API_URL=http://localhost:6100/api
 
 ---
 
+## File Uploads (S3)
+
+Uploads go **browser → S3 directly**, using a short-lived presigned POST. The
+file never passes through the API.
+
+```
+1. POST /api/uploads/presign  { kind, contentType, extension }
+      -> { key, post: { url, fields }, maxBytes }
+2. POST <post.url>            multipart form with post.fields + the file
+3. POST /api/settings/logo    { key }        (or /auth/profile/avatar, /products/:id/images)
+```
+
+**Why not multipart through the API.** The previous flow wrote to `uploads/` on
+local disk via multer, which made the API undeployable to any ephemeral
+filesystem — `mkdirSync` ran at module load and would throw on a read-only
+runtime. It also allowed 10 files x 5MB in one request, well over the 6MB
+synchronous payload ceiling on Lambda.
+
+**Tenant isolation.** Every object is stored under `tenants/<tenantDb>/...`, and
+the API rejects any key that does not sit under the calling tenant's prefix, so
+a tampered key cannot address another store's assets.
+
+**Limits are enforced by S3**, not by the client. The presigned POST carries a
+`content-length-range` condition (2MB logos and avatars, 5MB product images) and
+an exact `Content-Type` condition — both verified against the live bucket: an
+oversized upload returns `400 EntityTooLarge`, and tampering with the
+`Content-Type` field returns `403 AccessDenied`.
+
+Note what this does and does not do. S3 does not inspect file *contents*, so a
+caller can upload arbitrary bytes under an allowed image type. What it cannot do
+is choose how those bytes are served: the stored `Content-Type` is pinned to the
+server-approved value, so HTML uploaded as `image/png` is served as `image/png`
+and the browser will not execute it. That is what closes the stored-XSS path.
+Content types outside the allowlist are rejected at presign time, before S3 is
+involved.
+
+### Required configuration
+
+| Variable | Purpose |
+|---|---|
+| `S3_BUCKET` | Bucket receiving uploads |
+| `AWS_REGION` | Bucket region |
+| `ASSET_BASE_URL` | CDN base for serving objects; falls back to direct S3 URLs |
+
+Credentials come from the execution role in AWS; only set `AWS_ACCESS_KEY_ID` /
+`AWS_SECRET_ACCESS_KEY` for local development.
+
+The bucket needs CORS allowing `POST` from the storefront and POS origins.
+
+### Migrating existing assets
+
+Records written before this change store relative paths (`/uploads/products/...`).
+Those files must be copied into the bucket under the owning tenant's prefix and
+the stored URLs rewritten, otherwise existing images 404 once `express.static`
+is removed. `express.static('/uploads')` is still mounted so nothing breaks on a
+container deployment before that migration runs.
+
+---
+
 ## Tech Stack
 
 ### Frontend
@@ -146,7 +205,7 @@ NEXT_PUBLIC_API_URL=http://localhost:6100/api
 
 ### Backend
 - Express.js, TypeScript, Mongoose
-- JWT Authentication, bcryptjs, Multer
+- JWT Authentication, bcryptjs, AWS S3 (presigned uploads)
 
 ### Database
 - MongoDB Atlas (multi-tenant — one DB per tenant for POS, shared admin DB for tenant factory)

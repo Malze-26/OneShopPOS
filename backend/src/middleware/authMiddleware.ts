@@ -17,13 +17,23 @@ export function protect(req: AuthRequest, res: Response, next: NextFunction): vo
 
   const token = authHeader.split(' ')[1];
 
+  let decoded: TokenPayload;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as TokenPayload;
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET as string) as TokenPayload;
   } catch {
     res.status(401).json({ message: 'Invalid or expired token' });
+    return;
   }
+
+  // Every tenant shares one JWT_SECRET, so a signature check alone does not
+  // prove the caller belongs to the tenant they are addressing. Bind the two.
+  if (decoded.tenant && req.tenantDbName && decoded.tenant !== req.tenantDbName) {
+    res.status(401).json({ message: 'This session belongs to a different store' });
+    return;
+  }
+
+  req.user = decoded;
+  next();
 }
 
 /**

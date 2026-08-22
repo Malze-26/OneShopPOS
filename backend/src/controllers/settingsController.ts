@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../types';
+import { keyBelongsToTenant, publicUrl } from '../storage/s3';
 
 // GET /api/settings — requires tenant header (set by tenantMiddleware)
 export async function getSettings(req: AuthRequest, res: Response): Promise<void> {
@@ -69,13 +70,21 @@ export async function updateSettings(req: AuthRequest, res: Response): Promise<v
 export async function uploadLogo(req: AuthRequest, res: Response): Promise<void> {
   const { StoreSettings } = req.models!;
   const { storeId } = req.user!;
+  const { key } = req.body as { key?: string };
 
-  if (!req.file) {
-    res.status(400).json({ message: 'No file uploaded' });
+  if (!key) {
+    res.status(400).json({ message: 'key is required (upload the file to S3 first)' });
     return;
   }
 
-  const logoUrl = `/uploads/logo/${req.file.filename}?v=${Date.now()}`;
+  // The key was minted for this tenant; refuse anything pointing elsewhere.
+  if (!keyBelongsToTenant(key, req.tenantDbName!)) {
+    res.status(403).json({ message: 'Upload key does not belong to this store' });
+    return;
+  }
+
+  // Cache-buster kept so an updated logo is picked up immediately.
+  const logoUrl = `${publicUrl(key)}?v=${Date.now()}`;
 
   const settings = await StoreSettings.findOneAndUpdate(
     { storeId },

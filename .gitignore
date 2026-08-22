@@ -3,3 +3,16 @@ node_modules
 node_modules/
 
 package-lock.json
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build artifacts
+*.tsbuildinfo
+
+# SST / OpenNext build output
+.sst/
+.open-next/

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Upload, X, Sparkles } from 'lucide-react';
 import api from '@/app/lib/api';
+import { uploadAllToS3 } from '@/app/lib/uploadToS3';
 import { useStore } from '@/app/contexts/StoreContext';
 
 interface Category {
@@ -139,11 +140,8 @@ export default function EditProductPage() {
       });
 
       if (newImages.length > 0) {
-        const formPayload = new FormData();
-        newImages.forEach((img) => formPayload.append('images', img.file));
-        await api.post(`/products/${params.id}/images`, formPayload, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        const keys = await uploadAllToS3(newImages.map((img) => img.file), 'product');
+        await api.post(`/products/${params.id}/images`, { keys });
       }
 
       router.push(`/products/${params.id}`);

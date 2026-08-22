@@ -17,12 +17,28 @@ interface Tenant {
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
 
 /// Login page with tenant selection and role-based login flow
+/** Mirrors the backend: `oneshop_open_door` -> `opendoor`. */
+function normalizeKey(value: string): string {
+  return value.toLowerCase().replace(/^oneshop[-_]/, '').replace(/[^a-z0-9]/g, '');
+}
+
+/** Tenant label from a POS hostname; null when the host names no store. */
+function tenantKeyFromHost(hostname: string): string | null {
+  const labels = hostname.toLowerCase().split('.');
+  if (labels.length < 3 || hostname === 'localhost') return null;
+  const sub = labels[0];
+  if (sub === 'www' || sub === 'pos' || sub === 'api') return null;
+  return normalizeKey(sub);
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [tenantOpen, setTenantOpen] = useState(false);
+  // True when the hostname names the store, so the picker is not offered.
+  const [tenantLocked, setTenantLocked] = useState(false);
 
   const [selectedRole, setSelectedRole] = useState<Role>(null);
   const [email, setEmail] = useState('');
@@ -38,7 +54,21 @@ export default function LoginPage() {
       .then(r => r.json())
       .then(({ data }: { data: Tenant[] }) => {
         setTenants(data ?? []);
-        // Auto-select the last used tenant from localStorage
+
+        // A per-shop URL already names the store — keels.pos.example.com.
+        // Pin to it and hide the picker, so a till can never be pointed at
+        // the wrong shop by a stale localStorage value.
+        const fromHost = tenantKeyFromHost(window.location.hostname);
+        if (fromHost) {
+          const match = data?.find((t) => normalizeKey(t.databaseName) === fromHost);
+          if (match) {
+            applyTenant(match);
+            setTenantLocked(true);
+            return;
+          }
+        }
+
+        // Otherwise fall back to the last store used on this device.
         const saved = localStorage.getItem('tenantId');
         if (saved) {
           const match = data?.find((t) => t.databaseName === saved);
@@ -133,18 +163,23 @@ export default function LoginPage() {
           <div className="relative mb-1">
             <button
               type="button"
-              onClick={() => setTenantOpen((o) => !o)}
-              className="flex items-center gap-2 text-xl font-bold px-3 py-1 rounded-lg hover:bg-white/20 transition-colors"
+              disabled={tenantLocked}
+              onClick={() => !tenantLocked && setTenantOpen((o) => !o)}
+              className={`flex items-center gap-2 text-xl font-bold px-3 py-1 rounded-lg transition-colors ${
+                tenantLocked ? 'cursor-default' : 'hover:bg-white/20'
+              }`}
               style={{ color: selectedTenant?.backgroundImage ? 'white' : '#101828' }}
             >
               {selectedTenant?.businessName ?? 'Select Store'}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
+              {!tenantLocked && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              )}
             </button>
 
-            {tenantOpen && (
+            {tenantOpen && !tenantLocked && (
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white rounded-xl shadow-xl border border-[#e4e7ec] min-w-[220px] overflow-hidden z-50">
                 {tenants.length === 0 && (
                   <p className="px-4 py-3 text-sm text-[#4a5565]">No stores available</p>
