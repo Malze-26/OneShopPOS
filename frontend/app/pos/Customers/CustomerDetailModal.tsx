@@ -86,7 +86,7 @@ export default function CustomerDetailModal({
 
           {/* Customer Summary */}
           <div className="flex items-center gap-4 px-6 py-5 bg-[#F7F8FC] border-b border-[#E3E6F0]">
-            <div className="w-14 h-14 rounded-full bg-[#1B1A55] flex items-center justify-center font-bold text-white text-[20px]">
+            <div className="w-14 h-14 rounded-full bg-[#065F46] flex items-center justify-center font-bold text-white text-[20px]">
               {getInitials(customer.name)}
             </div>
             <div className="flex-1">
@@ -97,7 +97,7 @@ export default function CustomerDetailModal({
             </div>
             <div className="text-right">
               <div className="text-[12px] text-[#6B7280]">Total Spent</div>
-              <div className="font-bold text-[#1B1A55] text-[16px]">
+              <div className="font-bold text-[#065F46] text-[16px]">
                 Rs. {customer.totalSpent.toLocaleString()}
               </div>
             </div>
@@ -111,7 +111,7 @@ export default function CustomerDetailModal({
                 onClick={() => setTab(t)}
                 className={`flex-1 py-3 text-[13px] font-semibold capitalize transition-colors ${
                   tab === t
-                    ? "text-[#1B1A55] border-b-2 border-[#1B1A55]"
+                    ? "text-[#065F46] border-b-2 border-[#065F46]"
                     : "text-[#6B7280] hover:text-[#111827]"
                 }`}
               >
@@ -164,7 +164,7 @@ export default function CustomerDetailModal({
               <div>
                 {ordersLoading ? (
                   <div className="flex justify-center py-8">
-                    <div className="animate-spin w-7 h-7 border-4 border-[#1B1A55] border-t-transparent rounded-full" />
+                    <div className="animate-spin w-7 h-7 border-4 border-[#065F46] border-t-transparent rounded-full" />
                   </div>
                 ) : ordersError ? (
                   <div className="text-center text-[13px] text-red-600 py-6">{ordersError}</div>
@@ -238,7 +238,7 @@ export default function CustomerDetailModal({
                   </button>
                   <button
                     onClick={() => onEdit(customer)}
-                    className="px-4 py-2 text-[13px] font-semibold text-white bg-[#1B1A55] rounded-xl hover:bg-[#2D2B8F] transition-colors"
+                    className="px-4 py-2 text-[13px] font-semibold text-white bg-[#065F46] rounded-xl hover:bg-[#047857] transition-colors"
                   >
                     Edit Customer
                   </button>

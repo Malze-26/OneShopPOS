@@ -98,7 +98,7 @@ export default function TransactionTable({
   const paginated  = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const pageBtnClass =
-    "w-8 h-8 rounded-lg border text-[13px] font-bold flex items-center justify-center transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#9290C3] hover:text-[#1B1A55]";
+    "w-8 h-8 rounded-lg border text-[13px] font-bold flex items-center justify-center transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#10B981] hover:text-[#065F46]";
 
   const GRID = "grid grid-cols-[90px_90px_120px_160px_1fr_100px_130px_120px_130px_50px]";
 
@@ -117,7 +117,7 @@ export default function TransactionTable({
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
           <input
-            className="w-full pl-9 pr-4 py-2 text-[13px] bg-[#F7F8FC] border border-[#E3E6F0] rounded-xl outline-none text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#9290C3] focus:ring-2 focus:ring-[#9290C3]/20 transition-all"
+            className="w-full pl-9 pr-4 py-2 text-[13px] bg-[#F7F8FC] border border-[#E3E6F0] rounded-xl outline-none text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all"
             placeholder="Search by transaction #, customer or order ID..."
             value={search}
             onChange={(e) => { onSearch(e.target.value); onPageChange(1); }}
@@ -130,8 +130,8 @@ export default function TransactionTable({
               onClick={() => { onFilter(f); onPageChange(1); }}
               className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all cursor-pointer ${
                 paymentFilter === f
-                  ? "bg-[#1B1A55] text-white border-[#1B1A55]"
-                  : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#9290C3] hover:text-[#1B1A55]"
+                  ? "bg-[#065F46] text-white border-[#065F46]"
+                  : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#10B981] hover:text-[#065F46]"
               }`}
             >
               {f}
@@ -143,7 +143,7 @@ export default function TransactionTable({
       {/* Header */}
       <div className={`${GRID} py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]`}>
         {HEADERS.map((h, i) => (
-          <div key={i} className="text-[12px] font-bold text-[#535C91] tracking-[0.3px]">{h}</div>
+          <div key={i} className="text-[12px] font-bold text-[#065F46] tracking-[0.3px]">{h}</div>
         ))}
       </div>
 
@@ -162,7 +162,7 @@ export default function TransactionTable({
             <div
               key={t._id}
               onClick={() => onOpenModal(t)}
-              className={`${GRID} py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#F5F4FF] ${
+              className={`${GRID} py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#ECFDF5] ${
                 i < paginated.length - 1 ? "border-b border-[#E3E6F0]" : ""
               }`}
             >
@@ -177,7 +177,7 @@ export default function TransactionTable({
               </div>
 
               {/* Transaction # */}
-              <div className="text-[13px] font-bold text-[#535C91]">#{t.txnId}</div>
+              <div className="text-[13px] font-bold text-[#065F46]">#{t.txnId}</div>
 
               {/* Customer */}
               <div className="text-[13px] font-semibold text-[#111827]">{t.customer}</div>
@@ -210,7 +210,7 @@ export default function TransactionTable({
               <div className="flex items-center justify-end">
                 <button
                   onClick={(e) => { e.stopPropagation(); onOpenModal(t); }}
-                  className="text-[10px] font-bold text-[#535C91] bg-[#F0F2F8] rounded px-2 py-0.5 cursor-pointer border-none hover:bg-[#E3E6F0] transition-colors"
+                  className="text-[10px] font-bold text-[#065F46] bg-[#ECFDF5] rounded px-2 py-0.5 cursor-pointer border-none hover:bg-[#D1FAE5] transition-colors"
                 >
                   ···
                 </button>
@@ -241,7 +241,7 @@ export default function TransactionTable({
               onClick={() => onPageChange(p)}
               className={`${pageBtnClass} ${
                 page === p
-                  ? "bg-[#1B1A55] text-white border-[#1B1A55]"
+                  ? "bg-[#065F46] text-white border-[#065F46]"
                   : "bg-white text-[#6B7280] border-[#E3E6F0]"
               }`}
             >

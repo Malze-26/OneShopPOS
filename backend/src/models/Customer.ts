@@ -30,6 +30,7 @@ export const customerSchema = new Schema<ICustomer>(
     },
     phone: {
       type: String,
+      required: [true, 'Customer phone number is required'],
       trim: true,
     },
     password: {

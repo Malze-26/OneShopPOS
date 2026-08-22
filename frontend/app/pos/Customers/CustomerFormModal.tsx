@@ -48,7 +48,7 @@ export default function CustomerFormModal({
 
   const isEdit = !!editingCustomer;
   const inputClass =
-    "w-full px-4 py-2.5 text-[13px] bg-[#F7F8FC] border border-[#E3E6F0] rounded-xl outline-none text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#9290C3] focus:ring-2 focus:ring-[#9290C3]/20 transition-all";
+    "w-full px-4 py-2.5 text-[13px] bg-[#F7F8FC] border border-[#E3E6F0] rounded-xl outline-none text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all";
   const labelClass = "block text-[12px] font-semibold text-[#374151] mb-1.5";
 
   return (
@@ -124,7 +124,9 @@ export default function CustomerFormModal({
 
           {/* Phone */}
           <div>
-            <label className={labelClass}>Phone Number</label>
+            <label className={labelClass}>
+              Phone Number <span className="text-red-500">*</span>
+            </label>
             <input
               className={inputClass}
               name="phone"
@@ -132,6 +134,7 @@ export default function CustomerFormModal({
               value={form.phone}
               onChange={handleChange}
               placeholder="e.g. 0771234567"
+              required
             />
           </div>
 
@@ -146,8 +149,8 @@ export default function CustomerFormModal({
             </button>
             <button
               type="submit"
-              disabled={loading || !form.name.trim()}
-              className="flex-1 px-4 py-2.5 text-[13px] font-semibold text-white bg-[#1B1A55] rounded-xl hover:bg-[#2D2B8F] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={loading || !form.name.trim() || !form.phone.trim()}
+              className="flex-1 px-4 py-2.5 text-[13px] font-semibold text-white bg-[#065F46] rounded-xl hover:bg-[#047857] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

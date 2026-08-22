@@ -265,7 +265,7 @@ export default function CheckoutModal({
             {/* Customer badge */}
             {state.customer && (
               <div className="flex items-center gap-2 px-3 py-2 bg-[#F0F2F8] rounded-xl border border-[#E3E6F0]">
-                <div className="w-6 h-6 rounded-full bg-[#1B1A55] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                <div className="w-6 h-6 rounded-full bg-[#065F46] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                   {state.customer.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                 </div>
                 <span className="text-[12px] font-semibold text-[#111827]">{state.customer.name}</span>
@@ -289,12 +289,12 @@ export default function CheckoutModal({
                   </div>
                 )}
                 {state.loyaltyDiscount > 0 && (
-               <div className="flex justify-between mb-1 text-amber-600 font-semibold">
-               <span>⭐ Loyalty ({state.loyaltyPointsUsed} pts)</span>
-                <span>−{fmt(state.loyaltyDiscount)}</span>
+                  <div className="flex justify-between mb-1 text-amber-600 font-semibold">
+                    <span>⭐ Loyalty ({state.loyaltyPointsUsed} pts)</span>
+                    <span>−{fmt(state.loyaltyDiscount)}</span>
                   </div>
-          )}
-                <div className="flex justify-between mt-1 text-[#1B1A55] font-bold text-[15px]">
+                )}
+                <div className="flex justify-between mt-1 text-[#065F46] font-bold text-[15px]">
                   <span>Total</span><span>{fmt(total)}</span>
                 </div>
               </div>
@@ -313,8 +313,8 @@ export default function CheckoutModal({
                     onClick={() => setMethod(m.id)}
                     className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[12px] font-semibold rounded-xl border transition-all ${
                       method === m.id
-                        ? "bg-[#1B1A55] text-white border-[#1B1A55]"
-                        : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#9290C3]"
+                        ? "bg-[#065F46] text-white border-[#065F46]"
+                        : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#10B981] hover:text-[#065F46]"
                     }`}
                   >
                     <span className="text-lg">{m.icon}</span>
@@ -333,7 +333,7 @@ export default function CheckoutModal({
                   value={cash}
                   onChange={(e) => setCash(e.target.value)}
                   placeholder={total.toFixed(2)}
-                  className="w-full px-4 py-2.5 border border-[#E3E6F0] rounded-xl text-[#111827] font-mono text-[14px] outline-none focus:border-[#9290C3] focus:ring-2 focus:ring-[#9290C3]/20 transition-all"
+                  className="w-full px-4 py-2.5 border border-[#E3E6F0] rounded-xl text-[#111827] font-mono text-[14px] outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all"
                 />
                 {cashAmt >= total && cashAmt > 0 && (
                   <div className="mt-1.5 text-emerald-600 font-bold text-[13px]">
@@ -346,7 +346,7 @@ export default function CheckoutModal({
             <button
               disabled={!canPay}
               onClick={handleConfirm}
-              className="w-full py-3 font-bold text-white rounded-xl bg-[#1B1A55] hover:bg-[#2D2B8F] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 font-bold text-white rounded-xl bg-[#065F46] hover:bg-[#047857] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isOnline ? `Confirm Payment · ${fmt(total)}` : `Save Offline · ${fmt(total)}`}
             </button>
@@ -371,7 +371,7 @@ export default function CheckoutModal({
                 }
               </div>
               {state.customer && (
-                <div className="mt-2 text-[12px] text-[#535C91] font-semibold">
+                <div className="mt-2 text-[12px] text-[#065F46] font-semibold">
                   Linked to {state.customer.name}
                 </div>
               )}
@@ -388,7 +388,7 @@ export default function CheckoutModal({
 
             {/* Quick receipt summary (visible) */}
             <div className="w-full bg-[#F7F8FC] rounded-xl border border-[#E3E6F0] p-4 text-[12px]">
-              <div className="text-center font-bold text-[#1B1A55] mb-3 text-[13px]">OneShop POS</div>
+              <div className="text-center font-bold text-[#065F46] mb-3 text-[13px]">OneShop POS</div>
               {state.items.map(item => (
                 <div key={item.id} className="flex justify-between text-[#6B7280] mb-1">
                   <span>{item.name} × {item.qty}</span>
@@ -402,7 +402,7 @@ export default function CheckoutModal({
                     <span>Discount</span><span>−{fmt(state.discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-[#1B1A55] text-[13px] mt-1 pt-1 border-t border-[#E3E6F0]">
+                <div className="flex justify-between font-bold text-[#065F46] text-[13px] mt-1 pt-1 border-t border-[#E3E6F0]">
                   <span>TOTAL</span><span>{fmt(total)}</span>
                 </div>
                 {method === "cash" && cashAmt > 0 && (
@@ -430,7 +430,7 @@ export default function CheckoutModal({
                 Print Receipt
               </button>
               <button
-                className="flex-1 py-3 font-bold text-white rounded-xl bg-[#1B1A55] hover:bg-[#2D2B8F] transition-colors"
+                className="flex-1 py-3 font-bold text-white rounded-xl bg-[#065F46] hover:bg-[#047857] transition-colors"
                 onClick={onSuccess}
               >
                 New Order

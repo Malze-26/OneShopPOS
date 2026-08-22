@@ -72,12 +72,14 @@ export default function CartSidebar({
   onCheckout,
 }: CartSidebarProps) {
 
-  // Helper function to filter customers based on search input, matching name or phone number
-  const filterCustomers = (list: Customer[], search: string) =>
-    list.filter(c =>
-      c.name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone?.includes(search)
+  // Helper function to filter customers based on search input, matching telephone number only
+  const filterCustomers = (list: Customer[], search: string) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return list;
+    return list.filter(c =>
+      c.phone?.toLowerCase().includes(term)
     );
+  };
 
   return (
     <aside className="w-[300px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col overflow-hidden">
@@ -87,7 +89,7 @@ export default function CartSidebar({
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-extrabold text-gray-800">Cart</span>
           {cart.length > 0 && (
-            <div className="bg-blue-700 text-white rounded-full px-2 py-[1px] text-[11px] font-bold">
+            <div className="bg-[#065F46] text-white rounded-full px-2 py-[1px] text-[11px] font-bold">
               {cart.reduce((a, i) => a + i.qty, 0)} items
             </div>
           )}
@@ -109,7 +111,7 @@ export default function CartSidebar({
         {selectedCustomer ? (
           <div>
             <div className="flex items-center gap-2.5 p-2.5 bg-gray-100 rounded-lg border border-gray-200">
-              <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#065F46] flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0">
                 {selectedCustomer.avatar}
               </div>
               <div className="flex-1 min-w-0">
@@ -117,7 +119,7 @@ export default function CartSidebar({
                 <div className="text-[10px] text-gray-500">{selectedCustomer.phone}</div>
               </div>
               <button onClick={onClearCustomer} className="p-1 text-gray-500 hover:text-gray-700">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
 
@@ -149,15 +151,15 @@ export default function CartSidebar({
         ) : (
           <div className="relative">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
             </svg>
             <input
               type="text"
-              placeholder="Search customer..."
+              placeholder="Search by phone number..."
               value={customerSearch}
               onChange={e => { onCustomerSearch(e.target.value); onShowCustomerDropdown(true); }}
               onFocus={() => onShowCustomerDropdown(true)}
-              className="w-full border border-gray-200 rounded-lg px-7 py-1.5 text-[13px] focus:ring-2 focus:ring-blue-700 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-7 py-1.5 text-[13px] focus:ring-2 focus:ring-[#065F46] focus:outline-none"
             />
           </div>
         )}
@@ -184,13 +186,13 @@ export default function CartSidebar({
                 onClick={() => onSelectCustomer(c)}
                 className="flex items-center gap-2.5 p-2.5 cursor-pointer hover:bg-gray-100 border-b border-gray-200"
               >
-                <div className="w-7 h-7 rounded-full bg-blue-700 flex items-center justify-center text-[11px] font-bold text-white">{c.avatar}</div>
+                <div className="w-7 h-7 rounded-full bg-[#065F46] flex items-center justify-center text-[11px] font-bold text-white">{c.avatar}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-bold text-gray-800 truncate">{c.name}</div>
                   <div className="text-[10px] text-gray-500">{c.phone} · {c.totalOrders} orders</div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5">
-                  <div className="text-[10px] font-bold text-blue-500">Rs. {c.totalSpent.toLocaleString()}</div>
+                  <div className="text-[10px] font-bold text-[#065F46]">Rs. {c.totalSpent.toLocaleString()}</div>
                   {(c.loyaltyPoints ?? 0) > 0 && (
                     <div className="text-[9px] font-bold text-amber-600">⭐ {c.loyaltyPoints} pts</div>
                   )}
@@ -211,8 +213,8 @@ export default function CartSidebar({
           <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
             <div className="w-18 h-18 bg-gray-100 rounded-full flex items-center justify-center">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.brandLight} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-                <path d="M16 10a4 4 0 01-8 0"/>
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 01-8 0" />
               </svg>
             </div>
             <div className="text-center">
@@ -223,7 +225,7 @@ export default function CartSidebar({
         ) : (
           cart.map(item => (
             <div key={item.id} className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-[13px] font-bold text-blue-700 flex-shrink-0">{item.name.charAt(0).toUpperCase()}</div>
+              <div className="w-8 h-8 bg-[#ECFDF5] rounded-lg flex items-center justify-center text-[13px] font-bold text-[#065F46] flex-shrink-0">{item.name.charAt(0).toUpperCase()}</div>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-semibold text-gray-800 truncate mb-0.5">{item.name}</div>
                 <div className="text-[11px] text-gray-500">Rs. {item.price.toLocaleString()} / unit</div>
@@ -236,7 +238,7 @@ export default function CartSidebar({
               <div className="text-[12px] font-bold text-gray-800 w-14 text-right">Rs. {(item.price * item.qty).toLocaleString()}</div>
               <button className="p-1 text-gray-500 hover:text-red-500" onClick={() => onUpdateQty(item.id, -item.qty)}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" />
                 </svg>
               </button>
             </div>
@@ -264,7 +266,7 @@ export default function CartSidebar({
         )}
         <div className="flex justify-between items-center border-t border-gray-200 mt-1 pt-2">
           <span className="text-[14px] font-bold text-gray-800">Total</span>
-          <span className="text-[22px] font-extrabold text-blue-700 tracking-[-1px] font-mono">Rs. {total.toLocaleString()}</span>
+          <span className="text-[22px] font-extrabold text-[#065F46] tracking-[-1px] font-mono">Rs. {total.toLocaleString()}</span>
         </div>
       </div>
 
@@ -281,8 +283,8 @@ export default function CartSidebar({
       <div className="flex-shrink-0 px-4 py-3">
         <button className="w-full flex items-center justify-center mb-2 px-2 py-1.5 border border-gray-300 rounded hover:bg-gray-100 transition" onClick={onShowPromo}>
           <svg className="mr-1" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
-            <line x1="7" y1="7" x2="7.01" y2="7"/>
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
           </svg>
           {discount > 0 ? `Promo Applied: −Rs. ${discount.toFixed(2)}` : "Apply Promo Code"}
         </button>
@@ -290,11 +292,11 @@ export default function CartSidebar({
         <button
           onClick={onCheckout}
           disabled={cart.length === 0}
-          className={`w-full flex items-center justify-center px-3 py-2 rounded text-white font-bold transition ${cart.length === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-blue-700 hover:bg-blue-800"}`}
+          className={`w-full flex items-center justify-center px-3 py-2 rounded text-white font-bold transition ${cart.length === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#065F46] hover:bg-[#047857]"}`}
         >
           <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+            <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
           </svg>
           {cart.length === 0 ? "CHECKOUT" : `CHECKOUT · Rs. ${total.toLocaleString()}`}
         </button>

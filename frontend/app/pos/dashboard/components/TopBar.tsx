@@ -39,7 +39,7 @@ export default function TopBar({
   onLogout,
 }: TopBarProps) {
   return (
-    <header className="flex items-center px-4 gap-3 h-14 flex-shrink-0 z-20" style={{ background: "#1B1A55" }}>
+    <header className="flex items-center px-4 gap-3 h-14 flex-shrink-0 z-20" style={{ background: "#065F46" }}>
 
       {/* Logo */}
       <div className="flex items-center gap-2 flex-shrink-0">

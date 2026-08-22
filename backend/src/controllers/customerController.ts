@@ -60,10 +60,14 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
       res.status(400).json({ message: 'Customer name is required' });
       return;
     }
+    if (!phone?.trim()) {
+      res.status(400).json({ message: 'Customer phone number is required' });
+      return;
+    }
 
     const avatar = name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
-    const customer = await Customer.create({ name: name.trim(), email, phone, avatar, storeId });
+    const customer = await Customer.create({ name: name.trim(), email, phone: phone.trim(), avatar, storeId });
     res.status(201).json({ data: customer });
   } catch (err) {
     next(err);
@@ -80,6 +84,10 @@ export async function updateCustomer(req: AuthRequest, res: Response, next: Next
       res.status(400).json({ message: 'Customer name is required' });
       return;
     }
+    if (!phone?.trim()) {
+      res.status(400).json({ message: 'Customer phone number is required' });
+      return;
+    }
 
     const customer = await Customer.findById(req.params.id);
     if (!customer) {
@@ -93,7 +101,7 @@ export async function updateCustomer(req: AuthRequest, res: Response, next: Next
 
     customer.name = name.trim();
     customer.email = email;
-    customer.phone = phone;
+    customer.phone = phone.trim();
     customer.avatar = avatar;
 
     await customer.save();
