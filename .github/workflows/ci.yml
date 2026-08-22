@@ -1,0 +1,61 @@
+name: CI
+
+# Build and test only — this workflow never touches AWS.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      # npm ci installs exactly what the lockfile pins. It fails outright if
+      # package.json and the lockfile disagree, which is the point: a build that
+      # passes here resolves the same dependency tree every time.
+      - name: Install (root workspaces — backend + frontend)
+        run: npm ci
+
+      # The tenant factory sits outside the root "workspaces" list, so the root
+      # install skips it entirely.
+      - name: Install (tenant factory API)
+        run: npm ci
+        working-directory: oneshop-tenant-factory/backend
+
+      - name: Install (tenant factory frontend)
+        run: npm ci
+        working-directory: oneshop-tenant-factory/frontend
+
+      - name: Typecheck API
+        run: npx tsc --noEmit
+        working-directory: backend
+
+      - name: Test API
+        run: npm test
+        working-directory: backend
+
+      # NEXT_PUBLIC_API_URL is baked in at build time. Production serves the API
+      # on the same origin, so it must be the relative path here too — otherwise
+      # the bundle ships pointing at localhost.
+      - name: Build POS frontend
+        run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: /api
+
+      - name: Build tenant factory frontend
+        run: npm run build
+        working-directory: oneshop-tenant-factory/frontend
+        env:
+          NEXT_PUBLIC_API_URL: /api

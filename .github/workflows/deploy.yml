@@ -1,0 +1,93 @@
+name: Deploy production
+
+# Manual only, on purpose. One deployment serves every tenant, so a merge to
+# main must not be able to reach five live shops on its own. Flip this to
+# `push: branches: [main]` once a staging stage exists to catch failures first.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm this ships to all live tenants'
+        required: true
+        default: ''
+
+# SST takes a lock on the stage; a second concurrent run would fail on it
+# anyway. Queue instead of cancelling — cancelling mid-deploy is what leaves
+# production half-updated.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # required to request the OIDC token
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check confirmation
+        if: inputs.confirm != 'DEPLOY'
+        run: |
+          echo "::error::Type DEPLOY in the confirmation box to run this workflow."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install (root workspaces — backend + frontend)
+        run: npm ci
+
+      - name: Install (tenant factory API)
+        run: npm ci
+        working-directory: oneshop-tenant-factory/backend
+
+      - name: Install (tenant factory frontend)
+        run: npm ci
+        working-directory: oneshop-tenant-factory/frontend
+
+      # Gate the deploy on the same checks CI runs. A red build must never
+      # reach production — that is how the APIs and frontends fell out of sync.
+      - name: Typecheck API
+        run: npx tsc --noEmit
+        working-directory: backend
+
+      - name: Test API
+        run: npm test
+        working-directory: backend
+
+      - name: Configure AWS credentials (OIDC — no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      # sst.config.ts reads each value from the environment first and falls back
+      # to a local .env. Those .env files are not in the repo, so in CI every
+      # value below must come from a secret or the deploy fails.
+      - name: Deploy
+        run: npx sst deploy --stage production
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          FACTORY_MONGODB_URI: ${{ secrets.FACTORY_MONGODB_URI }}
+          FACTORY_JWT_SECRET: ${{ secrets.FACTORY_JWT_SECRET }}
+
+      - name: Verify the deployed site responds
+        run: |
+          set -euo pipefail
+          for url in \
+            https://opendoor.pos.allinoneshop.store/login \
+            https://opendoor.pos.allinoneshop.store/api/health \
+            https://admin.allinoneshop.store/
+          do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$url")
+            echo "$code  $url"
+            case "$code" in 2*|3*) ;; *) echo "::error::$url returned $code"; exit 1 ;; esac
+          done
