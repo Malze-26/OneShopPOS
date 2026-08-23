@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, ChevronLeft, Search, TrendingDown } from 'lucide-react';
@@ -29,8 +29,6 @@ interface LineItem {
   id: string;
   product: Product | null;
   productSearch: string;
-  showDropdown: boolean;
-  searchResults: Product[];
   quantity: number;
   reason: Reason;
 }
@@ -44,11 +42,114 @@ function newLine(reason: Reason = 'expired'): LineItem {
     id: uid(),
     product: null,
     productSearch: '',
-    showDropdown: false,
-    searchResults: [],
     quantity: 1,
     reason,
   };
+}
+
+/**
+ * The product picker for one line.
+ *
+ * Each cell runs its own search. Sharing one effect across every line meant a
+ * keystroke in one row restarted the searches of all the others, and results
+ * were written back by row index — so removing a row mid-search dropped them
+ * onto whichever product had taken its place.
+ *
+ * Out-of-stock products are listed but not selectable. Filtering them out
+ * silently was indistinguishable from a search that had simply stopped
+ * working: a shop looking for the item it just sold out of got an empty box
+ * and no explanation.
+ */
+function ProductSearchCell({
+  value,
+  onChange,
+  onSelect,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSelect: (product: Product) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const query = value.trim();
+
+  useEffect(() => {
+    if (!open || !query) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+
+    // A late reply from an abandoned query must not overwrite a newer one.
+    let cancelled = false;
+    setSearching(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/products', { params: { search: query } });
+        if (!cancelled) setResults((res.data.data as Product[]).slice(0, 8));
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, open]);
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#4a5565] pointer-events-none" />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Search product..."
+        className="w-full pl-8 pr-3 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
+      />
+      {open && query && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#e4e7ec] rounded-lg shadow-lg z-20 overflow-hidden">
+          {searching && (
+            <p className="px-3 py-2 text-xs text-[#4a5565]">Searching...</p>
+          )}
+          {!searching && results.length === 0 && (
+            <p className="px-3 py-2 text-xs text-[#4a5565]">No product matches &ldquo;{query}&rdquo;.</p>
+          )}
+          {!searching &&
+            results.map((p) => {
+              const returnable = p.stock > 0;
+              return (
+                <button
+                  key={p._id}
+                  type="button"
+                  disabled={!returnable}
+                  onMouseDown={() => returnable && onSelect(p)}
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                    returnable ? 'hover:bg-[#f9fafb]' : 'cursor-not-allowed bg-[#f9fafb]'
+                  }`}
+                >
+                  <span className={returnable ? 'font-medium text-[#101828]' : 'font-medium text-[#4a5565]'}>
+                    {p.name}
+                  </span>
+                  <span className="text-[#4a5565] ml-2 text-xs">{p.sku}</span>
+                  <span className={`ml-2 text-xs ${returnable ? 'text-[#4a5565]' : 'text-[#f04438]'}`}>
+                    {returnable ? `· ${p.stock} in stock` : '· nothing in stock to return'}
+                  </span>
+                </button>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function NewReturnForm() {
@@ -57,7 +158,6 @@ function NewReturnForm() {
   const { currency } = useStore();
 
   const [supplierId, setSupplierId] = useState('');
-  const [supplierName, setSupplierName] = useState('');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [notes, setNotes] = useState('');
@@ -93,44 +193,19 @@ function NewReturnForm() {
       .catch(() => {});
   }, [searchParams]);
 
-  const searchProducts = useCallback(async (query: string): Promise<Product[]> => {
-    if (!query.trim()) return [];
-    try {
-      const res = await api.get('/products', { params: { search: query } });
-      // Only stock that actually exists can be sent back.
-      return res.data.data.filter((p: Product) => p.stock > 0).slice(0, 8);
-    } catch {
-      return [];
-    }
-  }, []);
-
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    lines.forEach((line, idx) => {
-      if (!line.showDropdown) return;
-      const t = setTimeout(async () => {
-        const results = await searchProducts(line.productSearch);
-        setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, searchResults: results } : l)));
-      }, 300);
-      timers.push(t);
-    });
-    return () => timers.forEach(clearTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines.map((l) => l.productSearch + l.showDropdown).join(','), searchProducts]);
-
   function updateLine(idx: number, patch: Partial<LineItem>) {
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   }
 
   function handleSearchChange(idx: number, val: string) {
-    updateLine(idx, { productSearch: val, showDropdown: true, product: null, searchResults: [] });
+    // The text no longer names the chosen product, so the choice goes with it.
+    updateLine(idx, { productSearch: val, product: null });
   }
 
   function selectProduct(idx: number, product: Product) {
     updateLine(idx, {
       product,
       productSearch: `${product.name} (${product.sku})`,
-      showDropdown: false,
       quantity: Math.min(lines[idx].quantity || 1, product.stock),
       // An already-expired product almost always means an expiry return.
       reason: product.expiryStatus === 'expired' ? 'expired' : lines[idx].reason,
@@ -167,6 +242,10 @@ function NewReturnForm() {
       setError('Please add at least one product.');
       return;
     }
+    if (!supplierId) {
+      setError('Please choose the supplier this stock goes back to.');
+      return;
+    }
     if (overStockLine) {
       setError(`Cannot return more than the ${overStockLine.product!.stock} units in stock for "${overStockLine.product!.name}".`);
       return;
@@ -175,8 +254,7 @@ function NewReturnForm() {
     setSaving(true);
     try {
       const res = await api.post('/stocks/returns', {
-        supplierId: supplierId || undefined,
-        supplier: supplierId ? undefined : supplierName,
+        supplierId,
         referenceNumber,
         notes,
         items: validLines.map((l) => ({
@@ -216,27 +294,18 @@ function NewReturnForm() {
           <h2 className="text-sm font-semibold text-[#101828] mb-4">Return Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Supplier</label>
-              {suppliers.length > 0 ? (
-                <select
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] text-[#101828] bg-white"
-                >
-                  <option value="">Select a supplier</option>
-                  {suppliers.map((s) => (
-                    <option key={s._id} value={s._id}>{s.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={supplierName}
-                  onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder="e.g. ABC Distributors"
-                  className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
-                />
-              )}
+              <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Supplier *</label>
+              <select
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] text-[#101828] bg-white"
+              >
+                <option value="">Choose a supplier</option>
+                {suppliers.map((s) => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Reference / Debit Note No.</label>
@@ -294,34 +363,11 @@ function NewReturnForm() {
                     <tr key={line.id}>
                       {/* Product search */}
                       <td className="px-4 py-3 relative">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#4a5565] pointer-events-none" />
-                          <input
-                            type="text"
-                            value={line.productSearch}
-                            onChange={(e) => handleSearchChange(idx, e.target.value)}
-                            onFocus={() => updateLine(idx, { showDropdown: true })}
-                            onBlur={() => setTimeout(() => updateLine(idx, { showDropdown: false }), 150)}
-                            placeholder="Search product..."
-                            className="w-full pl-8 pr-3 py-1.5 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
-                          />
-                          {line.showDropdown && line.searchResults.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#e4e7ec] rounded-lg shadow-lg z-20 overflow-hidden">
-                              {line.searchResults.map((p) => (
-                                <button
-                                  key={p._id}
-                                  type="button"
-                                  onMouseDown={() => selectProduct(idx, p)}
-                                  className="w-full px-3 py-2 text-left text-sm hover:bg-[#f9fafb] transition-colors"
-                                >
-                                  <span className="font-medium text-[#101828]">{p.name}</span>
-                                  <span className="text-[#4a5565] ml-2 text-xs">{p.sku}</span>
-                                  <span className="text-[#4a5565] ml-2 text-xs">· {p.stock} in stock</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <ProductSearchCell
+                          value={line.productSearch}
+                          onChange={(val) => handleSearchChange(idx, val)}
+                          onSelect={(p) => selectProduct(idx, p)}
+                        />
                       </td>
 
                       {/* Expiry */}
@@ -414,7 +460,7 @@ function NewReturnForm() {
           </Link>
           <button
             type="submit"
-            disabled={saving || !!overStockLine}
+            disabled={saving || !!overStockLine || !supplierId}
             className="px-6 py-2 bg-[var(--color-primary)] hover:bg-[#0d4dd9] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
           >
             {saving ? 'Saving...' : 'Confirm Return'}

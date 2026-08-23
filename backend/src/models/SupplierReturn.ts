@@ -24,7 +24,7 @@ export interface ISupplierReturnItem {
 export interface ISupplierReturn extends Document {
   returnNumber: string;
   supplier: string;
-  supplierId?: mongoose.Types.ObjectId | null;
+  supplierId: mongoose.Types.ObjectId;
   referenceNumber: string;
   notes: string;
   items: ISupplierReturnItem[];
@@ -61,8 +61,10 @@ const supplierReturnItemSchema = new Schema<ISupplierReturnItem>(
 export const supplierReturnSchema = new Schema<ISupplierReturn>(
   {
     returnNumber: { type: String, required: true, unique: true },
-    supplier: { type: String, trim: true, default: '' },
-    supplierId: { type: Schema.Types.ObjectId, ref: 'Supplier', default: null },
+    // Stock goes back to the supplier it came from, so a return without
+    // one is paperwork nobody can act on. Required the same way a GRN is.
+    supplierId: { type: Schema.Types.ObjectId, ref: 'Supplier', required: [true, 'Supplier is required'] },
+    supplier: { type: String, trim: true, required: [true, 'Supplier is required'] },
     referenceNumber: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
     items: {

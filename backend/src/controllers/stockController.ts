@@ -75,10 +75,14 @@ export async function getGRNs(req: AuthRequest, res: Response, next: NextFunctio
     const filter: Record<string, unknown> = {};
 
     if (search) {
+      // Items are matched too, so searching a product name answers the question
+      // the GRN list is usually opened for: who supplied this product.
       filter.$or = [
         { grnNumber: { $regex: search, $options: 'i' } },
         { supplier: { $regex: search, $options: 'i' } },
         { referenceNumber: { $regex: search, $options: 'i' } },
+        { 'items.productName': { $regex: search, $options: 'i' } },
+        { 'items.sku': { $regex: search, $options: 'i' } },
       ];
     }
 

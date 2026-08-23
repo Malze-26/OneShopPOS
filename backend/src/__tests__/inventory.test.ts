@@ -648,4 +648,113 @@ describe('Goods received notes', () => {
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/supplier/i);
   });
+
+  it('finds the note by the product it delivered, so the supplier can be traced', async () => {
+    const created = await receive({ supplierId });
+    expect(created.status).toBe(201);
+
+    // The list is opened to answer "who supplied this?", so the product name
+    // has to reach the note even though it only lives on the lines.
+    const res = await request(app)
+      .get('/api/stocks/grns')
+      .query({ search: 'Lentils' })
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+
+    const found = res.body.data.find((g: { grnNumber: string }) => g.grnNumber === created.body.data.grnNumber);
+    expect(found).toBeDefined();
+    expect(found.supplier).toBe('Test Distributors');
+  });
+
+  it('finds the note by the SKU of a product it delivered', async () => {
+    const created = await receive({ supplierId });
+    const product = await models.Product.findById(grnProductId);
+
+    const res = await request(app)
+      .get('/api/stocks/grns')
+      .query({ search: product!.sku })
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.some((g: { grnNumber: string }) => g.grnNumber === created.body.data.grnNumber)).toBe(true);
+  });
+
+  it('leaves out notes that never carried the product searched for', async () => {
+    const res = await request(app)
+      .get('/api/stocks/grns')
+      .query({ search: 'Nothing Delivered This' })
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(0);
+  });
+});
+
+// ─── Returns to supplier ──────────────────────────────────────────────────────
+
+describe('Returns to supplier', () => {
+  let returnProductId: string;
+
+  beforeAll(async () => {
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name: 'Returned Yoghurt 400g',
+        sellingPrice: 250,
+        costPrice: 180,
+        stock: 20,
+        category: 'Groceries',
+        supplierId,
+      });
+    expect(res.status).toBe(201);
+    returnProductId = res.body.data._id;
+  });
+
+  const sendBack = (body: Record<string, unknown>) =>
+    request(app)
+      .post('/api/stocks/returns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ items: [{ productId: returnProductId, quantity: 2, reason: 'expired' }], ...body });
+
+  it('refuses stock returned to nobody', async () => {
+    // Stock goes back to whoever delivered it. Without a supplier the return is
+    // paperwork no one can be billed for, so it must not be accepted.
+    const res = await sendBack({});
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/supplier/i);
+  });
+
+  it('refuses a supplier the suppliers page does not know', async () => {
+    const res = await sendBack({ supplier: 'Unlisted Traders' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/supplier/i);
+  });
+
+  it('leaves stock untouched when the supplier is missing', async () => {
+    const before = (await models.Product.findById(returnProductId))!.stock;
+    await sendBack({});
+    const after = (await models.Product.findById(returnProductId))!.stock;
+    expect(after).toBe(before);
+  });
+
+  it('links the return to the supplier the stock goes back to', async () => {
+    const res = await sendBack({ supplierId });
+    expect(res.status).toBe(201);
+    expect(String(res.body.data.supplierId)).toBe(supplierId);
+    expect(res.body.data.supplier).toBe('Test Distributors');
+  });
+
+  it('names the supplier on the Stock Out movement it leaves behind', async () => {
+    const res = await sendBack({ supplierId });
+    expect(res.status).toBe(201);
+
+    const movements = await models.StockHistory.find({ product: returnProductId, type: 'remove' });
+    const fromThisReturn = movements.filter((m) => m.reason.includes(res.body.data.returnNumber));
+    expect(fromThisReturn).toHaveLength(1);
+    expect(fromThisReturn[0].reason).toContain('Test Distributors');
+  });
 });

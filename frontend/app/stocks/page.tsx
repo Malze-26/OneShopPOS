@@ -134,7 +134,7 @@ export default function StocksPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5565]" />
               <input
                 type="text"
-                placeholder="Search GRN, supplier..."
+                placeholder="Search GRN, supplier, product..."
                 value={grnSearch}
                 onChange={(e) => { setGrnSearch(e.target.value); setGrnPage(1); }}
                 className="w-full pl-9 pr-4 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"

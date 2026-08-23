@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { Model } from 'mongoose';
 import { AuthRequest } from '../types';
 import { ISupplierReturn, ReturnReason } from '../models/SupplierReturn';
+import { resolveSupplier } from '../utils/supplier';
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_LIMIT,
@@ -128,6 +129,19 @@ export async function createReturn(req: AuthRequest, res: Response, next: NextFu
       return;
     }
 
+    // Stock goes back to a supplier on the suppliers page, never to a name
+    // somebody typed — a return nobody can be billed for is not a return.
+    const supplierRef = supplierId ?? supplier;
+    const resolvedSupplier = await resolveSupplier(Supplier, supplierRef);
+    if (!resolvedSupplier) {
+      res.status(400).json({
+        message: supplierRef?.trim()
+          ? `Supplier "${supplierRef.trim()}" does not exist. Create it on the Suppliers page first.`
+          : 'Supplier is required — returned stock must go back to a supplier',
+      });
+      return;
+    }
+
     // Two lines can name the same product; their quantities have to be checked
     // against one running balance or an over-return slips through.
     const requestedByProduct = new Map<string, number>();
@@ -178,18 +192,6 @@ export async function createReturn(req: AuthRequest, res: Response, next: NextFu
       });
     }
 
-    // Resolve the name from the linked supplier record so the snapshot on the
-    // return matches the suppliers page even if the caller only sent an id.
-    let supplierName = supplier?.trim() ?? '';
-    if (supplierId) {
-      const supplierDoc = await Supplier.findById(supplierId).select('name').lean();
-      if (!supplierDoc) {
-        res.status(404).json({ message: 'Supplier not found' });
-        return;
-      }
-      supplierName = supplierDoc.name;
-    }
-
     const totalItems = resolvedItems.reduce((sum, r) => sum + r.quantity, 0);
     const totalLossValue = resolvedItems.reduce((sum, r) => sum + r.lossValue, 0);
     const totalRetailValue = resolvedItems.reduce((sum, r) => sum + r.retailValue, 0);
@@ -197,8 +199,8 @@ export async function createReturn(req: AuthRequest, res: Response, next: NextFu
 
     const supplierReturn = await SupplierReturn.create({
       returnNumber,
-      supplier: supplierName,
-      supplierId: supplierId ?? null,
+      supplier: resolvedSupplier.name,
+      supplierId: resolvedSupplier._id,
       referenceNumber: referenceNumber?.trim() ?? '',
       notes: notes?.trim() ?? '',
       items: resolvedItems,
@@ -215,7 +217,7 @@ export async function createReturn(req: AuthRequest, res: Response, next: NextFu
         product: item.product,
         type: 'remove',
         quantity: item.quantity,
-        reason: `Return ${returnNumber}: ${item.reason}${supplierName ? ` — ${supplierName}` : ''}`,
+        reason: `Return ${returnNumber}: ${item.reason} — ${resolvedSupplier.name}`,
         by: returnedBy,
         storeId,
       });
