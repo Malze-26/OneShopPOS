@@ -4,7 +4,10 @@ import path from 'path';
 import fs from 'fs';
 import { AuthRequest } from '../types';
 import { ICategory } from '../models/Category';
+import { ISupplier } from '../models/Supplier';
 import { deleteObject, keyBelongsToTenant, publicUrl } from '../storage/s3';
+import { getCategoryPrefix, issueSku, previewSku, skuBelongsToPrefix } from '../utils/sku';
+import { resolveSupplier } from '../utils/supplier';
 import {
   DEFAULT_LOW_STOCK_THRESHOLD,
   DEFAULT_COST_PRICE,
@@ -15,8 +18,8 @@ import {
 
 interface CSVRow {
   name: string;
-  sku: string;
   category: string;
+  supplier: string;
   selling_price: number;
   cost_price: number;
   stock: number;
@@ -107,16 +110,45 @@ export async function getProduct(req: AuthRequest, res: Response, next: NextFunc
   }
 }
 
+// ── GET /api/products/next-sku ─────────────────────────────────────────────
+/**
+ * The SKU the next product in this category would be given, so the Add/Edit
+ * form can show it as soon as a category is picked. Assigning the category its
+ * prefix is a side effect, which is why this sits behind the Manager guard.
+ */
+export async function getNextSku(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { Product, Category } = req.models!;
+    const category = req.query.category as string | undefined;
+
+    const resolvedCategory = await resolveCategoryName(Category, category);
+    if (!resolvedCategory) {
+      res.status(400).json({
+        message: category?.trim()
+          ? `Category "${category.trim()}" does not exist. Create it on the Categories page first.`
+          : 'Category is required to generate a SKU',
+      });
+      return;
+    }
+
+    const { sku, prefix } = await previewSku(Category, Product, resolvedCategory);
+    res.json({ data: { sku, prefix, category: resolvedCategory } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ── POST /api/products ─────────────────────────────────────────────────────
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product, Category, StockHistory } = req.models!;
+    const { Product, Category, StockHistory, Supplier } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user!.id;
 
+    // sku is deliberately not read from the body — it is issued from the
+    // category below so every product in a category shares its three letters.
     const {
       name,
-      sku,
       description,
       sellingPrice,
       costPrice,
@@ -125,9 +157,9 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       category,
       images,
       expiryDate,
+      supplierId,
     } = req.body as {
       name: string;
-      sku: string;
       description?: string;
       sellingPrice: number;
       costPrice?: number;
@@ -136,6 +168,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       category: string;
       images?: string[];
       expiryDate?: string | null;
+      supplierId?: string;
     };
 
     // Every product must belong to a category that exists on the categories page.
@@ -149,20 +182,39 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       return;
     }
 
-    const product = await Product.create({
-      name,
-      sku,
-      description,
-      sellingPrice,
-      costPrice: costPrice ?? DEFAULT_COST_PRICE,
-      stock: stock ?? DEFAULT_STOCK,
-      lowStockThreshold: lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
-      category: resolvedCategory,
-      images: images ?? [],
-      expiryDate: expiryDate ? new Date(expiryDate) : null,
-      storeId,
-      createdBy: userId,
-    });
+    // Nothing reaches the shelf without being bought from someone, so a product
+    // cannot be created without naming the supplier it came from.
+    const resolvedSupplier = await resolveSupplier(Supplier, supplierId);
+    if (!resolvedSupplier) {
+      res.status(400).json({
+        message: supplierId?.trim()
+          ? `Supplier "${supplierId.trim()}" does not exist. Create it on the Suppliers page first.`
+          : 'Supplier is required — every product must come from a supplier',
+      });
+      return;
+    }
+
+    // The SKU always belongs to the category: the client's value is accepted
+    // only when it already carries this category's prefix, otherwise the next
+    // free number under that prefix is issued.
+    const product = await issueSku(Category, Product, resolvedCategory, (issued) =>
+      Product.create({
+        name,
+        sku: issued,
+        description,
+        sellingPrice,
+        costPrice: costPrice ?? DEFAULT_COST_PRICE,
+        stock: stock ?? DEFAULT_STOCK,
+        lowStockThreshold: lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+        category: resolvedCategory,
+        images: images ?? [],
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        supplierId: resolvedSupplier._id,
+        supplier: resolvedSupplier.name,
+        storeId,
+        createdBy: userId,
+      })
+    );
 
     await Category.findOneAndUpdate(
       { name: resolvedCategory },
@@ -189,11 +241,10 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 // ── PUT /api/products/:id ──────────────────────────────────────────────────
 export async function updateProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product, Category } = req.models!;
+    const { Product, Category, Supplier, StockHistory } = req.models!;
 
     const {
       name,
-      sku,
       description,
       sellingPrice,
       costPrice,
@@ -201,9 +252,9 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       lowStockThreshold,
       category,
       expiryDate,
+      supplierId,
     } = req.body as {
       name?: string;
-      sku?: string;
       description?: string;
       sellingPrice?: number;
       costPrice?: number;
@@ -211,6 +262,7 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       lowStockThreshold?: number;
       category?: string;
       expiryDate?: string | null;
+      supplierId?: string;
     };
 
     // A product may only be moved into a category that exists on the categories page.
@@ -228,20 +280,70 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       resolvedCategory = resolved;
     }
 
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      {
-        name, sku, description, sellingPrice, costPrice, stock, lowStockThreshold,
-        category: resolvedCategory,
-        // Undefined leaves the stored date alone; an empty string clears it.
-        expiryDate: expiryDate === undefined ? undefined : expiryDate ? new Date(expiryDate) : null,
-      },
-      { new: true, runValidators: true }
-    );
+    // An edit may move a product to another supplier but never leave it without one.
+    let resolvedSupplier: ISupplier | undefined;
+    if (supplierId !== undefined) {
+      const resolved = await resolveSupplier(Supplier, supplierId);
+      if (!resolved) {
+        res.status(400).json({
+          message: supplierId?.trim()
+            ? `Supplier "${supplierId.trim()}" does not exist. Create it on the Suppliers page first.`
+            : 'Supplier is required — every product must come from a supplier',
+        });
+        return;
+      }
+      resolvedSupplier = resolved;
+    }
+
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
       return;
+    }
+
+    // Editing the stock field moves stock just as surely as a sale does, so
+    // the difference is recorded rather than silently overwriting the total —
+    // otherwise a product's history stops adding up to what is on the shelf.
+    const stockBefore = product.stock;
+
+    const changes: Record<string, unknown> = {
+      name, description, sellingPrice, costPrice, stock, lowStockThreshold,
+      category: resolvedCategory,
+      supplierId: resolvedSupplier?._id,
+      supplier: resolvedSupplier?.name,
+      // Undefined leaves the stored date alone; an empty string clears it.
+      expiryDate: expiryDate === undefined ? undefined : expiryDate ? new Date(expiryDate) : null,
+    };
+    for (const [field, value] of Object.entries(changes)) {
+      if (value !== undefined) product.set(field, value);
+    }
+
+    // Moving a product to another category — or editing one that still carries
+    // a legacy SKU — reissues the code so every product in a category keeps the
+    // same three leading letters. An untouched, well-formed SKU is left alone.
+    const skuCategory = await resolveCategoryName(Category, product.category);
+    const prefix = skuCategory ? await getCategoryPrefix(Category, skuCategory) : null;
+
+    if (prefix && !skuBelongsToPrefix(product.sku, prefix)) {
+      await issueSku(Category, Product, skuCategory!, async (issued) => {
+        product.sku = issued;
+        return product.save();
+      });
+    } else {
+      await product.save();
+    }
+
+    const movement = product.stock - stockBefore;
+    if (movement !== 0) {
+      await StockHistory.create({
+        product: product._id,
+        type: movement > 0 ? 'add' : 'remove',
+        quantity: Math.abs(movement),
+        reason: 'Stock corrected on product edit',
+        by: req.user?.email ?? SYSTEM_ACTOR,
+        storeId: product.storeId,
+      });
     }
 
     res.json({ data: product });
@@ -325,7 +427,7 @@ export async function adjustStock(req: AuthRequest, res: Response, next: NextFun
 // ── POST /api/products/bulk/import-csv ────────────────────────────────────
 export async function importCSV(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product, Category } = req.models!;
+    const { Product, Category, Supplier } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user!.id;
     const rows: CSVRow[] = req.body.rows;
@@ -339,6 +441,12 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
     const categoryDocs = await Category.find({}).select('name').lean();
     const categoryByLower = new Map(categoryDocs.map((c) => [c.name.trim().toLowerCase(), c.name]));
 
+    const supplierDocs = await Supplier.find({}).select('name').lean();
+    const supplierByLower = new Map(
+      supplierDocs.map((s) => [s.name.trim().toLowerCase(), s])
+    );
+
+
     const results = {
       imported: 0,
       failed: 0,
@@ -350,7 +458,6 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
       const rowErrors: string[] = [];
 
       if (!row.name?.trim()) rowErrors.push('Product name is required');
-      if (!row.sku?.trim()) rowErrors.push('SKU is required');
       if (!row.selling_price || row.selling_price <= 0) rowErrors.push('Selling price must be greater than 0');
 
       // Imported products must land in an existing category, not a free-text value.
@@ -364,6 +471,17 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
         rowErrors.push(`Category "${rawCategory}" does not exist. Create it on the Categories page first.`);
       }
 
+      // Imported stock had to be delivered by someone too.
+      const rawSupplier = row.supplier?.trim();
+      const resolvedSupplier = rawSupplier
+        ? supplierByLower.get(rawSupplier.toLowerCase())
+        : undefined;
+      if (!rawSupplier) {
+        rowErrors.push('Supplier is required');
+      } else if (!resolvedSupplier) {
+        rowErrors.push(`Supplier "${rawSupplier}" does not exist. Create it on the Suppliers page first.`);
+      }
+
       if (rowErrors.length > 0) {
         results.failed++;
         results.errors.push({ row: i + 1, errors: rowErrors });
@@ -371,21 +489,26 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
       }
 
       try {
-        await Product.create({
-          name: row.name.trim(),
-          sku: row.sku.trim().toUpperCase(),
-          category: resolvedCategory,
-          sellingPrice: row.selling_price,
-          costPrice: row.cost_price ?? DEFAULT_COST_PRICE,
-          stock: row.stock ?? DEFAULT_STOCK,
-          lowStockThreshold: row.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
-          storeId,
-          createdBy: userId,
-        });
+        // Imported rows carry no SKU: each one is issued from its category.
+        await issueSku(Category, Product, resolvedCategory!, (issued) =>
+          Product.create({
+            name: row.name.trim(),
+            sku: issued,
+            category: resolvedCategory,
+            sellingPrice: row.selling_price,
+            costPrice: row.cost_price ?? DEFAULT_COST_PRICE,
+            stock: row.stock ?? DEFAULT_STOCK,
+            lowStockThreshold: row.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+            supplierId: resolvedSupplier!._id,
+            supplier: resolvedSupplier!.name,
+            storeId,
+            createdBy: userId,
+          })
+        );
         results.imported++;
       } catch {
         results.failed++;
-        results.errors.push({ row: i + 1, errors: ['Duplicate SKU or invalid data'] });
+        results.errors.push({ row: i + 1, errors: ['Invalid data'] });
       }
     }
 

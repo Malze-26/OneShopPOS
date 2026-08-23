@@ -14,6 +14,11 @@ interface Product {
   category: string;
 }
 
+interface Supplier {
+  _id: string;
+  name: string;
+}
+
 interface LineItem {
   id: string;
   product: Product | null;
@@ -43,7 +48,14 @@ function newLine(): LineItem {
 export default function ReceiveGoodsPage() {
   const router = useRouter();
 
+  // Goods are received from a supplier on the suppliers page — the server
+  // rejects anything else, so the form offers the real list rather than a box.
   const [supplier, setSupplier] = useState('');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
+  useEffect(() => {
+    api.get('/suppliers').then((r) => setSuppliers(r.data.data)).catch(() => {});
+  }, []);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<LineItem[]>([newLine()]);
@@ -114,11 +126,15 @@ export default function ReceiveGoodsPage() {
       setError('Please add at least one product.');
       return;
     }
+    if (!supplier) {
+      setError('Please choose the supplier these goods came from.');
+      return;
+    }
 
     setSaving(true);
     try {
       const res = await api.post('/stocks/grns', {
-        supplier,
+        supplierId: supplier,
         referenceNumber,
         notes,
         items: validLines.map((l) => ({
@@ -154,14 +170,18 @@ export default function ReceiveGoodsPage() {
           <h2 className="text-sm font-semibold text-[#101828] mb-4">GRN Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Supplier Name</label>
-              <input
-                type="text"
+              <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Supplier *</label>
+              <select
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
-                placeholder="e.g. ABC Distributors"
-                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
-              />
+                required
+                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm bg-white focus:outline-none focus:border-[var(--color-primary)]"
+              >
+                <option value="">Choose a supplier</option>
+                {suppliers.map((s) => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Reference / PO Number</label>

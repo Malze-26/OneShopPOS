@@ -10,6 +10,8 @@ interface Category {
   name: string;
   icon: string;
   color: string;
+  /** Three capital letters every SKU in this category starts with, e.g. SDW. */
+  skuPrefix?: string;
   productCount: number;
 }
 
@@ -228,7 +230,17 @@ export default function CategoriesPage() {
                     {category.icon}
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-[#101828]">{category.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-[#101828]">{category.name}</h3>
+                      {category.skuPrefix && (
+                        <span
+                          title={`SKUs in this category read ${category.skuPrefix}-001, ${category.skuPrefix}-002, …`}
+                          className="px-1.5 py-0.5 rounded bg-[#f9fafb] border border-[#e4e7ec] text-[10px] font-mono tracking-wider text-[#4a5565]"
+                        >
+                          {category.skuPrefix}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-[#4a5565]">{category.productCount} products</p>
                   </div>
                 </div>

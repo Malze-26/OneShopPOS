@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { Model } from 'mongoose';
 import { AuthRequest } from '../types';
 import { IGRN } from '../models/GRN';
+import { resolveSupplier } from '../utils/supplier';
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_LIMIT,
@@ -17,6 +18,8 @@ interface GRNItem {
 }
 
 interface CreateGRNBody {
+  /** Supplier _id. `supplier` is still accepted as a name for older clients. */
+  supplierId?: string;
   supplier?: string;
   referenceNumber?: string;
   notes?: string;
@@ -96,13 +99,26 @@ export async function getGRNs(req: AuthRequest, res: Response, next: NextFunctio
 // ── POST /api/stocks/grns ──────────────────────────────────────────────────
 export async function createGRN(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { GRN, Product, StockHistory } = req.models!;
+    const { GRN, Product, StockHistory, Supplier } = req.models!;
     const storeId = req.user!.storeId;
     const receivedBy = req.user?.email ?? SYSTEM_ACTOR;
-    const { supplier, referenceNumber, notes, items } = req.body as CreateGRNBody;
+    const { supplierId, supplier, referenceNumber, notes, items } = req.body as CreateGRNBody;
+    const supplierRef = supplierId ?? supplier;
 
     if (!Array.isArray(items) || items.length === 0) {
       res.status(400).json({ message: 'At least one item is required' });
+      return;
+    }
+
+    // Goods arrive from a supplier on the suppliers page. A free-text name
+    // would leave a delivery no purchase history could ever be traced back to.
+    const resolvedSupplier = await resolveSupplier(Supplier, supplierRef);
+    if (!resolvedSupplier) {
+      res.status(400).json({
+        message: supplierRef?.trim()
+          ? `Supplier "${supplierRef.trim()}" does not exist. Create it on the Suppliers page first.`
+          : 'Supplier is required — goods must be received from a supplier',
+      });
       return;
     }
 
@@ -145,7 +161,8 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
 
     const grn = await GRN.create({
       grnNumber,
-      supplier: supplier?.trim() ?? '',
+      supplierId: resolvedSupplier._id,
+      supplier: resolvedSupplier.name,
       referenceNumber: referenceNumber?.trim() ?? '',
       notes: notes?.trim() ?? '',
       items: resolvedItems,
@@ -161,7 +178,7 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
         product: item.product,
         type: 'add',
         quantity: item.quantityReceived,
-        reason: `GRN: ${grnNumber}${supplier ? ` — ${supplier}` : ''}`,
+        reason: `GRN: ${grnNumber} — ${resolvedSupplier.name}`,
         by: receivedBy,
         storeId,
       });

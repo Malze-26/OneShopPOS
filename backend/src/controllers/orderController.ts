@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../types';
+import { TenantModels } from '../db/tenantModels';
 
 /**
  * Maps a POS Transaction document → unified order shape.
@@ -36,6 +37,57 @@ function txnToOrder(txn: Record<string, unknown>) {
     updatedAt:       txn.updatedAt,
     _sourceType:     'transaction' as const,
   };
+}
+
+/** Order states in which the goods have left the shelf. */
+const STOCK_CONSUMING_STATUSES = ['processing', 'shipped', 'delivered', 'success'];
+
+/**
+ * Takes an order's items out of stock exactly once, leaving a Stock Out
+ * movement behind each line.
+ *
+ * An order can reach a fulfilled state by more than one route — the sync job,
+ * a manager overriding the status, confirmation on delivery — and before this
+ * existed only the sync route moved stock, so an order pushed straight to
+ * 'delivered' was despatched without ever leaving the inventory.
+ *
+ * The claim on `stockReleased` is atomic, so concurrent callers cannot both
+ * take the same units.
+ */
+async function releaseOrderStock(
+  models: TenantModels,
+  orderDoc: Record<string, unknown>,
+  actor: string
+): Promise<boolean> {
+  const { Order, Product, StockHistory } = models;
+  const _id = orderDoc._id as mongoose.Types.ObjectId;
+
+  const claimed = await Order.collection.findOneAndUpdate(
+    { _id, stockReleased: { $ne: true } },
+    { $set: { stockReleased: true } }
+  );
+  if (!claimed) return false;
+
+  const orderId = (orderDoc.orderId as string) ?? String(_id);
+  const items = (orderDoc.orderItems || orderDoc.items || []) as Record<string, unknown>[];
+
+  for (const item of items) {
+    const productId = item.product as mongoose.Types.ObjectId | string | undefined;
+    const quantity = (item.qty ?? item.quantity ?? 1) as number;
+    if (!productId) continue;
+
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
+    await StockHistory.create({
+      product: productId,
+      type: 'remove',
+      quantity,
+      reason: `E-com order ${orderId}`,
+      by: actor,
+      storeId: (orderDoc.storeId as string) ?? '',
+    });
+  }
+
+  return true;
 }
 
 /**
@@ -358,22 +410,7 @@ export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<v
     if (!claimed) continue;
 
     if (shouldReduceStock) {
-      const items = ((order.orderItems || order.items || []) as Record<string, unknown>[]);
-      for (const item of items) {
-        const productId = item.product as mongoose.Types.ObjectId | string | undefined;
-        const quantity  = (item.qty ?? item.quantity ?? 1) as number;
-        if (productId) {
-          await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
-          await StockHistory.create({
-            product:  productId,
-            type:     'remove',
-            quantity: quantity,
-            reason:   `E-com order ${order.orderId as string}: ${newOrderStatus}`,
-            by:       req.user!.id,
-            storeId:  req.user!.storeId,
-          });
-        }
-      }
+      await releaseOrderStock(req.models!, order as Record<string, unknown>, req.user!.id);
     }
 
     processed++;
@@ -441,6 +478,12 @@ export async function updateOrderStatus(req: AuthRequest, res: Response): Promis
 
   const updated = await Order.findById(req.params.id).lean();
   if (!updated) { res.status(404).json({ message: 'Order not found' }); return; }
+
+  // Overriding an order into a fulfilled state despatches the goods, so the
+  // stock has to leave here as well — the sync job may never see this order.
+  if (STOCK_CONSUMING_STATUSES.includes(status)) {
+    await releaseOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
+  }
 
   res.json({ data: normalizeOnlineOrder(updated as unknown as Record<string, unknown>) });
 }

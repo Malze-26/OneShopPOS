@@ -14,6 +14,8 @@ export interface IProduct extends Document {
   lowStockThreshold: number;
   category: string;
   images: string[];
+  supplier: string;
+  supplierId: mongoose.Types.ObjectId;
   brand?: string;
   featured: boolean;
   badge?: 'Best Seller' | 'New Arrival' | 'Sale' | '';
@@ -88,6 +90,19 @@ export const productSchema = new Schema<IProduct>(
       type: [String],
       default: [],
     },
+    // Nothing reaches the shelf without being bought from someone, so every
+    // product carries its supplier. supplierId is the link of record; the name
+    // is denormalised so product listings do not need a populate.
+    supplierId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Supplier',
+      required: [true, 'Supplier is required'],
+    },
+    supplier: {
+      type: String,
+      required: [true, 'Supplier is required'],
+      trim: true,
+    },
     brand: {
       type: String,
       trim: true,
@@ -148,6 +163,29 @@ productSchema.pre('save', function (next) {
   next();
 });
 
+// Enforce product limit based on tenant's subscription plan
+productSchema.pre('save', async function (next) {
+  if (!this.isNew) return next(); // only check when creating a NEW product, not when editing one
+
+  try {
+    const db = this.db; // the tenant's own database connection
+    const settings = await db.collection('storesettings').findOne({});
+    const maxProducts = settings?.maxProducts;
+
+    // null or undefined maxProducts = unlimited (premium plan)
+    if (maxProducts !== null && maxProducts !== undefined) {
+      const currentCount = await db.collection('products').countDocuments();
+      if (currentCount >= maxProducts) {
+        return next(new Error(`Product limit reached (${maxProducts}). Upgrade your plan to add more products.`));
+      }
+    }
+
+    next();
+  } catch (err) {
+    next(err as Error);
+  }
+});
+
 // Virtual for status
 productSchema.virtual('status').get(function (this: IProduct) {
   if (this.stock === 0) return 'out-of-stock';
@@ -176,5 +214,6 @@ productSchema.virtual('expiryStatus').get(function (this: IProduct) {
 productSchema.index({ storeId: 1, sku: 1 });
 productSchema.index({ storeId: 1, category: 1 });
 productSchema.index({ storeId: 1, expiryDate: 1 });
+productSchema.index({ storeId: 1, supplierId: 1 });
 
 export const Product = mongoose.model<IProduct>('Product', productSchema);

@@ -71,6 +71,8 @@ export interface ICategory {
   name: string;
   icon: string;
   color: string;
+  /** Three capital letters every product SKU in this category starts with, e.g. SDW. */
+  skuPrefix?: string;
   storeId: string;
   productCount: number;
   createdAt: string;
@@ -94,6 +96,10 @@ export interface IProduct {
   lowStockThreshold: number;
   category: string;
   images: string[];
+  /** Name of the supplier the stock was bought from, denormalised for listings. */
+  supplier: string;
+  /** Supplier ObjectId as string — every product has one. */
+  supplierId: string;
   storeId: string;
   status: ProductStatus; // virtual field from backend
   createdBy: string;

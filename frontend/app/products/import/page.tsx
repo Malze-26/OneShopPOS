@@ -10,8 +10,8 @@ import api from '@/app/lib/api';
 interface ParsedRow {
   row: number;
   name: string;
-  sku: string;
   category: string;
+  supplier: string;
   selling_price: number;
   cost_price: number;
   stock: number;
@@ -29,11 +29,13 @@ type Phase = 'upload' | 'preview' | 'importing' | 'done';
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
 
+// No sku column: SKUs are issued by the server from the category's
+// three-letter code (Beverages -> BEV-001, BEV-002, …).
 const TEMPLATE_CSV = [
-  'name,sku,category,selling_price,cost_price,stock,low_stock_threshold',
-  'Coca-Cola 500ml,BEV-001,Beverages,180,130,100,20',
-  "Lay's Classic Chips 100g,SNK-001,Snacks,250,180,60,15",
-  'Anchor Butter 200g,DAI-001,Dairy,490,380,25,10',
+  'name,category,supplier,selling_price,cost_price,stock,low_stock_threshold',
+  'Coca-Cola 500ml,Beverages,Ceylon Beverages Ltd,180,130,100,20',
+  "Lay's Classic Chips 100g,Snacks,Maliban Biscuit Manufactories,250,180,60,15",
+  'Anchor Butter 200g,Dairy,Anchor Foods Lanka,490,380,25,10',
 ].join('\n');
 
 function parseCSV(text: string): ParsedRow[] {
@@ -57,8 +59,8 @@ function parseCSV(text: string): ParsedRow[] {
     const get = (key: string) => values[headers.indexOf(key)] ?? '';
 
     const name = get('name');
-    const sku = get('sku');
     const category = get('category') || 'Uncategorized';
+    const supplier = get('supplier');
     const selling_price = parseFloat(get('selling_price')) || 0;
     const cost_price = parseFloat(get('cost_price')) || 0;
     const stock = parseInt(get('stock')) || 0;
@@ -66,10 +68,12 @@ function parseCSV(text: string): ParsedRow[] {
 
     const errors: string[] = [];
     if (!name) errors.push('Product name is required');
-    if (!sku) errors.push('SKU is required');
     if (!selling_price || selling_price <= 0) errors.push('Selling price must be greater than 0');
+    // Imported stock was delivered by someone too — the server rejects a row
+    // whose supplier is missing or unknown, so flag it here before uploading.
+    if (!supplier) errors.push('Supplier is required');
 
-    return { row: i + 1, name, sku, category, selling_price, cost_price, stock, low_stock_threshold, errors };
+    return { row: i + 1, name, category, supplier, selling_price, cost_price, stock, low_stock_threshold, errors };
   });
 }
 
@@ -191,8 +195,12 @@ export default function CSVImportPage() {
             <p className="text-sm text-[#4a5565]">
               Download our template and fill in your product data. Required columns:{' '}
               <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">name</span>,{' '}
-              <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">sku</span>,{' '}
+              <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">category</span>,{' '}
+              <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">supplier</span>,{' '}
               <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">selling_price</span>. All other columns are optional.
+              The supplier must already exist on the Suppliers page — nothing reaches the shelf without one.
+              SKUs are generated from the category — don&apos;t include a{' '}
+              <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">sku</span> column.
             </p>
           </div>
           <button
@@ -263,7 +271,7 @@ export default function CSVImportPage() {
               <table className="w-full">
                 <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
                   <tr>
-                    {['Row', 'Product Name', 'SKU', 'Category', 'Price (LKR)', 'Stock', 'Status'].map((h) => (
+                    {['Row', 'Product Name', 'SKU', 'Category', 'Supplier', 'Price (LKR)', 'Stock', 'Status'].map((h) => (
                       <th
                         key={h}
                         className="px-6 py-3 text-left text-xs font-medium text-[#4a5565] uppercase tracking-wider"
@@ -289,12 +297,15 @@ export default function CSVImportPage() {
                           )}
                         </td>
                         <td className="px-6 py-3">
-                          <div className="text-sm font-mono text-[#101828]">{row.sku || '—'}</div>
-                          {row.errors.includes('SKU is required') && (
+                          <div className="text-sm font-mono text-[#4a5565]">Auto</div>
+                        </td>
+                        <td className="px-6 py-3 text-sm text-[#101828]">{row.category}</td>
+                        <td className="px-6 py-3">
+                          <div className="text-sm text-[#101828]">{row.supplier || '—'}</div>
+                          {row.errors.includes('Supplier is required') && (
                             <div className="text-xs text-[#f04438] mt-0.5">Required</div>
                           )}
                         </td>
-                        <td className="px-6 py-3 text-sm text-[#101828]">{row.category}</td>
                         <td className="px-6 py-3">
                           <div className="text-sm text-[#101828]">
                             {row.selling_price > 0 ? row.selling_price.toLocaleString() : '—'}

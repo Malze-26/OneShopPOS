@@ -6,6 +6,10 @@ export interface ICategory extends Document {
   description?: string;
   icon: string;
   color: string;
+  /** Three capital letters every product SKU in this category starts with, e.g. SDW. */
+  skuPrefix?: string;
+  /** Highest SKU number handed out under this prefix; only ever moves up. */
+  skuSequence?: number;
   storeId: string;
   productCount: number;
 }
@@ -35,6 +39,21 @@ export const categorySchema = new Schema<ICategory>(
       type: String,
       default: '#155dfc',
     },
+    // Assigned on first use and never changed afterwards — renaming a category
+    // must not strand its existing products under an orphaned prefix.
+    skuPrefix: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      match: [/^[A-Z]{3}$/, 'SKU prefix must be exactly 3 capital letters'],
+    },
+    // Never decremented: a deleted or reassigned product retires its number
+    // instead of freeing it, so a SKU on an old receipt keeps its meaning.
+    skuSequence: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     storeId: {
       type: String,
       required: true,
@@ -58,5 +77,12 @@ categorySchema.pre('save', function (next) {
 });
 
 categorySchema.index({ storeId: 1, name: 1 }, { unique: true });
+
+// Partial so categories that predate SKU prefixes do not all collide on the
+// missing value while they wait to be assigned one.
+categorySchema.index(
+  { skuPrefix: 1 },
+  { unique: true, partialFilterExpression: { skuPrefix: { $type: 'string' } } }
+);
 
 export const Category = mongoose.model<ICategory>('Category', categorySchema);

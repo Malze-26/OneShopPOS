@@ -29,6 +29,7 @@ export interface IOrder extends Document {
   paymentStatus: PaymentStatus;
   deliveryAddress?: string;
   notes?: string;
+  stockReleased: boolean;
   storeId: string;
   createdBy: mongoose.Types.ObjectId;
   confirmedBy?: mongoose.Types.ObjectId;
@@ -68,6 +69,12 @@ export const orderSchema = new Schema<IOrder>(
 
     deliveryAddress: { type: String, trim: true },
     notes:           { type: String, trim: true },
+
+    // Set the moment an order's items leave the shelf. An order can reach
+    // 'delivered' by several routes — the sync job, a manager's status
+    // override, confirmation — and each one must find the stock already gone
+    // rather than take it a second time.
+    stockReleased: { type: Boolean, default: false },
 
     storeId:     { type: String, required: true, default: 'STORE-2025-001' },
     createdBy:   { type: Schema.Types.ObjectId, ref: 'User', required: true },

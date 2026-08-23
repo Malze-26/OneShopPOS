@@ -11,6 +11,11 @@ interface Category {
   name: string;
 }
 
+interface Supplier {
+  _id: string;
+  name: string;
+}
+
 interface ImagePreview {
   file: File;
   previewUrl: string;
@@ -30,18 +35,50 @@ export default function AddProductPage() {
     lowStockThreshold: '',
     expiryDate: '',
     category: '',
+    supplierId: '',
     isWeightBased: false,
     unit: 'item' as 'kg' | 'item',
   });
   const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [skuLoading, setSkuLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     api.get('/categories').then((res) => setCategories(res.data.data)).catch(() => {});
+    // Stock has to be bought from someone, so a supplier must be picked before
+    // the product can be saved.
+    api.get('/suppliers').then((res) => setSuppliers(res.data.data)).catch(() => {});
   }, []);
+
+  // SKUs are keyed to the category (SDW-004 for "Soft Drinks & Water"), so the
+  // code can only be issued once a category is chosen. The server owns the
+  // numbering; this just shows the number the product is about to receive.
+  useEffect(() => {
+    if (!formData.category) {
+      setFormData((f) => ({ ...f, sku: '' }));
+      return;
+    }
+    let cancelled = false;
+    setSkuLoading(true);
+    api
+      .get('/products/next-sku', { params: { category: formData.category } })
+      .then((res) => {
+        if (!cancelled) setFormData((f) => ({ ...f, sku: res.data.data.sku }));
+      })
+      .catch(() => {
+        if (!cancelled) setFormData((f) => ({ ...f, sku: '' }));
+      })
+      .finally(() => {
+        if (!cancelled) setSkuLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.category]);
 
   // Revoke object URLs on unmount to avoid memory leaks
   useEffect(() => {
@@ -72,9 +109,17 @@ export default function AddProductPage() {
     addFiles(e.dataTransfer.files);
   };
 
-  const generateSKU = () => {
-    const randomSKU = `SKU-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    setFormData({ ...formData, sku: randomSKU });
+  const regenerateSKU = async () => {
+    if (!formData.category) return;
+    setSkuLoading(true);
+    try {
+      const res = await api.get('/products/next-sku', { params: { category: formData.category } });
+      setFormData((f) => ({ ...f, sku: res.data.data.sku }));
+    } catch {
+      setError('Could not generate a SKU for this category');
+    } finally {
+      setSkuLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,6 +137,7 @@ export default function AddProductPage() {
         lowStockThreshold: Number(formData.lowStockThreshold),
         expiryDate: formData.expiryDate || null,
         category: formData.category,
+        supplierId: formData.supplierId,
         isWeightBased: formData.isWeightBased,
         unit: formData.unit,
       });
@@ -155,21 +201,28 @@ export default function AddProductPage() {
                     <input
                       id="sku"
                       type="text"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      placeholder="SKU-XXXXX"
-                      className="flex-1 px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                      value={skuLoading ? 'Generating…' : formData.sku}
+                      readOnly
+                      placeholder="Pick a category to generate"
+                      className="flex-1 px-4 py-2 border border-[#e4e7ec] bg-[#f9fafb] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] font-mono tracking-wide focus:outline-none"
                       required
                     />
                     <button
                       type="button"
-                      onClick={generateSKU}
-                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
+                      onClick={regenerateSKU}
+                      disabled={!formData.category || skuLoading}
+                      title={formData.category ? 'Get the next SKU for this category' : 'Choose a category first'}
+                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                     >
                       <Sparkles className="w-4 h-4" />
                       Generate
                     </button>
                   </div>
+                  <p className="text-xs text-[#4a5565] mt-1.5">
+                    {formData.category
+                      ? `Every product in "${formData.category}" shares the same three-letter code.`
+                      : 'Choose a category first — the SKU starts with that category\'s three-letter code.'}
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-[#101828] mb-2">Description</label>
@@ -341,6 +394,29 @@ export default function AddProductPage() {
                     <option key={cat._id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Supplier */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e4e7ec]">
+              <h2 className="text-base font-semibold text-[#101828] mb-4">Supplier</h2>
+              <div>
+                <label htmlFor="supplierId" className="block text-sm font-medium text-[#101828] mb-2">Bought From</label>
+                <select
+                  id="supplierId"
+                  value={formData.supplierId}
+                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                  required
+                >
+                  <option value="">Choose a supplier</option>
+                  {suppliers.map((sup) => (
+                    <option key={sup._id} value={sup._id}>{sup.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-[#4a5565] mt-2">
+                  Every product has to come from a supplier. Add new ones on the Suppliers page.
+                </p>
               </div>
             </div>
 

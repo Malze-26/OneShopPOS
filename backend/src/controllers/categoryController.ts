@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { DEFAULT_CATEGORY_ICON, DEFAULT_CATEGORY_COLOR } from '../constants';
+import { getCategoryPrefix } from '../utils/sku';
 
 // ── GET /api/categories ────────────────────────────────────────────────────
 export async function getCategories(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -63,7 +64,11 @@ export async function createCategory(req: AuthRequest, res: Response, next: Next
       storeId,
     });
 
-    res.status(201).json({ data: category });
+    // Claim the SKU prefix up front so it is visible on the categories page
+    // before the first product is added.
+    await getCategoryPrefix(Category, category.name);
+
+    res.status(201).json({ data: await Category.findById(category._id) });
   } catch (err: unknown) {
     if ((err as { code?: number }).code === 11000) {
       res.status(409).json({ message: 'Category with this name already exists' });

@@ -12,6 +12,7 @@ export interface IGRNItem {
 export interface IGRN extends Document {
   grnNumber: string;
   supplier: string;
+  supplierId: mongoose.Types.ObjectId;
   referenceNumber: string;
   notes: string;
   items: IGRNItem[];
@@ -40,7 +41,11 @@ const grnItemSchema = new Schema<IGRNItem>(
 export const grnSchema = new Schema<IGRN>(
   {
     grnNumber: { type: String, required: true, unique: true },
-    supplier: { type: String, trim: true, default: '' },
+    // Goods were handed over by a supplier on the suppliers page, never by a
+    // name somebody typed. supplierId is the link of record; the name is
+    // denormalised so the GRN list does not need a populate.
+    supplierId: { type: Schema.Types.ObjectId, ref: 'Supplier', required: [true, 'Supplier is required'] },
+    supplier: { type: String, trim: true, required: [true, 'Supplier is required'] },
     referenceNumber: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
     items: { type: [grnItemSchema], required: true, validate: [(v: IGRNItem[]) => v.length > 0, 'At least one item is required'] },
@@ -53,5 +58,6 @@ export const grnSchema = new Schema<IGRN>(
 );
 
 grnSchema.index({ storeId: 1, createdAt: -1 });
+grnSchema.index({ storeId: 1, supplierId: 1 });
 
 export const GRN = mongoose.model<IGRN>('GRN', grnSchema);

@@ -5,6 +5,7 @@ import {
   getProducts,
   getProduct,
   getProductStats,
+  getNextSku,
   createProduct,
   updateProduct,
   deleteProduct,
@@ -29,6 +30,8 @@ router.get('/', asyncHandler(getProducts));
 router.get('/stats', asyncHandler(getProductStats));
 
 // Manager-only write operations
+// next-sku assigns the category its prefix on first use, so it writes too.
+router.get('/next-sku', requireRole('Manager'), asyncHandler(getNextSku));
 router.post('/', requireRole('Manager'), asyncHandler(createProduct));
 router.post('/bulk/import-csv', requireRole('Manager'), asyncHandler(importCSV));
 

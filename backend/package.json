@@ -10,7 +10,14 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "seed": "ts-node src/seed.ts",
-    "seed:grns": "ts-node -r tsconfig-paths/register src/seedGRNs.ts"
+    "seed:grns": "ts-node -r tsconfig-paths/register src/seedGRNs.ts",
+    "backfill:skus": "tsx src/backfill-skus.ts",
+    "backfill:suppliers": "tsx src/backfill-suppliers.ts",
+    "seed:opening-grns": "tsx src/seed-opening-grns.ts",
+    "backfill:stock-history": "tsx src/backfill-stock-history.ts",
+    "backfill:order-stock": "tsx src/backfill-order-stock.ts",
+    "reconcile:stock": "tsx src/reconcile-stock-ledger.ts",
+    "backfill:history-dates": "tsx src/backfill-history-dates.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1112.0",

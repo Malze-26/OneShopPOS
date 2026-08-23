@@ -18,6 +18,13 @@ interface Supplier {
   createdAt: string;
 }
 
+interface Category {
+  _id: string;
+  name: string;
+  /** Three capital letters every SKU in the category starts with, e.g. BAK. */
+  skuPrefix?: string;
+}
+
 interface SupplierStats {
   total: number;
   active: number;
@@ -33,7 +40,7 @@ const emptyForm = {
   email: '',
   phone: '',
   address: '',
-  categories: '',
+  categories: [] as string[],
   notes: '',
   status: 'active' as 'active' | 'inactive',
 };
@@ -44,6 +51,9 @@ function SuppliersPageInner() {
   const urlSearch = searchParams.get('search') ?? '';
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [stats, setStats] = useState<SupplierStats>({ total: 0, active: 0, inactive: 0, categoriesSupplied: 0 });
+  // A supplier may only claim categories that exist on the categories page, so
+  // the picker and the table's short codes both come from the real list.
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlSearch);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -78,6 +88,15 @@ function SuppliersPageInner() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchSuppliers(); setPage(1); }, [fetchSuppliers]);
+  useEffect(() => {
+    api.get('/categories').then((r) => setCategories(r.data.data)).catch(() => {});
+  }, []);
+
+  // The categories column is too narrow for names like "Sauces & Condiments",
+  // so it shows the same three letters the category's SKUs carry. Falls back to
+  // the first three letters for a category that has not been assigned a prefix.
+  const prefixOf = (name: string) =>
+    categories.find((c) => c.name === name)?.skuPrefix ?? name.slice(0, 3).toUpperCase();
 
   const openAdd = () => {
     setEditTarget(null);
@@ -94,7 +113,7 @@ function SuppliersPageInner() {
       email: s.email,
       phone: s.phone,
       address: s.address,
-      categories: s.categories.join(', '),
+      categories: [...s.categories],
       notes: s.notes,
       status: s.status,
     });
@@ -107,11 +126,7 @@ function SuppliersPageInner() {
     if (!form.name.trim()) { setFormError('Supplier name is required'); return; }
     setSaving(true);
     setFormError('');
-    const payload = {
-      ...form,
-      name: form.name.trim(),
-      categories: form.categories.split(',').map((c) => c.trim()).filter(Boolean),
-    };
+    const payload = { ...form, name: form.name.trim() };
     try {
       if (editTarget) {
         await api.patch(`/suppliers/${editTarget._id}`, payload);
@@ -225,11 +240,22 @@ function SuppliersPageInner() {
                     <div className="flex flex-wrap gap-1">
                       {s.categories.length === 0
                         ? <span className="text-sm text-[#4a5565]">—</span>
-                        : s.categories.slice(0, 2).map((c) => (
-                          <span key={c} className="px-2 py-0.5 bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
+                        : s.categories.slice(0, 4).map((c) => (
+                          <span
+                            key={c}
+                            title={c}
+                            className="px-2 py-0.5 bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs font-mono rounded-full"
+                          >
+                            {prefixOf(c)}
+                          </span>
                         ))}
-                      {s.categories.length > 2 && (
-                        <span className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] text-xs rounded-full">+{s.categories.length - 2}</span>
+                      {s.categories.length > 4 && (
+                        <span
+                          title={s.categories.slice(4).join(', ')}
+                          className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] text-xs rounded-full"
+                        >
+                          +{s.categories.length - 4}
+                        </span>
                       )}
                     </div>
                   </td>
@@ -307,12 +333,43 @@ function SuppliersPageInner() {
                 <Field label="Phone" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="+94 11 234 5678" />
               </div>
               <Field label="Address" value={form.address} onChange={(v) => setForm((f) => ({ ...f, address: v }))} placeholder="Street, City" />
-              <Field
-                label="Categories (comma-separated)"
-                value={form.categories}
-                onChange={(v) => setForm((f) => ({ ...f, categories: v }))}
-                placeholder="e.g. Beverages, Dairy & Eggs"
-              />
+              <div>
+                <label className="block text-sm font-medium text-[#101828] mb-1">Categories Supplied</label>
+                <div className="max-h-44 overflow-y-auto border border-[#e4e7ec] rounded-lg p-2 grid grid-cols-2 gap-1">
+                  {categories.length === 0 ? (
+                    <p className="text-sm text-[#4a5565] p-1 col-span-2">No categories yet — add them on the Categories page.</p>
+                  ) : (
+                    categories.map((cat) => {
+                      const picked = form.categories.includes(cat.name);
+                      return (
+                        <label
+                          key={cat._id}
+                          className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-[#f9fafb] cursor-pointer select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={picked}
+                            onChange={() =>
+                              setForm((f) => ({
+                                ...f,
+                                categories: picked
+                                  ? f.categories.filter((c) => c !== cat.name)
+                                  : [...f.categories, cat.name],
+                              }))
+                            }
+                            className="accent-[var(--color-primary)]"
+                          />
+                          <span className="font-mono text-xs text-[var(--color-primary)]">{cat.skuPrefix ?? '—'}</span>
+                          <span className="text-sm text-[#101828] truncate">{cat.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-xs text-[#4a5565] mt-1">
+                  {form.categories.length} selected — the table shows each category by its SKU code.
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-[#101828] mb-1">Status</label>
                 <select
@@ -409,7 +466,10 @@ function SuppliersPageInner() {
                   <p className="text-xs text-[#4a5565] mb-1.5">Categories</p>
                   <div className="flex flex-wrap gap-2">
                     {slideOver.categories.map((c) => (
-                      <span key={c} className="px-2.5 py-1 bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs rounded-full">{c}</span>
+                      <span key={c} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs rounded-full">
+                        <span className="font-mono font-semibold">{prefixOf(c)}</span>
+                        <span>{c}</span>
+                      </span>
                     ))}
                   </div>
                 </div>

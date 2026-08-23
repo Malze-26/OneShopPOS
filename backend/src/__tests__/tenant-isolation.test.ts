@@ -28,8 +28,14 @@ beforeAll(async () => {
       role: 'Manager',
       storeId: store,
     });
+    const supplier = await models.Supplier.create({
+      name: `${store} Distributors`,
+      storeId: store,
+    });
     await models.Product.create({
       createdBy: manager._id,
+      supplierId: supplier._id,
+      supplier: supplier.name,
       name: `${store} Widget`,
       sku: `SKU-${store}`,
       sellingPrice: 100,

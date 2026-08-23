@@ -3,12 +3,17 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Upload, X, Sparkles } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import api from '@/app/lib/api';
 import { uploadAllToS3 } from '@/app/lib/uploadToS3';
 import { useStore } from '@/app/contexts/StoreContext';
 
 interface Category {
+  _id: string;
+  name: string;
+}
+
+interface Supplier {
   _id: string;
   name: string;
 }
@@ -36,6 +41,7 @@ export default function EditProductPage() {
     lowStockThreshold: '',
     expiryDate: '',
     category: '',
+    supplierId: '',
     isWeightBased: false,
     unit: 'item' as 'kg' | 'item',
   });
@@ -43,14 +49,19 @@ export default function EditProductPage() {
   const [newImages, setNewImages] = useState<ImagePreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [skuLoading, setSkuLoading] = useState(false);
   const [error, setError] = useState('');
+  // The category and SKU the product arrived with, so reverting the category
+  // dropdown puts the original code back instead of burning a new number.
+  const [original, setOriginal] = useState({ category: '', sku: '' });
 
   useEffect(() => {
     const id = params.id as string;
-    Promise.all([api.get(`/products/${id}`), api.get('/categories')])
-      .then(([productRes, catRes]) => {
+    Promise.all([api.get(`/products/${id}`), api.get('/categories'), api.get('/suppliers')])
+      .then(([productRes, catRes, supRes]) => {
         const p = productRes.data.data;
         setFormData({
           name: p.name,
@@ -63,11 +74,14 @@ export default function EditProductPage() {
           // <input type="date"> only accepts YYYY-MM-DD, not the stored ISO timestamp.
           expiryDate: p.expiryDate ? String(p.expiryDate).slice(0, 10) : '',
           category: p.category,
+          supplierId: p.supplierId ?? '',
           isWeightBased: p.isWeightBased ?? false,
           unit: p.unit ?? 'item',
         });
+        setOriginal({ category: p.category, sku: p.sku });
         setExistingImages(p.images ?? []);
         setCategories(catRes.data.data);
+        setSuppliers(supRes.data.data);
       })
       .catch(() => setError('Failed to load product'))
       .finally(() => setFetchLoading(false));
@@ -114,10 +128,32 @@ export default function EditProductPage() {
     }
   };
 
-  const generateSKU = () => {
-    const randomSKU = `SKU-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    setFormData({ ...formData, sku: randomSKU });
-  };
+  // A SKU starts with its category's three-letter code, so moving the product
+  // to another category means it is reissued under the new code on save.
+  useEffect(() => {
+    if (!original.sku || !formData.category) return;
+
+    if (formData.category === original.category) {
+      setFormData((f) => (f.sku === original.sku ? f : { ...f, sku: original.sku }));
+      return;
+    }
+
+    let cancelled = false;
+    setSkuLoading(true);
+    api
+      .get('/products/next-sku', { params: { category: formData.category } })
+      .then((res) => {
+        if (!cancelled) setFormData((f) => ({ ...f, sku: res.data.data.sku }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSkuLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.category, original]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +171,7 @@ export default function EditProductPage() {
         // Empty string clears the stored date rather than leaving it untouched.
         expiryDate: formData.expiryDate || null,
         category: formData.category,
+        supplierId: formData.supplierId,
         isWeightBased: formData.isWeightBased,
         unit: formData.unit,
       });
@@ -197,25 +234,19 @@ export default function EditProductPage() {
                 </div>
                 <div>
                   <label htmlFor="sku" className="block text-sm font-medium text-[#101828] mb-2">SKU (Stock Keeping Unit)</label>
-                  <div className="flex gap-2">
-                    <input
-                      id="sku"
-                      type="text"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      placeholder="SKU-XXXXX"
-                      className="flex-1 px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={generateSKU}
-                      className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Generate
-                    </button>
-                  </div>
+                  <input
+                    id="sku"
+                    type="text"
+                    value={skuLoading ? 'Generating…' : formData.sku}
+                    readOnly
+                    className="w-full px-4 py-2 border border-[#e4e7ec] bg-[#f9fafb] rounded-lg text-sm text-[#101828] font-mono tracking-wide focus:outline-none"
+                    required
+                  />
+                  <p className="text-xs text-[#4a5565] mt-1.5">
+                    {formData.category && formData.category !== original.category
+                      ? `Moving to "${formData.category}" reissues this SKU when you save.`
+                      : 'Issued from the category — every product in a category shares the same three-letter code.'}
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-[#101828] mb-2">Description</label>
@@ -416,6 +447,29 @@ export default function EditProductPage() {
                     <option key={cat._id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Supplier */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e4e7ec]">
+              <h2 className="text-base font-semibold text-[#101828] mb-4">Supplier</h2>
+              <div>
+                <label htmlFor="supplierId" className="block text-sm font-medium text-[#101828] mb-2">Bought From</label>
+                <select
+                  id="supplierId"
+                  value={formData.supplierId}
+                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                  className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                  required
+                >
+                  <option value="">Choose a supplier</option>
+                  {suppliers.map((sup) => (
+                    <option key={sup._id} value={sup._id}>{sup.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-[#4a5565] mt-2">
+                  Every product has to come from a supplier. Add new ones on the Suppliers page.
+                </p>
               </div>
             </div>
 
