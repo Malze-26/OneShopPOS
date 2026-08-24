@@ -5,7 +5,7 @@ import { StoreProvider } from '@/app/contexts/StoreContext';
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_STORE_NAME ?? 'OneShop POS',
@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body  suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <StoreProvider>
           <AuthProvider>{children}</AuthProvider>
         </StoreProvider>

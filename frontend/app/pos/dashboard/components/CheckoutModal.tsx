@@ -60,9 +60,9 @@ export default function CheckoutModal({
         product:     item.id,
         productName: item.name,
         sku:         item.sku,
-        quantity:    item.qty,
-        unitPrice:   item.unit === 'kg' ? item.price / item.qty : item.price,
-        subtotal:    item.unit === 'kg' ? item.price : item.price * item.qty,
+        quantity:    item.qty,                          // kg weight or integer count
+        unitPrice:   item.price,                        // price per kg OR price per item
+        subtotal:    parseFloat((item.price * item.qty).toFixed(2)),
       })),
     };
     if (isOnline) {
@@ -169,7 +169,7 @@ export default function CheckoutModal({
         <div style="margin-bottom: 4px;">
           ${state.items.map(item => `
             <div class="row">
-              <span class="item-name">${item.name} × ${item.qty}</span>
+              <span class="item-name">${item.name} × ${item.unit === 'kg' ? item.qty + ' kg' : item.qty}</span>
               <span class="item-price">${fmt(item.price * item.qty)}</span>
             </div>
           `).join("")}
@@ -277,7 +277,7 @@ export default function CheckoutModal({
             <div className="bg-[#F7F8FC] rounded-xl p-3 border border-[#E3E6F0]">
               {state.items.map((i) => (
                 <div key={i.id} className="flex justify-between text-[#6B7280] text-[13px] mb-1.5">
-                  <span>{i.name} × {i.qty}</span>
+                  <span>{i.name} × {i.unit === 'kg' ? `${i.qty} kg` : i.qty}</span>
                   <span className="font-bold">{fmt(i.price * i.qty)}</span>
                 </div>
               ))}
@@ -391,7 +391,7 @@ export default function CheckoutModal({
               <div className="text-center font-bold text-[#065F46] mb-3 text-[13px]">OneShop POS</div>
               {state.items.map(item => (
                 <div key={item.id} className="flex justify-between text-[#6B7280] mb-1">
-                  <span>{item.name} × {item.qty}</span>
+                  <span>{item.name} × {item.unit === 'kg' ? `${item.qty} kg` : item.qty}</span>
                   <span>{fmt(item.price * item.qty)}</span>
                 </div>
               ))}

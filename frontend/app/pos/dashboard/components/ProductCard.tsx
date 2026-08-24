@@ -28,9 +28,8 @@ export default function ProductCard({
   return (
     <div
       onClick={() => product.stock > 0 && onAdd(product)}
-      className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 border ${
-        inCart ? "shadow-[0_4px_16px_rgba(27,26,85,0.15)]" : ""
-      } ${addedId === product._id ? "animate-pulse" : ""}`}
+      className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 border ${inCart ? "shadow-[0_4px_16px_rgba(27,26,85,0.15)]" : ""
+        } ${addedId === product._id ? "animate-pulse" : ""}`}
       style={{
         opacity: product.stock === 0 ? 0.6 : 1,
         borderColor: inCart ? C.brand : C.border,
@@ -125,7 +124,7 @@ export default function ProductCard({
               Stock
             </span>
             <span className="text-[9px] font-bold" style={{ color: stockColor }}>
-              {product.stock}
+              {product.stock}{product.isWeightBased ? " kg" : ""}
             </span>
           </div>
           <div className="h-1 rounded-full bg-[#F3F4F6] overflow-hidden">

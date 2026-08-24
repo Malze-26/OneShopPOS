@@ -38,7 +38,7 @@ const transactionItemSchema = new Schema<ITransactionItem>(
     product:     { type: Schema.Types.ObjectId, ref: 'Product' },
     productName: { type: String, default: '' },
     sku:         { type: String, default: '' },
-    quantity:    { type: Number, min: 1 },
+    quantity:    { type: Number, min: 0 },
     unitPrice:   { type: Number, min: 0 },
     subtotal:    { type: Number, min: 0 },
   },

@@ -129,10 +129,9 @@ export default function POSDashboard() {
     }
   };
 
-  const subtotal = cart.reduce((acc, item) => {
-    if (item.unit === "kg") return acc + item.price; // price for weight-based items is already qty * unit price, so just add it directly
-    return acc + item.price * item.qty;// for regular items, multiply price by quantity
-  }, 0);
+  const subtotal = parseFloat(
+    cart.reduce((acc, item) => acc + item.price * item.qty, 0).toFixed(2)
+  );
   const total = parseFloat((subtotal - discount - loyaltyDiscount).toFixed(2));
 
   const filteredProducts = products.filter((p) => {
@@ -419,25 +418,35 @@ export default function POSDashboard() {
               setWeightError(`Only ${weightProduct.stock} kg available in stock`);
               return;
             }
-            const totalPrice = parseFloat((weight * weightProduct.sellingPrice).toFixed(2));
+            let stockExceeded = false;
             setCart(prev => {
               const existingIndex = prev.findIndex(i => i.id === weightProduct._id);
               if (existingIndex >= 0) {
+                const currentWeight = prev[existingIndex].weight || prev[existingIndex].qty || 0;
+                const newWeight = parseFloat((currentWeight + weight).toFixed(3));
+                if (newWeight > weightProduct.stock) {
+                  stockExceeded = true;
+                  return prev;
+                }
                 return prev.map((i, idx) => idx === existingIndex
-                  ? { ...i, weight: (i.weight || 0) + weight, price: weightProduct.sellingPrice, qty: parseFloat(((i.weight || 0) + weight).toFixed(2)) }
+                  ? { ...i, weight: newWeight, qty: newWeight, price: weightProduct.sellingPrice }
                   : i
                 );
               }
               return [...prev, {
                 id: weightProduct._id,
-                name: `${weightProduct.name} (${weight}kg)`,
+                name: weightProduct.name,
                 sku: weightProduct.sku,
-                price: totalPrice,
-                qty: 1,
+                price: weightProduct.sellingPrice,
+                qty: weight,
                 unit: "kg",
                 weight,
               }];
             });
+            if (stockExceeded) {
+              setWeightError(`Total in cart exceeds available stock (${weightProduct.stock} kg)`);
+              return;
+            }
             setAddedId(weightProduct._id);
             setTimeout(() => setAddedId(null), 350);
             setShowWeightModal(false);

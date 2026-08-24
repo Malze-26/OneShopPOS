@@ -26,7 +26,7 @@ export const stockHistorySchema = new Schema<IStockHistory>(
     quantity: {
       type: Number,
       required: true,
-      min: [1, 'Quantity must be at least 1'],
+      min: [0.0001, 'Quantity must be greater than 0'],
     },
     reason: {
       type: String,

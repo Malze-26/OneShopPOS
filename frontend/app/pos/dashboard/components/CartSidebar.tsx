@@ -90,7 +90,7 @@ export default function CartSidebar({
           <span className="text-[13px] font-extrabold text-gray-800">Cart</span>
           {cart.length > 0 && (
             <div className="bg-[#065F46] text-white rounded-full px-2 py-[1px] text-[11px] font-bold">
-              {cart.reduce((a, i) => a + i.qty, 0)} items
+              {cart.length} {cart.length === 1 ? "item" : "items"}
             </div>
           )}
         </div>
@@ -228,14 +228,22 @@ export default function CartSidebar({
               <div className="w-8 h-8 bg-[#ECFDF5] rounded-lg flex items-center justify-center text-[13px] font-bold text-[#065F46] flex-shrink-0">{item.name.charAt(0).toUpperCase()}</div>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-semibold text-gray-800 truncate mb-0.5">{item.name}</div>
-                <div className="text-[11px] text-gray-500">Rs. {item.price.toLocaleString()} / unit</div>
+                <div className="text-[11px] text-gray-500">Rs. {item.price.toLocaleString()} / {item.unit || "unit"}</div>
               </div>
-              <div className="flex items-center gap-1">
-                <button className="w-5 h-5 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300" onClick={() => onUpdateQty(item.id, -1)}>−</button>
-                <span className="text-[13px] font-bold text-gray-800 w-5 text-center">{item.qty}</span>
-                <button className="w-5 h-5 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300" onClick={() => onUpdateQty(item.id, 1)}>+</button>
-              </div>
-              <div className="text-[12px] font-bold text-gray-800 w-14 text-right">Rs. {(item.price * item.qty).toLocaleString()}</div>
+              {item.unit === "kg" ? (
+                <div className="flex items-center">
+                  <span className="text-[12px] font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                    {item.qty} kg
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <button className="w-5 h-5 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300" onClick={() => onUpdateQty(item.id, -1)}>−</button>
+                  <span className="text-[13px] font-bold text-gray-800 w-5 text-center">{item.qty}</span>
+                  <button className="w-5 h-5 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300" onClick={() => onUpdateQty(item.id, 1)}>+</button>
+                </div>
+              )}
+              <div className="text-[12px] font-bold text-gray-800 w-14 text-right">Rs. {parseFloat((item.price * item.qty).toFixed(2)).toLocaleString()}</div>
               <button className="p-1 text-gray-500 hover:text-red-500" onClick={() => onUpdateQty(item.id, -item.qty)}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" />
