@@ -17,7 +17,8 @@
     "backfill:stock-history": "tsx src/backfill-stock-history.ts",
     "backfill:order-stock": "tsx src/backfill-order-stock.ts",
     "reconcile:stock": "tsx src/reconcile-stock-ledger.ts",
-    "backfill:history-dates": "tsx src/backfill-history-dates.ts"
+    "backfill:history-dates": "tsx src/backfill-history-dates.ts",
+    "restore:products": "tsx src/restore-deleted-products.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1112.0",
