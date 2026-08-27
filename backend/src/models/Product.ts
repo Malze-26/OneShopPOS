@@ -163,23 +163,38 @@ productSchema.pre('save', function (next) {
   next();
 });
 
-// Enforce product limit based on tenant's subscription plan
+// Enforce product limit per tenant subscription plan
 productSchema.pre('save', async function (next) {
-  if (!this.isNew) return next(); // only check when creating a NEW product, not when editing one
+  if (!this.isNew) return next();
 
   try {
-    const db = this.db; // the tenant's own database connection
-    const settings = await db.collection('storesettings').findOne({});
-    const maxProducts = settings?.maxProducts;
+    const db = this.db;
+    if (!db) return next();
 
-    // null or undefined maxProducts = unlimited (premium plan)
-    if (maxProducts !== null && maxProducts !== undefined) {
-      const currentCount = await db.collection('products').countDocuments();
-      if (currentCount >= maxProducts) {
-        return next(new Error(`Product limit reached (${maxProducts}). Upgrade your plan to add more products.`));
+    const settings = await db.collection('storesettings').findOne({});
+    const maxProducts =
+      settings?.maxProducts !== undefined
+        ? settings.maxProducts
+        : settings?.subscriptionPlan === 'premium'
+        ? null
+        : 100;
+
+    if (maxProducts !== null && maxProducts !== undefined && typeof maxProducts === 'number') {
+      const count = await db.collection('products').countDocuments();
+      if (count >= maxProducts) {
+        const error = new Error(
+          `Product limit reached (${maxProducts} products max for your plan). Please upgrade your subscription to add more products.`
+        );
+        (error as any).statusCode = 400;
+        (error as any).name = 'ProductLimitError';
+        return next(error);
       }
     }
-
+    next();
+  } catch (err) {
+    next(err as Error);
+  }
+});
     next();
   } catch (err) {
     next(err as Error);

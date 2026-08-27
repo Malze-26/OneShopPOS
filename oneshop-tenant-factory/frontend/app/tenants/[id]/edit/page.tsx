@@ -15,6 +15,7 @@ interface FormData {
   status: string;
   subscriptionPlan: string;
   subscriptionStatus: string;
+  subscriptionEndDate: string;
 }
 
 const quickColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#EF4444', '#151194'];
@@ -32,6 +33,7 @@ export default function EditTenantPage() {
     status: 'active',
     subscriptionPlan: 'basic',
     subscriptionStatus: 'active',
+    subscriptionEndDate: '',
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,6 +46,14 @@ export default function EditTenantPage() {
         const data = await tenantAPI.getOne(id);
         if (data.success) {
           const t = data.tenant;
+          let formattedEndDate = '';
+          if (t.subscription?.endDate) {
+            const parsed = new Date(t.subscription.endDate);
+            if (!isNaN(parsed.getTime())) {
+              formattedEndDate = parsed.toISOString().split('T')[0];
+            }
+          }
+
           setFormData({
             businessName: t.businessName || '',
             businessAddress: t.businessAddress || '',
@@ -51,8 +61,9 @@ export default function EditTenantPage() {
             email: t.email || '',
             primaryColor: t.primaryColor || '#3B82F6',
             status: t.status || 'active',
-            subscriptionPlan: t.subscription?.plan || 'free',
+            subscriptionPlan: t.subscription?.plan || 'basic',
             subscriptionStatus: t.subscription?.status || 'active',
+            subscriptionEndDate: formattedEndDate,
           });
           if (t.logo) setLogoPreview(t.logo);
         } else {
@@ -96,6 +107,7 @@ export default function EditTenantPage() {
         subscription: {
           plan: formData.subscriptionPlan,
           status: formData.subscriptionStatus,
+          endDate: formData.subscriptionEndDate || undefined,
         },
       };
       const data = await tenantAPI.update(id, updateData);
@@ -223,7 +235,7 @@ export default function EditTenantPage() {
           {/* Status & Subscription */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Status & Subscription</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Account Status</label>
                 <select
@@ -259,6 +271,17 @@ export default function EditTenantPage() {
                   <option value="trial">Trial</option>
                   <option value="suspended">Suspended</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subscription End Date</label>
+                <input
+                  type="date"
+                  name="subscriptionEndDate"
+                  value={formData.subscriptionEndDate}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
             </div>
           </div>

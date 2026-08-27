@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import type React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Search, User, LogOut, Settings, UserCircle, CheckCheck, Store, Trash2, RefreshCw } from 'lucide-react';
 import { notificationAPI } from '../../../utils/api';
@@ -22,7 +21,7 @@ interface Notification {
   createdAt: string;
 }
 
-const notificationIcon: Record<string, React.JSX.Element> = {
+const notificationIcon: Record<string, React.ReactNode> = {
   tenant_created: <Store className="w-4 h-4 text-green-600" />,
   tenant_deleted: <Trash2 className="w-4 h-4 text-red-500" />,
   tenant_suspended: <RefreshCw className="w-4 h-4 text-yellow-500" />,

@@ -1,12 +1,20 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Tenant from '../models/Tenant';
-import { provisionTenantDatabase, dropTenantDatabase, getTenantDbUri, setManagerInTenantDb, getManagerFromTenantDb, syncPlanToTenantDb } from '../utils/tenantProvisioner';
+import { provisionTenantDatabase, dropTenantDatabase, getTenantDbUri, setManagerInTenantDb, getManagerFromTenantDb, syncPlanToTenantDb, getMaxProductsForPlan } from '../utils/tenantProvisioner';
 import { createNotification } from './notificationController';
+import { syncTenantStatus } from '../utils/tenantStatusChecker';
 
 export const getAllTenants = async (_req: Request, res: Response): Promise<void> => {
   try {
     const tenants = await Tenant.find().populate('ownerId', 'name email');
+
+    for (const tenant of tenants) {
+      if (syncTenantStatus(tenant)) {
+        await tenant.save();
+      }
+    }
+
     res.json({ success: true, count: tenants.length, tenants });
   } catch (error) {
     res.status(500).json({
@@ -24,6 +32,10 @@ export const getTenant = async (req: Request, res: Response): Promise<void> => {
     if (!tenant) {
       res.status(404).json({ success: false, message: 'Tenant not found' });
       return;
+    }
+
+    if (syncTenantStatus(tenant)) {
+      await tenant.save();
     }
 
     res.json({ success: true, tenant });
@@ -118,14 +130,28 @@ export const updateTenant = async (req: Request, res: Response): Promise<void> =
     }
 
     const prevStatus = (await Tenant.findById(req.params.id))?.status;
+    const updatedPlan = req.body.subscription?.plan || req.body['subscription.plan'];
+    const updateData: Record<string, any> = { ...req.body, updatedAt: new Date() };
+
+    if (updatedPlan) {
+      const maxProducts = getMaxProductsForPlan(updatedPlan);
+      if (updateData.subscription) {
+        updateData.subscription.maxProducts = maxProducts;
+      } else {
+        updateData['subscription.maxProducts'] = maxProducts;
+      }
+    }
+
     tenant = await Tenant.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, updatedAt: new Date() },
+      updateData,
       { new: true, runValidators: true }
     );
 
-    if (req.body.subscription?.plan && tenant!.databaseName) {
-      syncPlanToTenantDb(tenant!.databaseName, req.body.subscription.plan).catch(() => {});
+    if (updatedPlan && tenant?.databaseName) {
+      await syncPlanToTenantDb(tenant.databaseName, updatedPlan).catch((err) => {
+        console.error(`Failed to sync plan to tenant DB (${tenant.databaseName}):`, err);
+      });
     }
 
     if (req.body.status && req.body.status !== prevStatus) {
@@ -246,6 +272,13 @@ export const setManager = async (req: Request, res: Response): Promise<void> => 
 
 export const getAnalytics = async (_req: Request, res: Response): Promise<void> => {
   try {
+    const allTenants = await Tenant.find();
+    for (const tenant of allTenants) {
+      if (syncTenantStatus(tenant)) {
+        await tenant.save();
+      }
+    }
+
     const totalTenants = await Tenant.countDocuments();
     const activeTenants = await Tenant.countDocuments({ status: 'active' });
     const inactiveTenants = await Tenant.countDocuments({ status: 'inactive' });

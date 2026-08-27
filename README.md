@@ -227,5 +227,5 @@ container deployment before that migration runs.
 
 ### Super Admin (Tenant Factory)
 - Provision and manage tenant businesses
-- Subscription plan management (free / basic / premium / enterprise)
+- Subscription plan management (basic / premium)
 - Analytics dashboard with tenant growth metrics

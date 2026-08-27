@@ -1,10 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISubscription {
-  plan: 'free' | 'basic' | 'premium' | 'enterprise';
+  plan: 'basic' | 'premium';
   status: 'active' | 'inactive' | 'suspended' | 'trial';
   startDate: Date;
   endDate?: Date;
+   maxProducts: number | null;
 }
 
 export interface ITenant extends Document {
@@ -44,6 +45,12 @@ const tenantSchema = new Schema<ITenant>({
     },
     startDate: { type: Date, default: Date.now },
     endDate: { type: Date },
+    maxProducts: {
+      type: Number,
+      default: function (this: any) {
+        return this.plan === 'premium' ? null : 100;
+      },
+    },
   },
   status: {
     type: String,
@@ -58,6 +65,13 @@ const tenantSchema = new Schema<ITenant>({
 
 tenantSchema.pre('save', function (next) {
   this.updatedAt = new Date();
+  if (this.subscription) {
+    if (this.subscription.plan === 'premium') {
+      this.subscription.maxProducts = null;
+    } else if (this.subscription.plan === 'basic' && (this.subscription.maxProducts === null || this.subscription.maxProducts === undefined)) {
+      this.subscription.maxProducts = 100;
+    }
+  }
   next();
 });
 

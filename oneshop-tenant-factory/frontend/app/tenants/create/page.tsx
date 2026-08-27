@@ -15,6 +15,7 @@ interface FormData {
   primaryColor: string;
   activeStatus: boolean;
   subscriptionTier: string;
+  subscriptionEndDate: string;
   managerName: string;
   managerEmail: string;
   managerPassword: string;
@@ -31,6 +32,7 @@ export default function CreateTenantPage() {
     primaryColor: '#3B82F6',
     activeStatus: true,
     subscriptionTier: 'basic',
+    subscriptionEndDate: '',
     managerName: '',
     managerEmail: '',
     managerPassword: '',
@@ -74,6 +76,7 @@ export default function CreateTenantPage() {
         subscription: {
           plan: formData.subscriptionTier,
           status: formData.activeStatus ? 'active' : 'inactive',
+          endDate: formData.subscriptionEndDate || undefined,
         },
         status: formData.activeStatus ? 'active' : 'inactive',
         ...(formData.managerName && formData.managerEmail && formData.managerPassword
@@ -290,15 +293,28 @@ export default function CreateTenantPage() {
                 </label>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subscription Tier</label>
-                <select
-                  name="subscriptionTier" value={formData.subscriptionTier} onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                >
-                  <option value="basic">Basic Plan</option>
-                  <option value="premium">Premium Plan</option>
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Subscription Tier</label>
+                  <select
+                    name="subscriptionTier" value={formData.subscriptionTier} onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  >
+                    <option value="basic">Basic Plan</option>
+                    <option value="premium">Premium Plan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Subscription End Date</label>
+                  <input
+                    type="date"
+                    name="subscriptionEndDate"
+                    value={formData.subscriptionEndDate}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>

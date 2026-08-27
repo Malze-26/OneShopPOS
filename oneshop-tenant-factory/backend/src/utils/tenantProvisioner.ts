@@ -8,6 +8,17 @@ export interface ManagerCredentials {
   email: string;
   password: string;
 }
+export const PLAN_MAX_PRODUCTS: Record<string, number | null> = {
+  basic: 100,
+  premium: null, // null = unlimited
+};
+
+export const getMaxProductsForPlan = (plan?: string): number | null => {
+  if (plan && plan in PLAN_MAX_PRODUCTS) {
+    return PLAN_MAX_PRODUCTS[plan];
+  }
+  return 100; // default fallback
+};
 
 export const setManagerInTenantDb = async (
   dbName: string,
@@ -65,7 +76,7 @@ export const syncPlanToTenantDb = async (
   try {
     await conn.db!.collection('storesettings').updateOne(
       {},
-      { $set: { subscriptionPlan: plan, updatedAt: new Date() } }
+      { $set: { subscriptionPlan: plan, maxProducts: getMaxProductsForPlan(plan), updatedAt: new Date() } }
     );
   } finally {
     await conn.close();
@@ -147,6 +158,7 @@ export const provisionTenantDatabase = async (
       backgroundImageUrl: tenant.backgroundImage ?? '',
       primaryColor: tenant.primaryColor ?? '#155dfc',
       subscriptionPlan: tenant.subscription?.plan ?? 'basic',
+      maxProducts: getMaxProductsForPlan(tenant.subscription?.plan),
       createdAt: new Date(),
       updatedAt: new Date(),
     });

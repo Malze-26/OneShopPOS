@@ -2,7 +2,6 @@ node_modules
 .next
 node_modules/
 
-
 # Environment files — never commit secrets
 .env
 .env.local
@@ -11,6 +10,7 @@ node_modules/
 
 # Build artifacts
 *.tsbuildinfo
+package-lock.json
 
 # SST / OpenNext build output
 .sst/

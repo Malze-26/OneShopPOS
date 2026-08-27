@@ -70,12 +70,7 @@ const seedDatabase = async (): Promise<void> => {
     });
     console.log('✅ Super Admin created');
 
-    const tenantsData: Array<
-      Parameters<typeof Tenant.create>[0] & {
-        databaseName?: string;
-        users?: TenantUserSeed[];
-      }
-    > = [
+    const tenantsData: Array<Record<string, any>> = [
       {
         businessName: 'OpenDoor',
         businessAddress: 'No 401, Main Street, Colombo 11',
