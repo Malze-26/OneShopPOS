@@ -110,7 +110,7 @@ async function relinkTenant(conn: mongoose.Connection, label: string, dryRun: bo
   // fail their validation on paths this script never touches.
   async function relinkItems<T extends { _id: unknown; items: Array<{ product: unknown; productName?: string; sku?: string }> }>(
     docs: T[],
-    model: { updateOne(filter: object, update: object): Promise<unknown> },
+    model: { bulkWrite(ops: unknown[]): Promise<unknown> },
     label: string
   ): Promise<number> {
     let itemsChanged = 0;
@@ -138,7 +138,7 @@ async function relinkTenant(conn: mongoose.Connection, label: string, dryRun: bo
     }
 
     console.log(`  ${label}: ${dryRun ? 'would relink' : 'relinked'} ${itemsChanged} line item(s) across ${ops.length} document(s)`);
-    if (!dryRun && ops.length > 0) await (model as { bulkWrite(ops: unknown[]): Promise<unknown> }).bulkWrite(ops);
+    if (!dryRun && ops.length > 0) await model.bulkWrite(ops);
     return itemsChanged;
   }
 
