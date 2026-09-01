@@ -30,9 +30,11 @@ export async function sendReceiptEmail(data: ReceiptData) {
     </tr>
   `).join('');
 
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'OneShop POS <onboarding@resend.dev>';
+
   await resend.emails.send({
-    from: 'OneShop POS <onboarding@resend.dev>',
-   to: data.customerEmail,
+    from: fromEmail,
+    to: data.customerEmail,
     subject: `Your Receipt - ${data.orderId}`,
     html: `
       <div style="font-family:Inter,sans-serif;max-width:500px;margin:0 auto;padding:24px;color:#111827">

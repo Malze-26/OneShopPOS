@@ -78,10 +78,13 @@ export function Sidebar() {
       {/* Logo & Store Name */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-[#e4e7ec]">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-[var(--color-primary)]">
+          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-white border border-[#e4e7ec] p-0.5">
             {logoSrc && !logoError
               ? <img src={logoSrc} alt={storeName} className="w-full h-full object-contain" onError={() => setLogoError(true)} />
-              : <Package className="w-6 h-6 text-white" />
+              : (storeName?.toLowerCase().includes('open')
+                  ? <img src="/opendoor.svg" alt={storeName} className="w-full h-full object-contain" />
+                  : <Package className="w-6 h-6 text-[#155dfc]" />
+                )
             }
           </div>
           <div className="flex flex-col">

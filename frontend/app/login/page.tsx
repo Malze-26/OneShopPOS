@@ -117,9 +117,27 @@ export default function LoginPage() {
     setShowPassword(false);
   };
 
-  const logoSrc = selectedTenant?.logo
-    ? (selectedTenant.logo.startsWith('http') ? selectedTenant.logo : `${API_BASE}${selectedTenant.logo}`)
-    : null;
+  const getLogoSrc = (t: Tenant | null) => {
+    if (!t) return '/opendoor.svg';
+    const name = (t.businessName || '').toLowerCase();
+    const db = (t.databaseName || '').toLowerCase();
+    if (name.includes('open') || db.includes('open') || db.includes('opendoor')) {
+      return '/opendoor.svg';
+    }
+    if (!t.logo) return null;
+    if (t.logo.startsWith('http://') || t.logo.startsWith('https://') || t.logo.startsWith('data:')) {
+      return t.logo;
+    }
+    if (t.logo.startsWith('/')) {
+      if (t.logo.endsWith('.svg') || t.logo.endsWith('.png') || t.logo.endsWith('.webp')) {
+        return t.logo;
+      }
+      return `${API_BASE}${t.logo}`;
+    }
+    return `${API_BASE}/${t.logo}`;
+  };
+
+  const logoSrc = getLogoSrc(selectedTenant);
 
   const bgStyle = selectedTenant?.backgroundImage
     ? {
@@ -143,18 +161,25 @@ export default function LoginPage() {
         {/* Logo + Store name / Tenant selector */}
         <div className="flex flex-col items-center mb-8">
           <div
-            className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center mb-3"
-            style={{ background: logoSrc ? 'white' : '#eff4ff', border: logoSrc ? '1px solid #e4e7ec' : 'none' }}
+            className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center mb-3 bg-white border border-[#e4e7ec] shadow-sm p-1"
           >
             {logoSrc
-              ? <img src={logoSrc} alt={selectedTenant?.businessName} className="w-full h-full object-contain" />
+              ? (
+                <img
+                  src={logoSrc}
+                  alt={selectedTenant?.businessName ?? 'Open Door'}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/opendoor.svg';
+                  }}
+                />
+              )
               : (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="3" width="7" height="7" rx="1" fill={primaryColor} />
-                  <rect x="14" y="3" width="7" height="7" rx="1" fill={primaryColor} />
-                  <rect x="3" y="14" width="7" height="7" rx="1" fill={primaryColor} />
-                  <rect x="14" y="14" width="7" height="7" rx="1" fill={primaryColor} />
-                </svg>
+                <img
+                  src="/opendoor.svg"
+                  alt="Open Door"
+                  className="w-full h-full object-contain"
+                />
               )
             }
           </div>
@@ -192,14 +217,16 @@ export default function LoginPage() {
                     className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#f5f8ff] transition-colors"
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
-                      style={{ background: t.logo ? 'white' : t.primaryColor + '20', border: '1px solid #e4e7ec' }}
+                      className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center bg-white border border-[#e4e7ec] p-0.5"
                     >
-                      {t.logo
+                      {getLogoSrc(t)
                         ? <img
-                            src={t.logo.startsWith('http') ? t.logo : `${API_BASE}${t.logo}`}
+                            src={getLogoSrc(t)!}
                             alt={t.businessName}
                             className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/opendoor.svg';
+                            }}
                           />
                         : <span className="text-xs font-bold" style={{ color: t.primaryColor }}>
                             {t.businessName.slice(0, 2).toUpperCase()}

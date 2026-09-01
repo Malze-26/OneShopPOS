@@ -7,15 +7,6 @@ export interface TransactionItem {
   subtotal: number;
 }
 
-export interface TransactionItem {
-  product?: string;
-  productName: string;
-  sku?: string;
-  quantity: number;
-  unitPrice: number;
-  subtotal: number;
-}
-
 export interface Transaction {
   _id: string;
   txnId: string;
@@ -24,6 +15,7 @@ export interface Transaction {
   customerId?: string;
   paymentMethod: "Cash" | "Card" | string;
   amount: number;
+  subtotal?: number;
   discount?: number;
   total?: number;
   items?: TransactionItem[];
