@@ -170,9 +170,9 @@ function normalizeOnlineOrder(doc: Record<string, unknown>) {
     _id:           doc._id,
     orderId:       doc.orderId,
     source:        'online' as const,
-    customerName:  (doc.customerName as string) || addr?.name || 'Unknown',
-    customerEmail: (doc.email as string) || addr?.email,
-    customerPhone: (doc.phone as string) || addr?.phone,
+    customerName:  (doc.customerName as string) || addr?.fullName || addr?.name || 'Unknown',
+    customerEmail: (doc.email as string) || (doc.customerEmail as string) || addr?.email,
+    customerPhone: (doc.phone as string) || (doc.customerPhone as string) || addr?.phone,
     items: rawItems.map(item => {
       const qty   = (item.qty ?? item.quantity ?? 1) as number;
       const price = (item.price ?? item.unitPrice ?? 0) as number;
@@ -182,16 +182,16 @@ function normalizeOnlineOrder(doc: Record<string, unknown>) {
         sku:         (item.sku || '') as string,
         quantity:    qty,
         unitPrice:   price,
-        subtotal:    price * qty,
+        subtotal:    (item.subtotal as number) ?? price * qty,
       };
     }),
     subtotal:        (doc.itemsPrice ?? doc.subtotal ?? 0) as number,
-    discount:        0,
+    discount:        (doc.discount as number) ?? 0,
     total:           (doc.totalPrice ?? doc.total ?? 0) as number,
     orderStatus,
     paymentStatus,
     status:          orderStatus,
-    paymentMethod:   doc.paymentMethod,
+    paymentMethod:   doc.paymentMethod || 'Cash',
     deliveryAddress: addressParts.length ? addressParts.join(', ') : undefined,
     notes:           (doc.orderNotes ?? doc.notes) as string | undefined,
     createdAt:       doc.createdAt,
@@ -220,8 +220,8 @@ export async function getOrders(req: AuthRequest, res: Response): Promise<void> 
     if (search) filter.customer = { $regex: search, $options: 'i' };
 
     const [txns, total] = await Promise.all([
-      Transaction.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).lean(),
-      Transaction.countDocuments(filter),
+      Transaction.collection.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).toArray(),
+      Transaction.collection.countDocuments(filter),
     ]);
     res.json({ data: txns.map(t => txnToOrder(t as unknown as Record<string, unknown>)), total, page: pageNum, pages: Math.ceil(total / limitNum) });
     return;
@@ -231,11 +231,17 @@ export async function getOrders(req: AuthRequest, res: Response): Promise<void> 
   if (source === 'online') {
     const filter: Record<string, unknown> = { orderStatus: { $exists: true } };
     if (status) filter.orderStatus = status;
-    if (search) filter.customerName = { $regex: search, $options: 'i' };
+    if (search) {
+      filter.$or = [
+        { customerName: { $regex: search, $options: 'i' } },
+        { 'shippingAddress.fullName': { $regex: search, $options: 'i' } },
+        { orderId: { $regex: search, $options: 'i' } },
+      ];
+    }
 
     const [docs, total] = await Promise.all([
-      Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).lean(),
-      Order.countDocuments(filter),
+      Order.collection.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).toArray(),
+      Order.collection.countDocuments(filter),
     ]);
     res.json({
       data:  docs.map(d => normalizeOnlineOrder(d as unknown as Record<string, unknown>)),
@@ -246,21 +252,29 @@ export async function getOrders(req: AuthRequest, res: Response): Promise<void> 
 
   // ── All sources: merge transactions + e-com orders ────────────────────────
   const txnFilter: Record<string, unknown>   = {};
-  const orderFilter: Record<string, unknown> = { orderStatus: { $exists: true } };
+  const orderFilter: Record<string, unknown> = {};
 
   if (status) {
     // POS: 'cancelled' maps to Transaction.status='voided'
-    txnFilter.status      = status === 'cancelled' ? 'voided' : status;
+    txnFilter.status        = status === 'cancelled' ? 'voided' : status;
     orderFilter.orderStatus = status;
   }
   if (search) {
-    txnFilter.customer       = { $regex: search, $options: 'i' };
-    orderFilter.customerName = { $regex: search, $options: 'i' };
+    txnFilter.$or = [
+      { customer: { $regex: search, $options: 'i' } },
+      { txnId: { $regex: search, $options: 'i' } },
+      { orderId: { $regex: search, $options: 'i' } },
+    ];
+    orderFilter.$or = [
+      { customerName: { $regex: search, $options: 'i' } },
+      { 'shippingAddress.fullName': { $regex: search, $options: 'i' } },
+      { orderId: { $regex: search, $options: 'i' } },
+    ];
   }
 
   const [txns, onlineOrders] = await Promise.all([
-    Transaction.find(txnFilter).sort({ createdAt: -1 }).lean(),
-    Order.find(orderFilter).sort({ createdAt: -1 }).lean(),
+    Transaction.collection.find(txnFilter).sort({ createdAt: -1 }).toArray(),
+    Order.collection.find(orderFilter).sort({ createdAt: -1 }).toArray(),
   ]);
 
   const merged = [

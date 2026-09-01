@@ -24,10 +24,10 @@ export default function StatCards({
         <div className="absolute right-5 bottom-[-20px] w-[70px] h-[70px] rounded-full bg-white/10" />
         <p className="text-[11px] font-bold uppercase mb-2 text-white/70 tracking-wider">Today's Sales</p>
         <p className="text-[28px] font-black mb-3 text-white tracking-tight font-mono">
-          Rs. {todaySales.toLocaleString()}
+          Rs. {(todaySales ?? 0).toLocaleString()}
         </p>
         <div className="inline-flex items-center rounded-full bg-emerald-300/20 px-2.5 py-1 w-fit">
-          <span className="text-[11px] font-bold text-emerald-300">{todayCount} today</span>
+          <span className="text-[11px] font-bold text-emerald-300">{todayCount ?? 0} today</span>
         </div>
       </div>
 
@@ -41,8 +41,8 @@ export default function StatCards({
           <line x1="9" y1="16" x2="13" y2="16"/>
         </svg>
         <p className="text-[11px] font-bold uppercase mb-2 text-white/70 tracking-wider">Total Records</p>
-        <p className="text-[36px] font-black mb-2 text-white tracking-tight">{totalCount}</p>
-        <p className="text-[12px] font-medium text-white/60">Avg: Rs. {avgBill.toLocaleString()}</p>
+        <p className="text-[36px] font-black mb-2 text-white tracking-tight">{totalCount ?? 0}</p>
+        <p className="text-[12px] font-medium text-white/60">Avg: Rs. {(avgBill ?? 0).toLocaleString()}</p>
       </div>
 
       {/* Success Rate */}
