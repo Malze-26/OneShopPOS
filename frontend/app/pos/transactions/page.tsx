@@ -13,6 +13,7 @@ export default function TransactionsPage() {
   const { user, loading: authLoading } = useAuth();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
   const [fetchError, setFetchError] = useState("");
 
@@ -34,8 +35,9 @@ export default function TransactionsPage() {
     if (!user) return;
     const fetchTransactions = async () => {
       try {
-        const { data } = await api.get("/transactions");
+        const { data } = await api.get("/transactions?limit=1000");
         setTransactions(data.data);
+        setTotalCount(data.total ?? data.data.length);
         setFetchError("");
       } catch (err) {
         console.error("Failed to fetch transactions:", err);
@@ -106,7 +108,7 @@ export default function TransactionsPage() {
         <StatCards
           todaySales={todaySales}
           todayCount={todayCount}
-          totalCount={transactions.length}
+          totalCount={totalCount}
           avgBill={avgBill}
           successRate={successRate}
           successCount={successCount}

@@ -128,10 +128,48 @@ export async function deleteCustomer(req: AuthRequest, res: Response, next: Next
   }
 }
 
+// Normalizer for e-com orders in Order collection
+function normalizeEcomOrder(doc: Record<string, unknown>) {
+  const addr = doc.shippingAddress as Record<string, string> | undefined;
+  const rawItems = ((doc.orderItems || doc.items || []) as Record<string, unknown>[]);
+  const orderStatus = (doc.orderStatus ?? doc.status ?? 'delivered') as string;
+  const paymentStatus = (doc.paymentStatus ?? 'paid') as string;
+  const total = (doc.totalPrice ?? doc.total ?? doc.subtotal ?? 0) as number;
+  const subtotal = (doc.itemsPrice ?? doc.subtotal ?? total) as number;
+
+  return {
+    _id: doc._id,
+    orderId: (doc.orderId as string) || (doc.txnId as string) || String(doc._id),
+    source: 'online' as const,
+    customerName: (doc.customerName as string) || addr?.fullName || addr?.name || 'Customer',
+    customerEmail: (doc.email as string) || (doc.customerEmail as string) || addr?.email,
+    customerPhone: (doc.phone as string) || (doc.customerPhone as string) || addr?.phone,
+    items: rawItems.map(item => {
+      const qty = (item.qty ?? item.quantity ?? 1) as number;
+      const price = (item.price ?? item.unitPrice ?? 0) as number;
+      return {
+        product: item.product,
+        productName: (item.name || item.productName || 'Item') as string,
+        sku: (item.sku || '') as string,
+        quantity: qty,
+        unitPrice: price,
+        subtotal: (item.subtotal as number) ?? price * qty,
+      };
+    }),
+    subtotal,
+    discount: (doc.discount as number) ?? 0,
+    total,
+    status: orderStatus,
+    paymentMethod: (doc.paymentMethod as string) || 'Cash',
+    paymentStatus,
+    createdAt: doc.createdAt,
+  };
+}
+
 // GET /api/customers/:id/orders
 export async function getCustomerOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Customer, Order } = req.models!;
+    const { Customer, Order, Transaction } = req.models!;
     const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
@@ -139,53 +177,148 @@ export async function getCustomerOrders(req: AuthRequest, res: Response, next: N
       return;
     }
 
-    const filter: Record<string, unknown> = {};
+    const firstName = customer.name.split(' ')[0].trim();
+    const orderConditions: Record<string, unknown>[] = [
+      { user: customer._id },
+      { user: customer._id.toString() },
+      { customerName: { $regex: customer.name, $options: 'i' } },
+      { 'shippingAddress.fullName': { $regex: customer.name, $options: 'i' } },
+    ];
+    if (firstName && firstName.length >= 3) {
+      orderConditions.push({ customerName: { $regex: firstName, $options: 'i' } });
+      orderConditions.push({ 'shippingAddress.fullName': { $regex: firstName, $options: 'i' } });
+    }
     if (customer.email) {
-      filter.customerEmail = customer.email;
-    } else {
-      filter.customerName = customer.name;
+      orderConditions.push({ customerEmail: { $regex: customer.email, $options: 'i' } });
+      orderConditions.push({ email: { $regex: customer.email, $options: 'i' } });
+    }
+    if (customer.phone) {
+      const digits = customer.phone.replace(/[^0-9]/g, '');
+      if (digits.length >= 7) {
+        orderConditions.push({ customerPhone: { $regex: digits.slice(-7) } });
+        orderConditions.push({ 'shippingAddress.phone': { $regex: digits.slice(-7) } });
+      }
     }
 
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(50);
-    res.json({ data: orders });
+    const txnConditions: Record<string, unknown>[] = [
+      { customerId: customer._id.toString() },
+      { customer: { $regex: customer.name, $options: 'i' } },
+    ];
+    if (firstName && firstName.length >= 3) {
+      txnConditions.push({ customer: { $regex: firstName, $options: 'i' } });
+    }
+
+    const [rawOrders, rawTransactions] = await Promise.all([
+      Order.collection.find({ $or: orderConditions }).sort({ createdAt: -1 }).limit(50).toArray(),
+      Transaction.collection.find({ $or: txnConditions }).sort({ createdAt: -1 }).limit(50).toArray(),
+    ]);
+
+    const normalizedOrders = rawOrders.map((doc) => normalizeEcomOrder(doc as Record<string, unknown>));
+
+    const normalizedTxns = rawTransactions.map((t: Record<string, unknown>) => ({
+      _id: t._id,
+      orderId: (t.txnId as string) || (t.orderId as string) || String(t._id),
+      source: 'physical' as const,
+      customerName: (t.customer as string) || customer.name,
+      items: (((t.items || []) as Record<string, unknown>[]).map((item) => ({
+        product: item.product,
+        productName: (item.productName || item.name || 'Item') as string,
+        sku: (item.sku || '') as string,
+        quantity: (item.quantity ?? item.qty ?? 1) as number,
+        unitPrice: (item.unitPrice ?? item.price ?? 0) as number,
+        subtotal: (item.subtotal ?? 0) as number,
+      }))),
+      subtotal: (t.amount as number) || (t.total as number) || 0,
+      discount: (t.discount as number) ?? 0,
+      total: (t.total as number) ?? (t.amount as number) ?? 0,
+      status: (t.orderStatus ?? t.status ?? 'success') as string,
+      paymentMethod: (t.paymentMethod as string) || 'Cash',
+      paymentStatus: (t.paymentStatus ?? (t.status === 'success' ? 'paid' : 'voided')) as string,
+      createdAt: t.createdAt,
+    }));
+
+    const combined = [...normalizedOrders, ...normalizedTxns].sort(
+      (a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()
+    );
+
+    res.json({ data: combined });
   } catch (err) {
     next(err);
   }
 }
 
-// POST /api/customers/recalc  — recompute totalSpent / totalOrders / lastPurchase from Orders
+// POST /api/customers/recalc  — recompute totalSpent / totalOrders / lastPurchase from real orders & transactions
 export async function recalcCustomerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Customer} = req.models!;
+    const { Customer, Order, Transaction } = req.models!;
     const customers = await Customer.find({}).lean();
     let updated = 0;
 
     for (const c of customers) {
-      
+      const firstName = (c.name || '').split(' ')[0].trim();
 
-      const [agg] = await Transaction.aggregate<{
-        totalSpent: number;
-        totalOrders: number;
-        lastPurchase: Date | null;
-      }>([
-        { $match: { customerId: c._id.toString(), status: 'success' } },
-        {
-          $group: {
-            _id: null,
-            totalSpent:   { $sum: '$amount' },
-            totalOrders:  { $sum: 1 },
-            lastPurchase: { $max: '$createdAt' },
-          },
-        },
+      const orderConditions: Record<string, unknown>[] = [
+        { user: c._id },
+        { user: c._id.toString() },
+        { customerName: c.name },
+        { customerName: { $regex: `^${c.name}$`, $options: 'i' } },
+        { 'shippingAddress.fullName': { $regex: `^${c.name}$`, $options: 'i' } },
+      ];
+      if (c.email) {
+        orderConditions.push({ customerEmail: { $regex: `^${c.email}$`, $options: 'i' } });
+        orderConditions.push({ email: { $regex: `^${c.email}$`, $options: 'i' } });
+      }
+      if (c.phone) {
+        const digits = c.phone.replace(/[^0-9]/g, '');
+        if (digits.length >= 7) {
+          orderConditions.push({ customerPhone: { $regex: digits.slice(-7) } });
+          orderConditions.push({ 'shippingAddress.phone': { $regex: digits.slice(-7) } });
+        }
+      }
+
+      const txnConditions: Record<string, unknown>[] = [
+        { customerId: c._id.toString() },
+        { customer: c.name },
+        { customer: { $regex: `^${c.name}$`, $options: 'i' } },
+      ];
+      if (firstName && firstName.length >= 3) {
+        txnConditions.push({ customer: { $regex: `^${firstName}$`, $options: 'i' } });
+      }
+
+      const [orders, txns] = await Promise.all([
+        Order.collection.find({ $or: orderConditions }).toArray(),
+        Transaction.collection.find({ $or: txnConditions }).toArray(),
       ]);
 
-      if (!agg) continue;
+      const validOrders = orders.filter((o) => {
+        const s = ((o.orderStatus as string) || (o.status as string) || '').toLowerCase();
+        const p = ((o.paymentStatus as string) || '').toLowerCase();
+        return s !== 'cancelled' && s !== 'voided' && p !== 'voided' && p !== 'failed';
+      });
+
+      const validTxns = txns.filter((t) => {
+        const s = ((t.orderStatus as string) || (t.status as string) || '').toLowerCase();
+        const p = ((t.paymentStatus as string) || '').toLowerCase();
+        return s !== 'cancelled' && s !== 'voided' && p !== 'voided' && p !== 'failed';
+      });
+
+      const totalOrders = validOrders.length + validTxns.length;
+      const ordersSpent = validOrders.reduce((sum, o) => sum + ((o.totalPrice as number) ?? (o.total as number) ?? (o.subtotal as number) ?? 0), 0);
+      const txnsSpent = validTxns.reduce((sum, t) => sum + ((t.total as number) ?? (t.amount as number) ?? (t.subtotal as number) ?? 0), 0);
+      const totalSpent = Math.round(ordersSpent + txnsSpent);
+
+      const allDates = [
+        ...validOrders.map((o) => new Date(o.createdAt as string)),
+        ...validTxns.map((t) => new Date(t.createdAt as string)),
+      ].filter((d) => !isNaN(d.getTime()));
+
+      const lastPurchase = allDates.length > 0 ? new Date(Math.max(...allDates.map((d) => d.getTime()))) : null;
 
       await Customer.findByIdAndUpdate(c._id, {
         $set: {
-          totalSpent:   agg.totalSpent,
-          totalOrders:  agg.totalOrders,
-          lastPurchase: agg.lastPurchase,
+          totalOrders,
+          totalSpent,
+          lastPurchase,
         },
       });
       updated++;

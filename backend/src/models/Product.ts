@@ -195,11 +195,6 @@ productSchema.pre('save', async function (next) {
     next(err as Error);
   }
 });
-    next();
-  } catch (err) {
-    next(err as Error);
-  }
-});
 
 // Virtual for status
 productSchema.virtual('status').get(function (this: IProduct) {

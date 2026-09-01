@@ -1,7 +1,7 @@
 import React from "react";
 import { Transaction } from "./types";
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10;
 
 const PAYMENT_ICONS: Record<string, React.ReactNode> = {
   Cash: (
@@ -16,27 +16,43 @@ const PAYMENT_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-const PAYMENT_BADGE_CLASS: Record<string, string> = {
-  Cash: "bg-emerald-100 text-emerald-800",
-  Card: "bg-violet-100 text-violet-900",
-};
-
-// ── Status badge config ────────────────────────────────────────────────────────
-
-type StatusKey = 'success' | 'voided' | 'paid';
-
-const STATUS_CONFIG: Record<StatusKey, { dot: string; text: string; badge: string }> = {
+const STATUS_CONFIG: Record<string, { dot: string; text: string; badge: string }> = {
   success: {
     dot:   "bg-emerald-500",
     text:  "text-emerald-700",
     badge: "bg-emerald-50 border border-emerald-200 text-emerald-700",
+  },
+  delivered: {
+    dot:   "bg-emerald-500",
+    text:  "text-emerald-700",
+    badge: "bg-emerald-50 border border-emerald-200 text-emerald-700",
+  },
+  confirmed: {
+    dot:   "bg-blue-500",
+    text:  "text-blue-700",
+    badge: "bg-blue-50 border border-blue-200 text-blue-700",
+  },
+  processing: {
+    dot:   "bg-purple-500",
+    text:  "text-purple-700",
+    badge: "bg-purple-50 border border-purple-200 text-purple-700",
   },
   paid: {
     dot:   "bg-emerald-500",
     text:  "text-emerald-700",
     badge: "bg-emerald-50 border border-emerald-200 text-emerald-700",
   },
+  pending: {
+    dot:   "bg-yellow-500",
+    text:  "text-yellow-700",
+    badge: "bg-yellow-50 border border-yellow-200 text-yellow-700",
+  },
   voided: {
+    dot:   "bg-red-400",
+    text:  "text-red-600",
+    badge: "bg-red-50 border border-red-200 text-red-600",
+  },
+  cancelled: {
     dot:   "bg-red-400",
     text:  "text-red-600",
     badge: "bg-red-50 border border-red-200 text-red-600",
@@ -44,13 +60,14 @@ const STATUS_CONFIG: Record<StatusKey, { dot: string; text: string; badge: strin
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status as StatusKey] ?? {
+  const key = (status || "").toLowerCase();
+  const cfg = STATUS_CONFIG[key] ?? {
     dot:   "bg-gray-400",
     text:  "text-gray-600",
     badge: "bg-gray-50 border border-gray-200 text-gray-600",
   };
 
-  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "—";
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${cfg.badge}`}>
@@ -59,8 +76,6 @@ function StatusBadge({ status }: { status: string }) {
     </span>
   );
 }
-
-// ── Props ──────────────────────────────────────────────────────────────────────
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -73,8 +88,6 @@ interface TransactionTableProps {
   onOpenModal: (t: Transaction) => void;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function TransactionTable({
   transactions,
   search,
@@ -86,11 +99,12 @@ export default function TransactionTable({
   onOpenModal,
 }: TransactionTableProps) {
   const filtered = transactions.filter((t) => {
-    const matchesSearch =
-      t.txnId.toLowerCase().includes(search.toLowerCase()) ||
-      t.customer.toLowerCase().includes(search.toLowerCase()) ||
-      t.orderId.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = paymentFilter === "All" || t.paymentMethod === paymentFilter;
+    const term = search.toLowerCase();
+    const customer = (t.customer || "").toLowerCase();
+    const txnId = (t.txnId || "").toLowerCase();
+    const orderId = (t.orderId || "").toLowerCase();
+    const matchesSearch = !term || txnId.includes(term) || customer.includes(term) || orderId.includes(term);
+    const matchesFilter = paymentFilter === "All" || (t.paymentMethod || "").toLowerCase() === paymentFilter.toLowerCase();
     return matchesSearch && matchesFilter;
   });
 
@@ -100,7 +114,7 @@ export default function TransactionTable({
   const pageBtnClass =
     "w-8 h-8 rounded-lg border text-[13px] font-bold flex items-center justify-center transition-all disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#10B981] hover:text-[#065F46]";
 
-  const GRID = "grid grid-cols-[90px_90px_120px_160px_1fr_100px_130px_120px_130px_50px]";
+  const GRID = "grid grid-cols-[85px_75px_110px_1fr_125px_95px_110px_100px_100px_30px] gap-2 items-center";
 
   const HEADERS = [
     "Date", "Time", "Transaction #", "Customer",
@@ -128,7 +142,7 @@ export default function TransactionTable({
             <button
               key={f}
               onClick={() => { onFilter(f); onPageChange(1); }}
-              className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-[12px] font-semibold border transition-all cursor-pointer ${
                 paymentFilter === f
                   ? "bg-[#065F46] text-white border-[#065F46]"
                   : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#10B981] hover:text-[#065F46]"
@@ -140,12 +154,15 @@ export default function TransactionTable({
         </div>
       </div>
 
-      {/* Header */}
-      <div className={`${GRID} py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]`}>
-        {HEADERS.map((h, i) => (
-          <div key={i} className="text-[12px] font-bold text-[#065F46] tracking-[0.3px]">{h}</div>
-        ))}
-      </div>
+      {/* Table Container with horizontal scroll safety */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[980px]">
+          {/* Header */}
+          <div className={`${GRID} py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]`}>
+            {HEADERS.map((h, i) => (
+              <div key={i} className="text-[12px] font-bold text-[#065F46] tracking-[0.3px]">{h}</div>
+            ))}
+          </div>
 
       {/* Rows */}
       {paginated.length === 0 ? (
@@ -154,9 +171,10 @@ export default function TransactionTable({
         </div>
       ) : (
         paginated.map((t, i) => {
-          // Resolve statuses — support both old (single status) and new (separate fields) docs
           const orderStatus   = t.orderStatus   ?? t.status;
           const paymentStatus = t.paymentStatus ?? (t.status === 'success' ? 'paid' : 'voided');
+          const customerName  = t.customer || "Guest Customer";
+          const finalAmount   = t.total ?? t.amount ?? 0;
 
           return (
             <div
@@ -177,22 +195,30 @@ export default function TransactionTable({
               </div>
 
               {/* Transaction # */}
-              <div className="text-[13px] font-bold text-[#065F46]">#{t.txnId}</div>
+              <div className="text-[13px] font-bold text-[#065F46]">
+                #{t.txnId}
+              </div>
 
               {/* Customer */}
-              <div className="text-[13px] font-semibold text-[#111827]">{t.customer}</div>
+              <div className="text-[13px] font-semibold text-[#111827] truncate pr-2" title={customerName}>
+                {customerName}
+              </div>
 
               {/* Order ID */}
-              <div className="text-[13px] text-[#6B7280]">{t.orderId}</div>
+              <div className="text-[13px] font-mono text-[#6B7280] truncate">{t.orderId}</div>
 
               {/* Total */}
-              <div className="text-[13px] font-bold text-[#111827]">Rs. {t.amount.toLocaleString()}</div>
+              <div className="text-[13px] font-bold text-[#111827]">Rs. {finalAmount.toLocaleString()}</div>
 
               {/* Payment Method */}
               <div>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${PAYMENT_BADGE_CLASS[t.paymentMethod] ?? "bg-gray-100 text-gray-700"}`}>
-                  {PAYMENT_ICONS[t.paymentMethod]}
-                  {t.paymentMethod}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                  (t.paymentMethod || "").toLowerCase() === "card"
+                    ? "bg-violet-100 text-violet-900"
+                    : "bg-emerald-100 text-emerald-800"
+                }`}>
+                  {PAYMENT_ICONS[t.paymentMethod] ?? "💳"}
+                  {t.paymentMethod || "Cash"}
                 </span>
               </div>
 
@@ -219,46 +245,46 @@ export default function TransactionTable({
           );
         })
       )}
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between py-3.5 px-6 border-t border-[#E3E6F0]">
-        <span className="text-[13px] text-[#6B7280]">
-          Showing {filtered.length === 0 ? 0 : Math.min((page - 1) * ITEMS_PER_PAGE + 1, filtered.length)} to {Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} transactions
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            className={`${pageBtnClass} border-[#E3E6F0] bg-white text-[#6B7280]`}
-            disabled={page === 1}
-            onClick={() => onPageChange(page - 1)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => onPageChange(p)}
-              className={`${pageBtnClass} ${
-                page === p
-                  ? "bg-[#065F46] text-white border-[#065F46]"
-                  : "bg-white text-[#6B7280] border-[#E3E6F0]"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            className={`${pageBtnClass} border-[#E3E6F0] bg-white text-[#6B7280]`}
-            disabled={page === totalPages || totalPages === 0}
-            onClick={() => onPageChange(page + 1)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-6 py-3.5 border-t border-[#E3E6F0] bg-[#FAFAFA]">
+          <span className="text-[13px] text-[#6B7280]">
+            Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+          </span>
+          <div className="flex gap-1">
+            <button
+              disabled={page === 1}
+              onClick={() => onPageChange(page - 1)}
+              className={pageBtnClass}
+            >
+              ‹
+            </button>
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => onPageChange(p)}
+                className={`${pageBtnClass} ${
+                  page === p
+                    ? "bg-[#065F46] text-white border-[#065F46]"
+                    : "bg-white text-[#6B7280] border-[#E3E6F0]"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              disabled={page === totalPages}
+              onClick={() => onPageChange(page + 1)}
+              className={pageBtnClass}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

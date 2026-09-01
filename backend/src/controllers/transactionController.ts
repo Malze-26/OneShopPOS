@@ -11,11 +11,21 @@ function generateTxnId(): string {
 export async function getTransactions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { Transaction } = req.models!;
-    const { payment, search, startDate, endDate, page = '1', limit = '20', customerId } = req.query;
+    const { payment, search, startDate, endDate, page = '1', limit = '20', customerId, customer } = req.query;
 
     const filter: Record<string, unknown> = {};
 
-    if (customerId) filter.customerId = customerId;
+    if (customerId && customer) {
+      filter.$or = [
+        { customerId: customerId as string },
+        { customer: { $regex: `^${customer as string}$`, $options: 'i' } },
+      ];
+    } else if (customerId) {
+      filter.customerId = customerId;
+    } else if (customer) {
+      filter.customer = { $regex: customer as string, $options: 'i' };
+    }
+
     if (payment && payment !== 'All') filter.paymentMethod = payment;
     if (search) filter.txnId = { $regex: search, $options: 'i' };
     if (startDate || endDate) {

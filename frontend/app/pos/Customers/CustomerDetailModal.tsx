@@ -3,20 +3,28 @@ import { useState, useEffect } from "react";
 import api from "@/app/lib/api";
 import { Customer, getInitials, formatDate } from "./types";
 
-interface Transaction {
+interface OrderRecord {
   _id: string;
-  txnId: string;
-  amount: number;
+  orderId?: string;
+  txnId?: string;
+  source?: "physical" | "online";
+  amount?: number;
+  subtotal?: number;
+  total?: number;
   paymentMethod: string;
-  status: "success" | "pending" | "failed" | "voided";
+  status: "success" | "pending" | "failed" | "voided" | "delivered" | "confirmed" | "processing" | "cancelled";
   createdAt: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  success:  "bg-emerald-100 text-emerald-700",
-  voided:   "bg-gray-100 text-gray-500",
-  pending:  "bg-yellow-100 text-yellow-700",
-  failed:   "bg-red-100 text-red-600",
+  success:    "bg-emerald-100 text-emerald-700",
+  delivered:  "bg-emerald-100 text-emerald-700",
+  confirmed:  "bg-blue-100 text-blue-700",
+  processing: "bg-purple-100 text-purple-700",
+  voided:     "bg-gray-100 text-gray-500",
+  cancelled:  "bg-gray-100 text-gray-500",
+  pending:    "bg-yellow-100 text-yellow-700",
+  failed:     "bg-red-100 text-red-600",
 };
 
 interface CustomerDetailModalProps {
@@ -35,7 +43,7 @@ export default function CustomerDetailModal({
   deleteLoading,
 }: CustomerDetailModalProps) {
   const [tab, setTab] = useState<"info" | "orders">("info");
-  const [orders, setOrders] = useState<Transaction[]>([]);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -46,12 +54,18 @@ export default function CustomerDetailModal({
       setOrdersLoading(true);
       setOrdersError("");
       try {
-        const { data } = await api.get(
-          `/transactions?customerId=${customer._id}&customer=${encodeURIComponent(customer.name)}`
-        );
+        const { data } = await api.get(`/customers/${customer._id}/orders`);
         setOrders(data.data ?? []);
       } catch (err) {
-        setOrdersError("Failed to load order history.");
+        // Fallback to transactions endpoint if orders endpoint fails
+        try {
+          const { data } = await api.get(
+            `/transactions?customerId=${customer._id}&customer=${encodeURIComponent(customer.name)}&limit=100`
+          );
+          setOrders(data.data ?? []);
+        } catch {
+          setOrdersError("Failed to load order history.");
+        }
       } finally {
         setOrdersLoading(false);
       }
@@ -172,24 +186,37 @@ export default function CustomerDetailModal({
                   <div className="text-center text-[13px] text-[#6B7280] py-6">No orders found for this customer.</div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {orders.map((order) => (
-                      <div key={order._id} className="flex items-center justify-between py-3 border-b border-[#F3F4F6] last:border-0">
-                        <div>
-                          <div className="text-[13px] font-semibold text-[#111827]">{order.txnId}</div>
-                          <div className="text-[12px] text-[#6B7280] mt-0.5">
-                            {order.paymentMethod} · {formatDate(order.createdAt)}
+                    {orders.map((order) => {
+                      const idLabel = order.orderId || order.txnId || `#${order._id.slice(-6)}`;
+                      const finalAmount = order.total ?? order.amount ?? order.subtotal ?? 0;
+                      return (
+                        <div key={order._id} className="flex items-center justify-between py-3 border-b border-[#F3F4F6] last:border-0">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[13px] font-bold text-[#065F46]">{idLabel}</span>
+                              {order.source && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                  order.source === 'online' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {order.source === 'online' ? '🌐 Online' : '🏪 In-Store'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[12px] text-[#6B7280] mt-0.5">
+                              {order.paymentMethod || 'Cash'} · {formatDate(order.createdAt)}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                              {order.status}
+                            </span>
+                            <div className="text-[14px] font-bold text-[#111827]">
+                              Rs. {finalAmount.toLocaleString()}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_COLORS[order.status]}`}>
-                            {order.status}
-                          </span>
-                          <div className="text-[14px] font-bold text-[#111827]">
-                            Rs. {order.amount.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

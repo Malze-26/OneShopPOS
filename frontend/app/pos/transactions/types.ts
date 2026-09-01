@@ -1,13 +1,35 @@
+export interface TransactionItem {
+  product?: string;
+  productName: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface TransactionItem {
+  product?: string;
+  productName: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
 export interface Transaction {
   _id: string;
   txnId: string;
   orderId: string;
   customer: string;
-  paymentMethod: "Cash" | "Card";
+  customerId?: string;
+  paymentMethod: "Cash" | "Card" | string;
   amount: number;
-  status: "success" | "voided" | "pending" | "failed";
-  orderStatus: "success" | "cancelled";
-  paymentStatus: "paid" | "voided";
+  discount?: number;
+  total?: number;
+  items?: TransactionItem[];
+  status: "success" | "voided" | "pending" | "failed" | string;
+  orderStatus?: string;
+  paymentStatus?: string;
   createdAt: string;
 }
 
@@ -18,7 +40,7 @@ export function getTodayStats(transactions: Transaction[]) {
   const todayTxns = transactions.filter((t) => new Date(t.createdAt) >= today);
   const todaySales = todayTxns
     .filter((t) => t.status === "success")
-    .reduce((s, t) => s + t.amount, 0);
+    .reduce((s, t) => s + (t.total ?? t.amount ?? 0), 0);
 
   const successCount = transactions.filter((t) => t.status === "success").length;
   const successRate = transactions.length
@@ -29,7 +51,7 @@ export function getTodayStats(transactions: Transaction[]) {
     ? Math.round(
         transactions
           .filter((t) => t.status === "success")
-          .reduce((s, t) => s + t.amount, 0) / successCount
+          .reduce((s, t) => s + (t.total ?? t.amount ?? 0), 0) / successCount
       )
     : 0;
 
