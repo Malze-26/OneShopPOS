@@ -13,6 +13,7 @@
     "seed:grns": "ts-node -r tsconfig-paths/register src/seedGRNs.ts",
     "backfill:skus": "tsx src/backfill-skus.ts",
     "backfill:suppliers": "tsx src/backfill-suppliers.ts",
+    "relink:history": "tsx src/relink-product-history.ts",
     "seed:opening-grns": "tsx src/seed-opening-grns.ts",
     "backfill:stock-history": "tsx src/backfill-stock-history.ts",
     "backfill:order-stock": "tsx src/backfill-order-stock.ts",

@@ -6,3 +6,6 @@ dist/
 # Uploaded files – re-created by npm run seed or user uploads
 uploads/
 !uploads/products/.gitkeep
+
+# Database dumps taken before a recovery — real customer data, never committed
+backups/

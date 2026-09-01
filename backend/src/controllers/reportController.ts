@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { buildDateFilter, getDateRangeLabel } from '../utils/dateRange';
+import { expiredExpr } from '../utils/stock';
 
 // ============= Sales Summary Report =============
 export const getSalesSummary = async (req: AuthRequest, res: Response) => {
@@ -586,7 +587,15 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
             $cond: [
               { $eq: ['$stock', 0] },
               'Out of Stock',
-              { $cond: [{ $lte: ['$stock', '$lowStockThreshold'] }, 'Low Stock', 'In Stock'] },
+              // Expired stock outranks low stock: it needs returning to the
+              // supplier, not reordering, so it is never listed as low.
+              {
+                $cond: [
+                  expiredExpr(),
+                  'Expired',
+                  { $cond: [{ $lte: ['$stock', '$lowStockThreshold'] }, 'Low Stock', 'In Stock'] },
+                ],
+              },
             ],
           },
           margin: {
@@ -631,9 +640,16 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
             $cond: [
               { $eq: ['$stock', 0] },
               'Out of Stock',
-              { $cond: [{ $lte: ['$stock', '$lowStockThreshold'] }, 'Low Stock', 'In Stock'] },
+              {
+                $cond: [
+                  expiredExpr(),
+                  'Expired',
+                  { $cond: [{ $lte: ['$stock', '$lowStockThreshold'] }, 'Low Stock', 'In Stock'] },
+                ],
+              },
             ],
           },
+          isExpired: expiredExpr(),
         },
       },
       {
@@ -641,7 +657,16 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
           _id: null,
           totalAssetValue: { $sum: '$assetValue' },
           totalRetailValue: { $sum: '$retailValue' },
-          lowStockCount: { $sum: { $cond: [{ $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] }, 1, 0] } },
+          lowStockCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }, { $not: '$isExpired' }] },
+                1,
+                0,
+              ],
+            },
+          },
+          expiredCount: { $sum: { $cond: ['$isExpired', 1, 0] } },
           outOfStockCount: { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
           totalProducts: { $sum: 1 },
           totalUnits: { $sum: '$stock' },
@@ -652,7 +677,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
     const summary = await Product.aggregate(summaryPipeline);
     const summaryData = summary[0] || {
       totalAssetValue: 0, totalRetailValue: 0, lowStockCount: 0,
-      outOfStockCount: 0, totalProducts: 0, totalUnits: 0,
+      expiredCount: 0, outOfStockCount: 0, totalProducts: 0, totalUnits: 0,
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -678,6 +703,7 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
         totalAssetValue: Number(summaryData.totalAssetValue.toFixed(2)),
         totalRetailValue: Number(summaryData.totalRetailValue.toFixed(2)),
         lowStockCount: summaryData.lowStockCount,
+        expiredCount: summaryData.expiredCount ?? 0,
         outOfStockCount: summaryData.outOfStockCount,
         totalProducts: summaryData.totalProducts,
         totalUnits: summaryData.totalUnits,

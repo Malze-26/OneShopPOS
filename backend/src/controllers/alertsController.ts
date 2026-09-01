@@ -1,17 +1,16 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { EXPIRY_SOON_DAYS } from '../constants';
+import { lowStockFilter } from '../utils/stock';
 
 // GET /api/alerts/low-stock
 export async function getLowStockAlerts(req: AuthRequest, res: Response): Promise<void> {
   const { Product } = req.models!;
 
+  // Expired stock is not low stock — it needs returning to the supplier, not
+  // reordering, and it already has its own alert below.
   const products = await Product.aggregate([
-    {
-      $match: {
-        $expr: { $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] },
-      },
-    },
+    { $match: lowStockFilter() },
     { $sort: { stock: 1 } },
     { $limit: 50 },
     {

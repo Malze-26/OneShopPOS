@@ -407,6 +407,82 @@ describe('Product deletion', () => {
   });
 });
 
+// ─── Low stock excludes expired stock ─────────────────────────────────────────
+
+describe('low stock counts', () => {
+  const daysFromNow = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+
+  const addProduct = async (name: string, expiryDate: string | null) => {
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name,
+        sellingPrice: 100,
+        costPrice: 60,
+        stock: 2,
+        lowStockThreshold: 10,
+        category: 'Groceries',
+        supplierId,
+        expiryDate,
+      });
+    expect(res.status).toBe(201);
+    return res.body.data;
+  };
+
+  let freshSku: string;
+  let expiredSku: string;
+
+  beforeAll(async () => {
+    freshSku = (await addProduct('Low But Fresh Milk', daysFromNow(30))).sku;
+    expiredSku = (await addProduct('Low And Expired Milk', daysFromNow(-3))).sku;
+    // Sold by weight, no expiry tracked at all — must still count as low.
+    await addProduct('Low Non Perishable Soap', null);
+  });
+
+  const lowStock = () =>
+    request(app)
+      .get('/api/alerts/low-stock')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+
+  it('lists stock that is running low and still sellable', async () => {
+    const res = await lowStock();
+    expect(res.status).toBe(200);
+    const skus = res.body.data.map((p: { sku: string }) => p.sku);
+    expect(skus).toContain(freshSku);
+  });
+
+  it('leaves expired stock out — it needs returning, not reordering', async () => {
+    const res = await lowStock();
+    const skus = res.body.data.map((p: { sku: string }) => p.sku);
+    expect(skus).not.toContain(expiredSku);
+  });
+
+  it('still counts products that track no expiry date', async () => {
+    const res = await lowStock();
+    const names = res.body.data.map((p: { name: string }) => p.name);
+    expect(names).toContain('Low Non Perishable Soap');
+  });
+
+  it('keeps the dashboard card in step with the alert list', async () => {
+    const [alerts, summary] = await Promise.all([
+      lowStock(),
+      request(app)
+        .get('/api/dashboard/summary')
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`),
+    ]);
+    expect(summary.status).toBe(200);
+    expect(summary.body.lowStockItems).toBe(alerts.body.data.length);
+  });
+});
+
 // ─── The ledger invariant ─────────────────────────────────────────────────────
 
 describe('stock always equals what was added minus what was removed', () => {
