@@ -91,6 +91,54 @@ async function releaseOrderStock(
 }
 
 /**
+ * Puts a cancelled order's items back on the shelf, leaving a Stock In
+ * movement behind each line — the mirror of releaseOrderStock.
+ *
+ * A COD order takes its stock out the moment it reaches 'processing', long
+ * before delivery is confirmed, so a cancellation after that point (a failed
+ * delivery, a customer refusing at the door) leaves the units deducted with
+ * nothing ever putting them back. The claim on `stockReleased` is the same
+ * atomic flip in reverse, so this only fires once per order and only for one
+ * whose stock was actually taken — cancelling before release is already a
+ * no-op for inventory.
+ */
+async function restoreOrderStock(
+  models: TenantModels,
+  orderDoc: Record<string, unknown>,
+  actor: string
+): Promise<boolean> {
+  const { Order, Product, StockHistory } = models;
+  const _id = orderDoc._id as mongoose.Types.ObjectId;
+
+  const claimed = await Order.collection.findOneAndUpdate(
+    { _id, stockReleased: true },
+    { $set: { stockReleased: false } }
+  );
+  if (!claimed) return false;
+
+  const orderId = (orderDoc.orderId as string) ?? String(_id);
+  const items = (orderDoc.orderItems || orderDoc.items || []) as Record<string, unknown>[];
+
+  for (const item of items) {
+    const productId = item.product as mongoose.Types.ObjectId | string | undefined;
+    const quantity = (item.qty ?? item.quantity ?? 1) as number;
+    if (!productId) continue;
+
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: quantity } });
+    await StockHistory.create({
+      product: productId,
+      type: 'add',
+      quantity,
+      reason: `E-com order ${orderId} cancelled`,
+      by: actor,
+      storeId: (orderDoc.storeId as string) ?? '',
+    });
+  }
+
+  return true;
+}
+
+/**
  * Detects whether a raw order document is from the e-com website.
  * E-com orders written directly by the website carry an `orderStatus` field.
  */
@@ -265,11 +313,12 @@ export async function getOrderStats(req: AuthRequest, res: Response): Promise<vo
           // Revenue = paymentStatus='paid':
           //   payhere+paid: counted when orderStatus becomes 'processing'
           //   COD+paid:     counted when orderStatus becomes 'delivered'
+          // Counted at subtotal (items only), not the delivery-inclusive total.
           onlineRevenue: {
             $sum: {
               $cond: [
                 { $eq: ['$paymentStatus', 'paid'] },
-                { $ifNull: ['$totalPrice', { $ifNull: ['$total', 0] }] },
+                { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] },
                 0,
               ],
             },
@@ -479,9 +528,13 @@ export async function updateOrderStatus(req: AuthRequest, res: Response): Promis
   const updated = await Order.findById(req.params.id).lean();
   if (!updated) { res.status(404).json({ message: 'Order not found' }); return; }
 
-  // Overriding an order into a fulfilled state despatches the goods, so the
-  // stock has to leave here as well — the sync job may never see this order.
-  if (STOCK_CONSUMING_STATUSES.includes(status)) {
+  if (status === 'cancelled') {
+    // A COD order already took its stock out on the way to 'processing' —
+    // cancelling it has to put those units back, not just relabel the order.
+    await restoreOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
+  } else if (STOCK_CONSUMING_STATUSES.includes(status)) {
+    // Overriding an order into a fulfilled state despatches the goods, so the
+    // stock has to leave here as well — the sync job may never see this order.
     await releaseOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
   }
 

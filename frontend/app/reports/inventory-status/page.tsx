@@ -18,13 +18,16 @@ interface Product {
 }
 interface Summary {
   totalAssetValue: number; totalRetailValue: number;
-  lowStockCount: number; outOfStockCount: number; totalProducts: number;
+  lowStockCount: number; expiredCount: number; outOfStockCount: number; totalProducts: number;
 }
 interface ApiResponse { summary: Summary; products: Product[]; dateRange?: string }
 
 const statusConfig: Record<string, { bg: string; text: string }> = {
   'In Stock': { bg: '#ecfdf3', text: '#12b76a' },
   'Low Stock': { bg: '#fffaeb', text: '#f79009' },
+  // Expired stock is unsellable rather than merely running low, so it is
+  // reported on its own instead of inside the low-stock figure.
+  'Expired': { bg: '#fef3f2', text: '#b42318' },
   'Out of Stock': { bg: '#fef3f2', text: '#f04438' },
 };
 
@@ -174,7 +177,16 @@ export default function InventoryStatusPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-[#101828]">{summary?.lowStockCount ?? 0} Low Stock</p>
-                <p className="text-xs text-[#4a5565]">Immediate attention</p>
+                <p className="text-xs text-[#4a5565]">Needs reordering</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fef3f2' }}>
+                <AlertTriangle className="w-5 h-5" style={{ color: '#b42318' }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#101828]">{summary?.expiredCount ?? 0} Expired</p>
+                <p className="text-xs text-[#4a5565]">Return to supplier</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -234,6 +246,7 @@ export default function InventoryStatusPage() {
               <NativeSelectOption value="">All Statuses</NativeSelectOption>
               <NativeSelectOption value="In Stock">In Stock</NativeSelectOption>
               <NativeSelectOption value="Low Stock">Low Stock</NativeSelectOption>
+              <NativeSelectOption value="Expired">Expired</NativeSelectOption>
               <NativeSelectOption value="Out of Stock">Out of Stock</NativeSelectOption>
             </NativeSelect>
           </div>

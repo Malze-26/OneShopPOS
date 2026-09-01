@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
+import { lowStockFilter } from '../utils/stock';
 
 function todayRange() {
   const start = new Date();
@@ -49,20 +50,20 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     ]),
     Order.aggregate([
       { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', createdAt: { $gte: today.start, $lte: today.end } } },
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalPrice', { $ifNull: ['$total', 0] }] } } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } } } },
     ]),
     Order.aggregate([
       { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalPrice', { $ifNull: ['$total', 0] }] } } } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } } } },
     ]),
     Transaction.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
     Transaction.countDocuments({ createdAt: { $gte: yesterday.start, $lte: yesterday.end } }),
     Order.countDocuments({ ...onlineFilter, createdAt: { $gte: today.start, $lte: today.end } }),
     Order.countDocuments({ ...onlineFilter, createdAt: { $gte: yesterday.start, $lte: yesterday.end } }),
     Customer.countDocuments({}),
-    Product.countDocuments({
-      $expr: { $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] },
-    }),
+    // Expired stock is counted by the expiry alert, not here: it cannot be
+    // fixed by reordering, so including it overstates what needs restocking.
+    Product.countDocuments(lowStockFilter()),
     Transaction.countDocuments({ status: 'pending', createdAt: { $gte: today.start, $lte: today.end } }),
     // ecom orders use orderStatus; POS online orders use status — check both
     Order.countDocuments({
@@ -138,7 +139,7 @@ export async function getSalesTrend(req: AuthRequest, res: Response): Promise<vo
       ]),
       Order.aggregate([
         { $match: { status: { $nin: ['cancelled', 'refunded'] }, paymentStatus: 'paid', createdAt: { $gte: since } } },
-        { $group: { _id: dateGroup, sales: { $sum: '$total' } } },
+        { $group: { _id: dateGroup, sales: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } } } },
       ]),
       SupplierReturn.aggregate([
         { $match: { createdAt: { $gte: since } } },
@@ -291,7 +292,7 @@ export async function getPaymentMethods(req: AuthRequest, res: Response): Promis
           $group: {
             _id:   '$paymentMethod',
             count: { $sum: 1 },
-            total: { $sum: { $ifNull: ['$totalPrice', { $ifNull: ['$total', 0] }] } },
+            total: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } },
           },
         },
       ]),
