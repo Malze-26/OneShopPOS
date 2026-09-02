@@ -85,18 +85,6 @@ export default function DailyZReportPage() {
 
       let yPos = 40;
 
-      // Shift Info
-      autoTable(doc, {
-        startY: yPos,
-        body: [
-          ['Store:', data.shiftInfo?.storeName || 'N/A', 'Cashier:', data.shiftInfo?.cashier || 'Unknown'],
-          ['Store ID:', data.shiftInfo?.storeId || '---', 'Cashier ID:', data.shiftInfo?.cashierId || '---']
-        ],
-        theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 2 }
-      });
-      yPos = ((doc as any).lastAutoTable?.finalY || yPos + 30) + 10;
-
       // Financial Summary
       doc.setFontSize(12);
       doc.setTextColor(16, 24, 40);
@@ -110,7 +98,6 @@ export default function DailyZReportPage() {
         body: [
           ['Gross Sales', `${currency} ${fmt(data.summary?.grossSales ?? 0)}`],
           ['Discounts', `- ${currency} ${fmt(data.summary?.discounts ?? 0)}`],
-          ['Refunds', `- ${currency} ${fmt(data.summary?.refunds ?? 0)}`],
           ['Net Sales', `${currency} ${fmt(data.summary?.netSales ?? 0)}`],
         ],
         theme: 'grid',
@@ -232,19 +219,12 @@ export default function DailyZReportPage() {
         </div>
 
         <div className="p-8 space-y-10">
-          {/* Info Grid */}
-          <div className="grid grid-cols-2 gap-y-8 gap-x-12">
-            <InfoBlock label="Store" value={data.shiftInfo?.storeName || 'N/A'} subValue={`ID: ${data.shiftInfo?.storeId || '---'}`} />
-            <InfoBlock label="Cashier" value={data.shiftInfo?.cashier || 'Unknown'} subValue={`ID: ${data.shiftInfo?.cashierId || '---'}`} />
-          </div>
-
           {/* Financial Summary */}
           <div>
             <SectionHeader label="Financial Summary" color="border-[var(--color-primary)]" />
             <div className="space-y-4">
               <SummaryRow label="Gross Sales" value={fmt(data.summary?.grossSales ?? 0)} currency={currency} />
               <SummaryRow label="Discounts" value={`- ${fmt(data.summary?.discounts ?? 0)}`} currency={currency} color="text-red-600" />
-              <SummaryRow label="Refunds" value={`- ${fmt(data.summary?.refunds ?? 0)}`} currency={currency} color="text-red-600" />
               <div className="pt-2">
                 <SummaryRow label="Net Sales" value={fmt(data.summary?.netSales ?? 0)} currency={currency} isBold />
               </div>
