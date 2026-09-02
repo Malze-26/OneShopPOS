@@ -63,6 +63,24 @@ export async function updateSettings(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
+  // Also sync to factory DB if present
+  const tenantId = req.headers['oneshop-tenant-id'] as string | undefined;
+  if (tenantId) {
+    try {
+      const factoryDb = process.env.TENANT_FACTORY_DB || 'oneshop-tenant-factory';
+      const factoryConn = mongoose.connection.useDb(factoryDb, { useCache: true });
+      const factoryUpdate: Record<string, string> = {};
+      if (storeName) factoryUpdate.businessName = storeName;
+      if (update.primaryColor) factoryUpdate.primaryColor = update.primaryColor;
+      if (Object.keys(factoryUpdate).length > 0) {
+        await factoryConn.collection('tenants').updateOne(
+          { databaseName: tenantId },
+          { $set: factoryUpdate }
+        );
+      }
+    } catch { /* keep going */ }
+  }
+
   res.json({ data: settings });
 }
 
@@ -95,6 +113,19 @@ export async function uploadLogo(req: AuthRequest, res: Response): Promise<void>
   if (!settings) {
     res.status(404).json({ message: 'Store settings not found' });
     return;
+  }
+
+  // Also sync logo to factory DB if present
+  const tenantId = req.headers['oneshop-tenant-id'] as string | undefined;
+  if (tenantId) {
+    try {
+      const factoryDb = process.env.TENANT_FACTORY_DB || 'oneshop-tenant-factory';
+      const factoryConn = mongoose.connection.useDb(factoryDb, { useCache: true });
+      await factoryConn.collection('tenants').updateOne(
+        { databaseName: tenantId },
+        { $set: { logo: logoUrl } }
+      );
+    } catch { /* keep going */ }
   }
 
   res.json({ data: settings });

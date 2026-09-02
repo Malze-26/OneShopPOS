@@ -150,7 +150,8 @@ export default function CustomerFormModal({
             <button
               type="submit"
               disabled={loading || !form.name.trim() || !form.phone.trim()}
-              className="flex-1 px-4 py-2.5 text-[13px] font-semibold text-white bg-[#065F46] rounded-xl hover:bg-[#047857] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 text-[13px] font-semibold text-white rounded-xl hover:brightness-95 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+              style={{ backgroundColor: "var(--color-primary)" }}
             >
               {loading ? (
                 <>

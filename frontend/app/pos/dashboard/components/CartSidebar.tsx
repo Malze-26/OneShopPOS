@@ -89,7 +89,10 @@ export default function CartSidebar({
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-extrabold text-gray-800">Cart</span>
           {cart.length > 0 && (
-            <div className="bg-[#065F46] text-white rounded-full px-2 py-[1px] text-[11px] font-bold">
+            <div
+              className="text-white rounded-full px-2 py-[1px] text-[11px] font-bold"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
               {cart.length} {cart.length === 1 ? "item" : "items"}
             </div>
           )}
@@ -111,7 +114,10 @@ export default function CartSidebar({
         {selectedCustomer ? (
           <div>
             <div className="flex items-center gap-2.5 p-2.5 bg-gray-100 rounded-lg border border-gray-200">
-              <div className="w-8 h-8 rounded-full bg-[#065F46] flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
                 {selectedCustomer.avatar}
               </div>
               <div className="flex-1 min-w-0">
@@ -159,7 +165,7 @@ export default function CartSidebar({
               value={customerSearch}
               onChange={e => { onCustomerSearch(e.target.value); onShowCustomerDropdown(true); }}
               onFocus={() => onShowCustomerDropdown(true)}
-              className="w-full border border-gray-200 rounded-lg px-7 py-1.5 text-[13px] focus:ring-2 focus:ring-[#065F46] focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-7 py-1.5 text-[13px] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-none"
             />
           </div>
         )}
@@ -186,13 +192,20 @@ export default function CartSidebar({
                 onClick={() => onSelectCustomer(c)}
                 className="flex items-center gap-2.5 p-2.5 cursor-pointer hover:bg-gray-100 border-b border-gray-200"
               >
-                <div className="w-7 h-7 rounded-full bg-[#065F46] flex items-center justify-center text-[11px] font-bold text-white">{c.avatar}</div>
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  {c.avatar}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-bold text-gray-800 truncate">{c.name}</div>
                   <div className="text-[10px] text-gray-500">{c.phone} · {c.totalOrders} orders</div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5">
-                  <div className="text-[10px] font-bold text-[#065F46]">Rs. {c.totalSpent.toLocaleString()}</div>
+                  <div className="text-[10px] font-bold" style={{ color: "var(--color-primary)" }}>
+                    Rs. {c.totalSpent.toLocaleString()}
+                  </div>
                   {(c.loyaltyPoints ?? 0) > 0 && (
                     <div className="text-[9px] font-bold text-amber-600">⭐ {c.loyaltyPoints} pts</div>
                   )}
@@ -225,7 +238,12 @@ export default function CartSidebar({
         ) : (
           cart.map(item => (
             <div key={item.id} className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-[#ECFDF5] rounded-lg flex items-center justify-center text-[13px] font-bold text-[#065F46] flex-shrink-0">{item.name.charAt(0).toUpperCase()}</div>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold flex-shrink-0"
+                style={{ backgroundColor: "var(--color-primary-light, #eff4ff)", color: "var(--color-primary)" }}
+              >
+                {item.name.charAt(0).toUpperCase()}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-semibold text-gray-800 truncate mb-0.5">{item.name}</div>
                 <div className="text-[11px] text-gray-500">Rs. {item.price.toLocaleString()} / {item.unit || "unit"}</div>
@@ -274,7 +292,12 @@ export default function CartSidebar({
         )}
         <div className="flex justify-between items-center border-t border-gray-200 mt-1 pt-2">
           <span className="text-[14px] font-bold text-gray-800">Total</span>
-          <span className="text-[22px] font-extrabold text-[#065F46] tracking-[-1px] font-mono">Rs. {total.toLocaleString()}</span>
+          <span
+            className="text-[22px] font-extrabold tracking-[-1px] font-mono"
+            style={{ color: "var(--color-primary)" }}
+          >
+            Rs. {total.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -300,7 +323,12 @@ export default function CartSidebar({
         <button
           onClick={onCheckout}
           disabled={cart.length === 0}
-          className={`w-full flex items-center justify-center px-3 py-2 rounded text-white font-bold transition ${cart.length === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#065F46] hover:bg-[#047857]"}`}
+          className={`w-full flex items-center justify-center px-3 py-2.5 rounded-lg text-white font-bold transition shadow-sm ${
+            cart.length === 0 ? "bg-gray-400 cursor-not-allowed" : "hover:brightness-95 cursor-pointer"
+          }`}
+          style={{
+            backgroundColor: cart.length === 0 ? undefined : "var(--color-primary)",
+          }}
         >
           <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />

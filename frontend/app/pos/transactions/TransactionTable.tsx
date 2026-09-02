@@ -144,9 +144,12 @@ export default function TransactionTable({
               onClick={() => { onFilter(f); onPageChange(1); }}
               className={`px-3.5 py-1.5 rounded-lg text-[12px] font-semibold border transition-all cursor-pointer ${
                 paymentFilter === f
-                  ? "bg-[#065F46] text-white border-[#065F46]"
-                  : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#10B981] hover:text-[#065F46]"
+                  ? "text-white border-transparent shadow-sm"
+                  : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
               }`}
+              style={{
+                backgroundColor: paymentFilter === f ? "var(--color-primary)" : undefined,
+              }}
             >
               {f}
             </button>
@@ -160,7 +163,7 @@ export default function TransactionTable({
           {/* Header */}
           <div className={`${GRID} py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]`}>
             {HEADERS.map((h, i) => (
-              <div key={i} className="text-[12px] font-bold text-[#065F46] tracking-[0.3px]">{h}</div>
+              <div key={i} className="text-[12px] font-bold text-[#374151] tracking-[0.3px]">{h}</div>
             ))}
           </div>
 
@@ -180,7 +183,7 @@ export default function TransactionTable({
             <div
               key={t._id}
               onClick={() => onOpenModal(t)}
-              className={`${GRID} py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#ECFDF5] ${
+              className={`${GRID} py-3.5 px-6 items-center bg-white cursor-pointer transition-colors duration-150 hover:bg-[#F9FAFB] ${
                 i < paginated.length - 1 ? "border-b border-[#E3E6F0]" : ""
               }`}
             >
@@ -195,7 +198,7 @@ export default function TransactionTable({
               </div>
 
               {/* Transaction # */}
-              <div className="text-[13px] font-bold text-[#065F46]">
+              <div className="text-[13px] font-bold" style={{ color: "var(--color-primary)" }}>
                 #{t.txnId}
               </div>
 
@@ -236,7 +239,11 @@ export default function TransactionTable({
               <div className="flex items-center justify-end">
                 <button
                   onClick={(e) => { e.stopPropagation(); onOpenModal(t); }}
-                  className="text-[10px] font-bold text-[#065F46] bg-[#ECFDF5] rounded px-2 py-0.5 cursor-pointer border-none hover:bg-[#D1FAE5] transition-colors"
+                  className="text-[10px] font-bold rounded px-2 py-0.5 cursor-pointer border-none transition-colors"
+                  style={{
+                    backgroundColor: "var(--color-primary-light, #eff4ff)",
+                    color: "var(--color-primary)",
+                  }}
                 >
                   ···
                 </button>
@@ -268,9 +275,12 @@ export default function TransactionTable({
                 onClick={() => onPageChange(p)}
                 className={`${pageBtnClass} ${
                   page === p
-                    ? "bg-[#065F46] text-white border-[#065F46]"
+                    ? "text-white border-transparent"
                     : "bg-white text-[#6B7280] border-[#E3E6F0]"
                 }`}
+                style={{
+                  backgroundColor: page === p ? "var(--color-primary)" : undefined,
+                }}
               >
                 {p}
               </button>

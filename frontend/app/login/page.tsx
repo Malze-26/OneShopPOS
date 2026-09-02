@@ -82,7 +82,11 @@ export default function LoginPage() {
   function applyTenant(tenant: Tenant) {
     setSelectedTenant(tenant);
     localStorage.setItem('tenantId', tenant.databaseName);
-    document.documentElement.style.setProperty('--color-primary', tenant.primaryColor);
+    const clean = '#' + (tenant.primaryColor || '#155dfc').replace(/^#+/, '');
+    document.documentElement.style.setProperty('--color-primary', clean);
+    document.documentElement.style.setProperty('--primary', clean);
+    document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${clean} 12%, white)`);
+    document.documentElement.style.setProperty('--color-primary-dark', `color-mix(in srgb, ${clean} 85%, black)`);
   }
 
   const handleSelectTenant = (tenant: Tenant) => {

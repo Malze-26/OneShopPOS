@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { C } from "../constants/tokens";
 
 interface User {
@@ -7,6 +8,8 @@ interface User {
 
 interface TopBarProps {
   storeName: string;
+  logoUrl?: string;
+  primaryColor?: string;
   user: User;
   time: Date;
   isOnline: boolean;
@@ -24,6 +27,8 @@ interface TopBarProps {
 
 export default function TopBar({
   storeName,
+  logoUrl,
+  primaryColor,
   user,
   time,
   isOnline,
@@ -38,20 +43,50 @@ export default function TopBar({
   onToggleMenu,
   onLogout,
 }: TopBarProps) {
-  return (
-    <header className="flex items-center px-4 gap-3 h-14 flex-shrink-0 z-20" style={{ background: "#065F46" }}>
+  const [logoError, setLogoError] = useState(false);
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace('/api', '');
+  const logoSrc = logoUrl ? (logoUrl.startsWith('http') ? logoUrl : `${apiBase}${logoUrl}`) : null;
 
-      {/* Logo */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)" }}>
-          <span className="text-white font-black text-[10px] tracking-[-1px]">POS</span>
+  useEffect(() => {
+    setLogoError(false);
+  }, [logoSrc]);
+
+  return (
+    <header
+      className="flex items-center px-4 gap-3 h-14 flex-shrink-0 z-20 transition-colors duration-200"
+      style={{ background: primaryColor || "var(--color-primary, #155dfc)" }}
+    >
+      {/* Logo & Store Name */}
+      <div className="flex items-center gap-2.5 flex-shrink-0">
+        <div className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center bg-white/95 border border-white/20 p-1 shadow-sm flex-shrink-0">
+          {logoSrc && !logoError ? (
+            <img
+              src={logoSrc}
+              alt={storeName}
+              className="w-full h-full object-contain"
+              onError={() => setLogoError(true)}
+            />
+          ) : storeName?.toLowerCase().includes('open') ? (
+            <img src="/opendoor.svg" alt={storeName} className="w-full h-full object-contain" />
+          ) : (
+            <span className="font-black text-[12px] tracking-tight text-slate-800">
+              {storeName ? storeName.slice(0, 2).toUpperCase() : 'POS'}
+            </span>
+          )}
         </div>
-        <span className="text-white font-bold text-[14px] tracking-[-0.3px]">{storeName}</span>
-        {subscriptionPlan && subscriptionPlan !== 'free' && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full capitalize" style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24" }}>
-            ✦ {subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)}
+        <div className="flex flex-col">
+          <span className="text-white font-bold text-[14px] tracking-[-0.3px] leading-tight drop-shadow-sm">
+            {storeName}
           </span>
-        )}
+          {subscriptionPlan && subscriptionPlan !== 'free' && (
+            <span
+              className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full capitalize w-fit mt-0.5"
+              style={{ background: "rgba(251,191,36,0.25)", color: "#fef08a" }}
+            >
+              ✦ {subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Search */}

@@ -69,7 +69,7 @@ export default function ActionModal({
         <div className="flex justify-between items-center pb-4 border-b border-[#E3E6F0] flex-shrink-0">
           <div>
             <h3 className="m-0 text-[18px] font-extrabold text-[#111827]">Transaction Details</h3>
-            <span className="text-[12px] font-mono text-[#065F46] font-bold">#{liveTxn.txnId}</span>
+            <span className="text-[12px] font-mono font-bold" style={{ color: "var(--color-primary)" }}>#{liveTxn.txnId}</span>
             <span className="text-[12px] text-[#9CA3AF] ml-2">({liveTxn.orderId})</span>
           </div>
           <button
@@ -177,7 +177,10 @@ export default function ActionModal({
                 <span>−Rs. {(discount ?? 0).toLocaleString()}</span>
               </div>
             )}
-            <div className="flex justify-between text-[14px] font-extrabold text-[#065F46] pt-1.5 border-t border-[#E3E6F0]">
+            <div
+              className="flex justify-between text-[14px] font-extrabold pt-1.5 border-t border-[#E3E6F0]"
+              style={{ color: "var(--color-primary)" }}
+            >
               <span>Total Paid</span>
               <span className="font-mono">Rs. {(finalTotal ?? 0).toLocaleString()}</span>
             </div>

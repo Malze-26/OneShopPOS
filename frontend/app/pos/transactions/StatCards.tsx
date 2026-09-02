@@ -19,41 +19,56 @@ export default function StatCards({
     <div className="grid grid-cols-3 gap-4 mb-7">
 
       {/* Today's Sales */}
-      <div className="relative overflow-hidden min-h-[130px] rounded-2xl bg-gradient-to-br from-[#065F46] to-[#047857] p-5 flex flex-col justify-between">
-        <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full bg-white/5" />
+      <div
+        className="relative overflow-hidden min-h-[130px] rounded-2xl p-5 flex flex-col justify-between shadow-sm"
+        style={{
+          background: "linear-gradient(135deg, var(--color-primary, #155dfc), var(--color-primary-dark, #0d4dd9))"
+        }}
+      >
+        <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full bg-white/10" />
         <div className="absolute right-5 bottom-[-20px] w-[70px] h-[70px] rounded-full bg-white/10" />
-        <p className="text-[11px] font-bold uppercase mb-2 text-white/70 tracking-wider">Today's Sales</p>
+        <p className="text-[11px] font-bold uppercase mb-2 text-white/80 tracking-wider">Today's Sales</p>
         <p className="text-[28px] font-black mb-3 text-white tracking-tight font-mono">
           Rs. {(todaySales ?? 0).toLocaleString()}
         </p>
-        <div className="inline-flex items-center rounded-full bg-emerald-300/20 px-2.5 py-1 w-fit">
-          <span className="text-[11px] font-bold text-emerald-300">{todayCount ?? 0} today</span>
+        <div className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 w-fit backdrop-blur-xs">
+          <span className="text-[11px] font-bold text-white">{todayCount ?? 0} today</span>
         </div>
       </div>
 
       {/* Total Records */}
-      <div className="relative overflow-hidden min-h-[130px] rounded-2xl bg-gradient-to-br from-[#047857] to-[#059669] p-5 flex flex-col justify-between">
-        <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full bg-white/5" />
+      <div
+        className="relative overflow-hidden min-h-[130px] rounded-2xl p-5 flex flex-col justify-between shadow-sm"
+        style={{
+          background: "linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #155dfc) 80%, black), color-mix(in srgb, var(--color-primary, #155dfc) 60%, black))"
+        }}
+      >
+        <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full bg-white/10" />
         <svg className="absolute right-5 bottom-5 opacity-15" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
           <rect x="9" y="3" width="6" height="4" rx="1"/>
           <line x1="9" y1="12" x2="15" y2="12"/>
           <line x1="9" y1="16" x2="13" y2="16"/>
         </svg>
-        <p className="text-[11px] font-bold uppercase mb-2 text-white/70 tracking-wider">Total Records</p>
+        <p className="text-[11px] font-bold uppercase mb-2 text-white/80 tracking-wider">Total Records</p>
         <p className="text-[36px] font-black mb-2 text-white tracking-tight">{totalCount ?? 0}</p>
-        <p className="text-[12px] font-medium text-white/60">Avg: Rs. {(avgBill ?? 0).toLocaleString()}</p>
+        <p className="text-[12px] font-medium text-white/70">Avg: Rs. {(avgBill ?? 0).toLocaleString()}</p>
       </div>
 
       {/* Success Rate */}
-      <div className="relative overflow-hidden min-h-[130px] rounded-2xl bg-gradient-to-br from-[#059669] to-[#10B981] p-5 flex flex-col justify-between">
-        <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full bg-white/5" />
+      <div
+        className="relative overflow-hidden min-h-[130px] rounded-2xl p-5 flex flex-col justify-between shadow-sm"
+        style={{
+          background: "linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #155dfc) 90%, #10b981), #10b981)"
+        }}
+      >
+        <div className="absolute right-[-10px] top-[-10px] w-[90px] h-[90px] rounded-full bg-white/10" />
         <svg className="absolute right-4 bottom-3 opacity-20" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
-        <p className="text-[11px] font-bold uppercase mb-2 text-white/70 tracking-wider">Success Rate</p>
+        <p className="text-[11px] font-bold uppercase mb-2 text-white/80 tracking-wider">Success Rate</p>
         <p className="text-[36px] font-black mb-2 text-white tracking-tight">{successRate}%</p>
-        <p className="text-[12px] font-medium text-white/70">{successCount} successful</p>
+        <p className="text-[12px] font-medium text-white/80">{successCount} successful</p>
       </div>
 
     </div>

@@ -48,13 +48,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchSettings();
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'tenantId' || e.key === 'token') {
+        fetchSettings();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Update CSS variable for primary color whenever it changes
   useEffect(() => {
-    if (typeof document !== 'undefined') {
+    if (typeof document !== 'undefined' && settings.primaryColor) {
       const color = '#' + settings.primaryColor.replace(/^#+/, '');
       document.documentElement.style.setProperty('--color-primary', color);
+      document.documentElement.style.setProperty('--primary', color);
+      document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${color} 12%, white)`);
+      document.documentElement.style.setProperty('--color-primary-dark', `color-mix(in srgb, ${color} 85%, black)`);
     }
   }, [settings.primaryColor]);
 
