@@ -21,6 +21,7 @@ interface TopBarProps {
   subscriptionPlan?: string;
   onSearch: (val: string) => void;
   onSync: () => void;
+  onRefreshProducts: () => void;
   onToggleMenu: () => void;
   onLogout: () => void;
 }
@@ -40,6 +41,7 @@ export default function TopBar({
   subscriptionPlan,
   onSearch,
   onSync,
+  onRefreshProducts,
   onToggleMenu,
   onLogout,
 }: TopBarProps) {
@@ -167,6 +169,16 @@ export default function TopBar({
                   <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                 </svg>
                 Sync Now {pendingCount > 0 ? `(${pendingCount})` : ""}
+              </button>
+              <button
+                className="flex items-center gap-1 px-3 py-2 text-[13px] w-full hover:bg-blue-50 text-blue-700"
+                onClick={onRefreshProducts}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                </svg>
+                Refresh Products
               </button>
               <button className="flex items-center gap-1 px-3 py-2 text-[13px] w-full hover:bg-gray-100" onClick={onLogout}>
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

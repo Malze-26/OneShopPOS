@@ -158,6 +158,8 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       images,
       expiryDate,
       supplierId,
+      isWeightBased,
+      unit,
     } = req.body as {
       name: string;
       description?: string;
@@ -169,6 +171,8 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       images?: string[];
       expiryDate?: string | null;
       supplierId?: string;
+      isWeightBased?: boolean;
+      unit?: 'kg' | 'item';
     };
 
     // Every product must belong to a category that exists on the categories page.
@@ -213,6 +217,8 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
         supplier: resolvedSupplier.name,
         storeId,
         createdBy: userId,
+        isWeightBased: Boolean(isWeightBased),
+        unit: unit || (isWeightBased ? 'kg' : 'item'),
       })
     );
 
@@ -253,6 +259,8 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       category,
       expiryDate,
       supplierId,
+      isWeightBased,
+      unit,
     } = req.body as {
       name?: string;
       description?: string;
@@ -263,6 +271,8 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       category?: string;
       expiryDate?: string | null;
       supplierId?: string;
+      isWeightBased?: boolean;
+      unit?: 'kg' | 'item';
     };
 
     // A product may only be moved into a category that exists on the categories page.
@@ -312,6 +322,8 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
       category: resolvedCategory,
       supplierId: resolvedSupplier?._id,
       supplier: resolvedSupplier?.name,
+      isWeightBased: isWeightBased !== undefined ? Boolean(isWeightBased) : undefined,
+      unit: unit !== undefined ? unit : (isWeightBased !== undefined ? (isWeightBased ? 'kg' : 'item') : undefined),
       // Undefined leaves the stored date alone; an empty string clears it.
       expiryDate: expiryDate === undefined ? undefined : expiryDate ? new Date(expiryDate) : null,
     };

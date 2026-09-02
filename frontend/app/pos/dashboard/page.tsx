@@ -74,6 +74,24 @@ export default function POSDashboard() {
       }
     };
     fetchData();
+
+    // Auto-refresh products + categories every 3 minutes so that
+    // changes made in the admin panel (e.g. toggling weight-based,
+    // changing price, adding stock) are reflected without page reload.
+    const productRefreshInterval = setInterval(async () => {
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          api.get("/products"),
+          api.get("/categories"),
+        ]);
+        setProducts(productsRes.data.data);
+        setCategories(categoriesRes.data.data);
+      } catch (err) {
+        console.error("Background product refresh failed:", err);
+      }
+    }, 3 * 60 * 1000); // every 3 minutes
+
+    return () => clearInterval(productRefreshInterval);
   }, [user]);
 
   const refreshPendingCount = useCallback(async () => {
@@ -246,6 +264,7 @@ export default function POSDashboard() {
         showMenu={showMenu}
         onSearch={setSearch}
         onSync={handleSync}
+        onRefreshProducts={refreshProducts}
         onToggleMenu={() => setShowMenu(v => !v)}
         onLogout={handleLogout}
         subscriptionPlan={subscriptionPlan}
