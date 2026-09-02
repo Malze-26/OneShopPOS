@@ -547,7 +547,6 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
         discounts: totalDiscounts,
         refunds: totalRefunds,
         netSales,
-        taxCollected: 0,
         totalTransactions: posS.transactionCount + ecomS.transactionCount,
       },
       paymentBreakdown: paymentMethods,
