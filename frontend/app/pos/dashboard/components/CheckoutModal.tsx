@@ -19,6 +19,7 @@ interface CheckoutModalProps {
   subtotal: number;
   total: number;
   isOnline: boolean;
+  storeName?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -28,6 +29,7 @@ export default function CheckoutModal({
   subtotal,
   total,
   isOnline,
+  storeName,
   onClose,
   onSuccess,
 }: CheckoutModalProps) {
@@ -36,7 +38,7 @@ export default function CheckoutModal({
   const [cash, setCash] = useState("");
   const [step, setStep] = useState<"pay" | "success">("pay");
   const [savedOffline, setSavedOffline] = useState(false);
-  const [orderId] = useState(genId);
+  const [orderId, setOrderId] = useState(genId);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const cashAmt = parseFloat(cash) || 0;
@@ -54,6 +56,9 @@ export default function CheckoutModal({
       paymentMethod: methodLabel,
       amount: subtotal,
       discount: (state.discount ?? 0) + (state.loyaltyDiscount ?? 0),
+      discountCode: state.discountCode || undefined,
+      loyaltyDiscount: state.loyaltyDiscount || 0,
+      loyaltyPointsUsed: state.loyaltyPointsUsed || 0,
       total,
       status: "success",
       items: state.items.map(item => ({
@@ -67,7 +72,10 @@ export default function CheckoutModal({
     };
     if (isOnline) {
       try {
-        await api.post("/transactions", transactionData);
+        const res = await api.post("/transactions", transactionData);
+        if (res.data?.data?.txnId) {
+          setOrderId(res.data.data.txnId);
+        }
         setSavedOffline(false);
       } catch {
         await savePendingTransaction(transactionData);
@@ -95,6 +103,8 @@ export default function CheckoutModal({
     const timeStr = now.toLocaleTimeString("en-LK", {
       hour: "2-digit", minute: "2-digit",
     });
+
+    const displayStoreName = storeName || "OneShop POS";
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -146,7 +156,7 @@ export default function CheckoutModal({
       </head>
       <body>
         <div class="center" style="margin-bottom: 12px;">
-          <div class="store-name">OneShop POS</div>
+          <div class="store-name">${displayStoreName}</div>
           <div class="order-id">${orderId}</div>
           <div style="font-size: 11px; color: #555; margin-top: 2px;">${dateStr} · ${timeStr}</div>
         </div>
@@ -213,7 +223,7 @@ export default function CheckoutModal({
           <div class="status-badge">${savedOffline ? "SAVED OFFLINE" : "PAID"}</div>
           <div class="thank-you" style="margin-top: 8px;">Thank you for shopping with us!</div>
           ${savedOffline ? `<div class="offline-note">* Syncs to server when online</div>` : ""}
-          <div style="font-size: 10px; color: #aaa; margin-top: 12px;">— OneShop POS v1.0 —</div>
+          <div style="font-size: 10px; color: #aaa; margin-top: 12px;">— ${displayStoreName} —</div>
         </div>
       </body>
       </html>
@@ -408,7 +418,7 @@ export default function CheckoutModal({
                 className="text-center font-bold mb-3 text-[13px]"
                 style={{ color: "var(--color-primary)" }}
               >
-                OneShop POS
+                {storeName || "OneShop POS"}
               </div>
               {state.items.map(item => (
                 <div key={item.id} className="flex justify-between text-[#6B7280] mb-1">

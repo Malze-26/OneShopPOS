@@ -121,8 +121,13 @@ export default function CustomersPage() {
   if (authLoading || loadingData) return (
     <div className="flex items-center justify-center h-screen bg-[#F0F2F8]">
       <div
-        className="animate-spin w-10 h-10 border-4 border-t-transparent rounded-full"
-        style={{ borderColor: "var(--color-primary, #155dfc)", borderTopColor: "transparent" }}
+        className="animate-spin w-10 h-10 border-4 rounded-full"
+        style={{
+          borderRightColor: "var(--color-primary, #155dfc)",
+          borderBottomColor: "var(--color-primary, #155dfc)",
+          borderLeftColor: "var(--color-primary, #155dfc)",
+          borderTopColor: "transparent",
+        }}
       />
     </div>
   );

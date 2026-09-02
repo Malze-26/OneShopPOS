@@ -109,7 +109,7 @@ export default function POSDashboard() {
   const handleLogout = () => { logout(); router.push("/pos/login"); };
 
   // ── Loyalty Points Redeem ─────────────────────────────────────────────────
-  const handleRedeemPoints = async () => {
+  const handleRedeemPoints = () => {
     if (!selectedCustomer || selectedCustomer._id === "guest") return;
     const availablePoints = selectedCustomer.loyaltyPoints ?? 0;
     if (availablePoints <= 0) return;
@@ -119,17 +119,8 @@ export default function POSDashboard() {
     const pointsToRedeem = Math.min(availablePoints, maxRedeemable);
     if (pointsToRedeem <= 0) return;
 
-    try {
-      await api.post(`/customers/${selectedCustomer._id}/redeem-points`, { points: pointsToRedeem });
-      setLoyaltyDiscount(pointsToRedeem);
-      setLoyaltyPointsUsed(pointsToRedeem);
-      // Update points locally so UI reflects immediately
-      const updatedCustomer = { ...selectedCustomer, loyaltyPoints: availablePoints - pointsToRedeem };
-      setSelectedCustomer(updatedCustomer);
-      setCustomers(prev => prev.map(c => c._id === selectedCustomer._id ? updatedCustomer : c));
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to redeem points");
-    }
+    setLoyaltyDiscount(pointsToRedeem);
+    setLoyaltyPointsUsed(pointsToRedeem);
   };
 
   const subtotal = parseFloat(
@@ -176,6 +167,15 @@ export default function POSDashboard() {
     }
   }, []);
 
+  const refreshCustomers = useCallback(async () => {
+    try {
+      const customersRes = await api.get("/customers");
+      setCustomers(customersRes.data.data);
+    } catch (err) {
+      console.error("Failed to refresh customers:", err);
+    }
+  }, []);
+
   const handleCheckoutSuccess = () => {
     setCart([]);
     setSelectedCustomer(null);
@@ -187,6 +187,7 @@ export default function POSDashboard() {
     setShowCheckout(false);
     refreshPendingCount();
     refreshProducts(); // Refresh inventory to show updated stock levels
+    refreshCustomers(); // Refresh customer loyalty balances
   };
 
   const checkoutState = {
@@ -204,8 +205,13 @@ export default function POSDashboard() {
       <div className="flex items-center justify-center h-screen bg-[#F0F2F8]">
         <div className="text-center">
           <div
-            className="mx-auto w-12 h-12 border-[3px] border-t-transparent rounded-full animate-spin"
-            style={{ borderColor: primaryColor || "var(--color-primary, #155dfc)", borderTopColor: "transparent" }}
+            className="mx-auto w-12 h-12 border-[3px] rounded-full animate-spin"
+            style={{
+              borderRightColor: primaryColor || "var(--color-primary, #155dfc)",
+              borderBottomColor: primaryColor || "var(--color-primary, #155dfc)",
+              borderLeftColor: primaryColor || "var(--color-primary, #155dfc)",
+              borderTopColor: "transparent",
+            }}
           />
           <p className="mt-4 text-sm text-[#6B7280]">Loading...</p>
         </div>
@@ -377,6 +383,7 @@ export default function POSDashboard() {
           subtotal={subtotal}
           total={total}
           isOnline={isOnline}
+          storeName={storeName}
           onClose={() => setShowCheckout(false)}
           onSuccess={handleCheckoutSuccess}
         />
