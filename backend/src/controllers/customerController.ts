@@ -49,6 +49,20 @@ export async function getCustomer(req: AuthRequest, res: Response, next: NextFun
   }
 }
 
+function parseDuplicateCustomerError(err: any): string {
+  const msg = err?.message || '';
+  const keyPattern = err?.keyPattern || err?.errorResponse?.keyPattern || {};
+  const keyValue = err?.keyValue || err?.errorResponse?.keyValue || {};
+
+  if (keyPattern.phone || msg.includes('phone') || keyValue.phone) {
+    return 'A customer with this phone number already exists.';
+  }
+  if (keyPattern.email || msg.includes('email') || keyValue.email) {
+    return 'A customer with this email address already exists.';
+  }
+  return 'A customer with this phone number or email already exists.';
+}
+
 // POST /api/customers
 export async function createCustomer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -65,11 +79,40 @@ export async function createCustomer(req: AuthRequest, res: Response, next: Next
       return;
     }
 
+    const cleanPhone = phone.trim();
+    const cleanEmail = email?.trim() ? email.trim().toLowerCase() : undefined;
+
+    // Check duplicate phone number
+    const existingPhone = await Customer.findOne({ phone: cleanPhone });
+    if (existingPhone) {
+      res.status(400).json({ message: `A customer with phone number "${cleanPhone}" already exists.` });
+      return;
+    }
+
+    // Check duplicate email (if provided)
+    if (cleanEmail) {
+      const existingEmail = await Customer.findOne({ email: cleanEmail });
+      if (existingEmail) {
+        res.status(400).json({ message: `A customer with email "${cleanEmail}" already exists.` });
+        return;
+      }
+    }
+
     const avatar = name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
-    const customer = await Customer.create({ name: name.trim(), email, phone: phone.trim(), avatar, storeId });
+    const customer = await Customer.create({
+      name: name.trim(),
+      email: cleanEmail,
+      phone: cleanPhone,
+      avatar,
+      storeId,
+    });
     res.status(201).json({ data: customer });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 11000 || err?.errorResponse?.code === 11000 || err?.message?.includes('E11000')) {
+      res.status(400).json({ message: parseDuplicateCustomerError(err) });
+      return;
+    }
     next(err);
   }
 }
@@ -95,18 +138,41 @@ export async function updateCustomer(req: AuthRequest, res: Response, next: Next
       return;
     }
 
+    const cleanPhone = phone.trim();
+    const cleanEmail = email?.trim() ? email.trim().toLowerCase() : undefined;
+
+    // Check duplicate phone number against other customers
+    const existingPhone = await Customer.findOne({ phone: cleanPhone, _id: { $ne: req.params.id } });
+    if (existingPhone) {
+      res.status(400).json({ message: `A customer with phone number "${cleanPhone}" already exists.` });
+      return;
+    }
+
+    // Check duplicate email against other customers (if provided)
+    if (cleanEmail) {
+      const existingEmail = await Customer.findOne({ email: cleanEmail, _id: { $ne: req.params.id } });
+      if (existingEmail) {
+        res.status(400).json({ message: `A customer with email "${cleanEmail}" already exists.` });
+        return;
+      }
+    }
+
     const avatar = name.trim() !== customer.name
       ? name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
       : customer.avatar;
 
     customer.name = name.trim();
-    customer.email = email;
-    customer.phone = phone.trim();
+    customer.email = cleanEmail;
+    customer.phone = cleanPhone;
     customer.avatar = avatar;
 
     await customer.save();
     res.json({ data: customer });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 11000 || err?.errorResponse?.code === 11000 || err?.message?.includes('E11000')) {
+      res.status(400).json({ message: parseDuplicateCustomerError(err) });
+      return;
+    }
     next(err);
   }
 }

@@ -40,7 +40,8 @@ router.post('/:id/redeem-points', async (req: Request, res: Response) => {
       return;
     }
 
-    const customer = await Customer.findById(req.params.id);
+    const CustomerModel = (req as AuthRequest).models?.Customer || Customer;
+    const customer = await CustomerModel.findById(req.params.id);
     if (!customer) {
       res.status(404).json({ message: 'Customer not found' });
       return;

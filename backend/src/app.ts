@@ -94,9 +94,22 @@ app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[Error]', err.message);
-  res.status(500).json({ message: err.message ?? 'Internal server error' });
+
+  if (err?.code === 11000 || err?.errorResponse?.code === 11000 || err?.message?.includes('E11000')) {
+    const isPhone = err.message?.includes('phone') || err?.keyPattern?.phone || err?.errorResponse?.keyPattern?.phone;
+    const isEmail = err.message?.includes('email') || err?.keyPattern?.email || err?.errorResponse?.keyPattern?.email;
+    const msg = isPhone
+      ? 'A customer with this phone number already exists.'
+      : isEmail
+      ? 'A customer with this email address already exists.'
+      : 'A record with this information already exists.';
+    res.status(400).json({ message: msg });
+    return;
+  }
+
+  res.status(err.status || 500).json({ message: err.message ?? 'Internal server error' });
 });
 
 export default app;
