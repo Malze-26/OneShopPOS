@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { protect, requireRole } from '../middleware/authMiddleware';
+import { requireTenant } from '../middleware/tenantMiddleware';
 import {
   getCategories,
   getCategory,
@@ -15,6 +16,7 @@ function asyncHandler(fn: (req: Request | AuthRequest, res: Response, next: Next
   return (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 }
 
+router.use(requireTenant);
 router.use(protect);
 
 router.get('/', asyncHandler(getCategories));

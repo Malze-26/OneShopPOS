@@ -79,15 +79,22 @@ export default function POSDashboard() {
     // changes made in the admin panel (e.g. toggling weight-based,
     // changing price, adding stock) are reflected without page reload.
     const productRefreshInterval = setInterval(async () => {
+      // Don't poll if the tab is inactive or browser is offline
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (!navigator.onLine) return;
+
       try {
         const [productsRes, categoriesRes] = await Promise.all([
           api.get("/products"),
           api.get("/categories"),
         ]);
-        setProducts(productsRes.data.data);
-        setCategories(categoriesRes.data.data);
-      } catch (err) {
-        console.error("Background product refresh failed:", err);
+        if (Array.isArray(productsRes.data?.data)) setProducts(productsRes.data.data);
+        if (Array.isArray(categoriesRes.data?.data)) setCategories(categoriesRes.data.data);
+      } catch (err: any) {
+        // Silently catch background refresh errors so they don't disrupt the user session
+        if (process.env.NODE_ENV === 'development') {
+          console.warn("Background product refresh skipped:", err?.response?.data?.message || err?.message);
+        }
       }
     }, 3 * 60 * 1000); // every 3 minutes
 
@@ -186,12 +193,17 @@ export default function POSDashboard() {
 
   const refreshProducts = useCallback(async () => {
     try {
-      const productsRes = await api.get("/products");
-      setProducts(productsRes.data.data);
+      const [productsRes, categoriesRes] = await Promise.all([
+        api.get("/products"),
+        api.get("/categories"),
+      ]);
+      if (Array.isArray(productsRes.data?.data)) setProducts(productsRes.data.data);
+      if (Array.isArray(categoriesRes.data?.data)) setCategories(categoriesRes.data.data);
+      refreshStore();
     } catch (err) {
       console.error("Failed to refresh products:", err);
     }
-  }, []);
+  }, [refreshStore]);
 
   const refreshCustomers = useCallback(async () => {
     try {

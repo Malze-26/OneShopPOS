@@ -40,22 +40,71 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Uses the Axios instance so the OneShop-Tenant-ID header is automatically
   // included when a tenant has been selected (stored in localStorage).
-  const fetchSettings = (): Promise<void> => {
-    return api.get<{ data: StoreSettings }>('/settings')
-      .then(({ data }) => { if (data.data) setSettings(data.data); })
-      .catch(() => { /* keep defaults if no tenant is set yet */ });
+  const fetchSettings = async (): Promise<void> => {
+    try {
+      const { data } = await api.get<{ data: StoreSettings }>('/settings');
+      if (data.data) {
+        setSettings(data.data);
+        if (typeof window !== 'undefined' && data.data.primaryColor) {
+          const color = '#' + data.data.primaryColor.replace(/^#+/, '');
+          document.documentElement.style.setProperty('--color-primary', color);
+          document.documentElement.style.setProperty('--primary', color);
+          document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${color} 12%, white)`);
+          document.documentElement.style.setProperty('--color-primary-dark', `color-mix(in srgb, ${color} 85%, black)`);
+        }
+      }
+    } catch {
+      /* keep defaults if no tenant is set yet */
+    }
+  };
+
+  const refreshWithBroadcast = async () => {
+    await fetchSettings();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('store_settings_timestamp', Date.now().toString());
+      window.dispatchEvent(new CustomEvent('store-settings-updated'));
+    }
   };
 
   useEffect(() => {
     fetchSettings();
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'tenantId' || e.key === 'token') {
+      if (
+        e.key === 'tenantId' ||
+        e.key === 'token' ||
+        e.key === 'store_settings_timestamp' ||
+        e.key === 'store_primary_color'
+      ) {
         fetchSettings();
       }
     };
+
+    const handleFocus = () => {
+      fetchSettings();
+    };
+
+    const handleCustomEvent = () => {
+      fetchSettings();
+    };
+
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('store-settings-updated', handleCustomEvent);
+
+    // Auto-poll store settings every 60 seconds
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchSettings();
+      }
+    }, 60 * 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('store-settings-updated', handleCustomEvent);
+      clearInterval(interval);
+    };
   }, []);
 
   // Update CSS variable for primary color whenever it changes
@@ -70,7 +119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [settings.primaryColor]);
 
   return (
-    <StoreContext.Provider value={{ ...settings, refresh: fetchSettings }}>
+    <StoreContext.Provider value={{ ...settings, refresh: refreshWithBroadcast }}>
       {children}
     </StoreContext.Provider>
   );
