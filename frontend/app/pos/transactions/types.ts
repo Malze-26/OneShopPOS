@@ -17,6 +17,10 @@ export interface Transaction {
   amount: number;
   subtotal?: number;
   discount?: number;
+  discountCode?: string;
+  loyaltyDiscount?: number;
+  loyaltyPointsUsed?: number;
+  pointsEarned?: number;
   total?: number;
   items?: TransactionItem[];
   status: "success" | "voided" | "pending" | "failed" | string;

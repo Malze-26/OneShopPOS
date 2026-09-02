@@ -13,6 +13,10 @@ interface ReceiptData {
   items: ReceiptItem[];
   subtotal: number;
   discount: number;
+  discountCode?: string;
+  loyaltyDiscount?: number;
+  loyaltyPointsUsed?: number;
+  pointsEarned?: number;
   total: number;
   paymentMethod: string;
   date: string;
@@ -71,9 +75,17 @@ export async function sendReceiptEmail(data: ReceiptData) {
           </div>
           ${data.discount > 0 ? `
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#F59E0B">
-            <span>Discount</span><span>−Rs. ${data.discount.toLocaleString()}</span>
+            <span>Discount ${data.discountCode ? `(${data.discountCode})` : ''}</span><span>−Rs. ${data.discount.toLocaleString()}</span>
           </div>` : ''}
-          <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px;color:#1B1A55;margin-top:8px">
+          ${(data.loyaltyDiscount && data.loyaltyDiscount > 0) ? `
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#D97706;font-weight:bold">
+            <span>⭐ Loyalty Redeemed (${data.loyaltyPointsUsed || 0} pts)</span><span>−Rs. ${data.loyaltyDiscount.toLocaleString()}</span>
+          </div>` : ''}
+          ${(data.pointsEarned && data.pointsEarned > 0) ? `
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:#059669;font-weight:bold;font-size:13px">
+            <span>⭐ Loyalty Points Earned</span><span>+${data.pointsEarned} pts</span>
+          </div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px;color:#1B1A55;margin-top:8px;border-top:1px solid #E5E7EB;padding-top:8px">
             <span>Total</span><span>Rs. ${data.total.toLocaleString()}</span>
           </div>
         </div>

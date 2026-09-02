@@ -109,14 +109,22 @@ export default function POSDashboard() {
   const handleLogout = () => { logout(); router.push("/pos/login"); };
 
   // ── Loyalty Points Redeem ─────────────────────────────────────────────────
-  const handleRedeemPoints = () => {
+  const handleRedeemPoints = (points: number) => {
     if (!selectedCustomer || selectedCustomer._id === "guest") return;
+
+    // Allow clearing loyalty redemption by passing 0
+    if (points <= 0) {
+      setLoyaltyDiscount(0);
+      setLoyaltyPointsUsed(0);
+      return;
+    }
+
     const availablePoints = selectedCustomer.loyaltyPoints ?? 0;
     if (availablePoints <= 0) return;
 
-    // Cap redemption at remaining order total after promo discount
+    // Client-side cap (server will also validate independently)
     const maxRedeemable = Math.floor(subtotal - discount);
-    const pointsToRedeem = Math.min(availablePoints, maxRedeemable);
+    const pointsToRedeem = Math.min(points, availablePoints, maxRedeemable);
     if (pointsToRedeem <= 0) return;
 
     setLoyaltyDiscount(pointsToRedeem);

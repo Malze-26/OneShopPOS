@@ -25,6 +25,7 @@ export interface ITransaction extends Document {
   discountCode?: string;
   loyaltyDiscount?: number;
   loyaltyPointsUsed?: number;
+  pointsEarned?: number;
   total: number;
   status: TransactionStatus;
   orderStatus: OrderStatus;
@@ -93,6 +94,11 @@ export const transactionSchema = new Schema<ITransaction>(
       min: 0,
     },
     loyaltyPointsUsed: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pointsEarned: {
       type: Number,
       default: 0,
       min: 0,

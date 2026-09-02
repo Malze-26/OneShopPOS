@@ -138,21 +138,58 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       const customer = await Customer.findById(req.body.customerId);
       
       if (customer) {
-        const amountPaid = req.body.total ?? req.body.amount;
-        const pointsEarned = Math.floor(amountPaid / 100);
+        // ── Loyalty points validation ────────────────────────────────────────
+        // Points are earned on the pre-loyalty subtotal (amount = subtotal - promoDiscount).
+        // This prevents loyalty redemption from reducing earned points.
+        const preDiscountBase = req.body.amount ?? 0; // subtotal after promo, before loyalty
+        const pointsEarned = Math.floor(preDiscountBase / 100);
 
-        // Server-side validation of loyalty points redemption
+        // Validate how many points the client wants to redeem
         const rawPointsUsed = parseInt(req.body.loyaltyPointsUsed, 10) || 0;
-        // Cap points used by customer's actual balance to prevent over-redemption
-        const pointsUsed = Math.min(Math.max(0, rawPointsUsed), customer.loyaltyPoints || 0);
+
+        // Server-side guards:
+        // 1. Cannot exceed customer's actual balance
+        // 2. Cannot exceed the order value (prevents over-discount)
+        // 3. Cannot be negative
+        const maxAllowedByBalance = Math.max(0, customer.loyaltyPoints || 0);
+        const maxAllowedByOrder   = Math.floor(preDiscountBase); // 1 pt = Rs 1
+        const pointsUsed = Math.min(
+          Math.max(0, rawPointsUsed),
+          maxAllowedByBalance,
+          maxAllowedByOrder,
+        );
+
+        // Server always computes loyaltyDiscount — never trust client value
+        const loyaltyDiscount = pointsUsed; // 1 point = Rs 1
+
+        // Atomic deduction: only deduct if balance is still sufficient.
+        // This prevents a race condition where two simultaneous transactions
+        // both read the same balance and both are allowed.
+        if (pointsUsed > 0) {
+          const deductResult = await Customer.findOneAndUpdate(
+            { _id: req.body.customerId, loyaltyPoints: { $gte: pointsUsed } },
+            { $inc: { loyaltyPoints: -pointsUsed } },
+            { new: true }
+          );
+          if (!deductResult) {
+            res.status(409).json({ message: 'Insufficient loyalty points — balance may have changed. Please refresh and try again.' });
+            return;
+          }
+        }
+
+        // Patch the saved transaction with server-computed loyalty values
+        // so the stored record reflects the validated numbers, not client-sent ones
+        await Transaction.collection.updateOne(
+          { _id: transaction._id },
+          { $set: { loyaltyDiscount, loyaltyPointsUsed: pointsUsed, pointsEarned } }
+        );
 
         const [agg] = await Transaction.aggregate([
           { $match: { customerId: req.body.customerId, status: 'success' } },
           { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
         ]);
 
-        const netPointsChange = pointsEarned - pointsUsed;
-
+        const netPointsChange = pointsEarned - 0; // deduction already done atomically above
         await Customer.findByIdAndUpdate(req.body.customerId, {
           $set: {
             totalSpent:   agg?.totalSpent  ?? 0,
@@ -166,14 +203,18 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
         if (customer.email) {
           try {
             await sendReceiptEmail({
-              customerName:  customer.name,
-              customerEmail: customer.email,
-              orderId:       txnId,
-              items:         req.body.items || [],
-              subtotal:      req.body.amount,
-              discount:      req.body.discount || 0,
-              total:         req.body.total ?? req.body.amount,
-              paymentMethod: req.body.paymentMethod,
+              customerName:      customer.name,
+              customerEmail:     customer.email,
+              orderId:           txnId,
+              items:             req.body.items || [],
+              subtotal:          req.body.amount,
+              discount:          req.body.discount || 0,
+              discountCode:      req.body.discountCode || req.body.promoCode,
+              loyaltyDiscount,
+              loyaltyPointsUsed: pointsUsed,
+              pointsEarned,
+              total:             req.body.total ?? req.body.amount,
+              paymentMethod:     req.body.paymentMethod,
               date: new Date().toLocaleDateString('en-LK', {
                 day: '2-digit', month: 'short', year: 'numeric',
               }),
@@ -253,19 +294,33 @@ export async function voidTransaction(req: AuthRequest, res: Response, next: Nex
         { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
       ]);
 
-      const amountPaid = transaction.total ?? transaction.amount;
-      const pointsEarned = Math.floor(amountPaid / 100);
-      const pointsUsed = transaction.loyaltyPointsUsed || 0;
-      const reversePoints = pointsUsed - pointsEarned; // Refund used points, take back earned points
+      // Use the saved pointsEarned from when the transaction was created,
+      // not a recomputed value — prevents drift if total changed.
+      const pointsEarned = transaction.pointsEarned || 0;
+      const pointsUsed   = transaction.loyaltyPointsUsed || 0;
 
-      await Customer.findByIdAndUpdate(transaction.customerId, {
-        $set: {
-          totalSpent:   agg?.totalSpent  ?? 0,
-          totalOrders:  agg?.totalOrders ?? 0,
-          lastPurchase: agg?.lastPurchase ?? new Date(),
-        },
-        $inc: { loyaltyPoints: reversePoints },
-      });
+      // Reverse: refund the redeemed points back, deduct the earned points.
+      // Do these as two separate guarded increments:
+      // 1. Refund redeemed points (always safe to add back)
+      // 2. Deduct earned points (guarded — cannot go below 0)
+      const customer = await Customer.findById(transaction.customerId);
+      if (customer) {
+        let netPointsDelta = pointsUsed - pointsEarned; // positive = net refund, negative = net deduction
+
+        // If net is negative (customer would go below 0), clamp to -(current balance)
+        if (netPointsDelta < 0) {
+          netPointsDelta = Math.max(netPointsDelta, -customer.loyaltyPoints);
+        }
+
+        await Customer.findByIdAndUpdate(transaction.customerId, {
+          $set: {
+            totalSpent:   agg?.totalSpent  ?? 0,
+            totalOrders:  agg?.totalOrders ?? 0,
+            lastPurchase: agg?.lastPurchase ?? new Date(),
+          },
+          $inc: { loyaltyPoints: netPointsDelta },
+        });
+      }
     }
 
     const updated = await Transaction.findById(transaction._id).lean();

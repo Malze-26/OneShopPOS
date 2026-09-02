@@ -173,8 +173,20 @@ export default function ActionModal({
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-amber-600 font-semibold">
-                <span>Discount</span>
+                <span>Discount {liveTxn.discountCode ? `(${liveTxn.discountCode})` : ""}</span>
                 <span>−Rs. {(discount ?? 0).toLocaleString()}</span>
+              </div>
+            )}
+            {(liveTxn.loyaltyDiscount ?? 0) > 0 && (
+              <div className="flex justify-between text-amber-600 font-semibold">
+                <span>⭐ Loyalty Redeemed ({liveTxn.loyaltyPointsUsed ?? 0} pts)</span>
+                <span>−Rs. {(liveTxn.loyaltyDiscount ?? 0).toLocaleString()}</span>
+              </div>
+            )}
+            {liveTxn.customerId && liveTxn.status === "success" && (liveTxn.pointsEarned ?? 0) > 0 && (
+              <div className="flex justify-between text-emerald-600 font-semibold text-[11px] pt-0.5">
+                <span>⭐ Loyalty Points Earned</span>
+                <span>+{liveTxn.pointsEarned} pts</span>
               </div>
             )}
             <div

@@ -1,5 +1,6 @@
 "use client";
 import { C } from "../constants/tokens";
+import { useState } from "react";
 
 interface CartItem {
   id: string;
@@ -44,7 +45,7 @@ interface CartSidebarProps {
   onUpdateQty: (id: string, delta: number) => void;
   onClearCart: () => void;
   onShowPromo: () => void;
-  onRedeemPoints: () => void;
+  onRedeemPoints: (points: number) => void;
   onCheckout: () => void;
 }
 
@@ -71,6 +72,7 @@ export default function CartSidebar({
   onRedeemPoints,
   onCheckout,
 }: CartSidebarProps) {
+  const [redeemInput, setRedeemInput] = useState("");
 
   // Helper function to filter customers based on search input, matching telephone number only
   const filterCustomers = (list: Customer[], search: string) => {
@@ -131,25 +133,67 @@ export default function CartSidebar({
 
             {/* Loyalty Points Badge */}
             {selectedCustomer._id !== 'guest' && (
-              <div className="mt-1.5 flex items-center justify-between px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[13px]">⭐</span>
-                  <span className="text-[11px] font-bold text-amber-700">
-                    {selectedCustomer.loyaltyPoints ?? 0} pts
-                  </span>
-                  <span className="text-[10px] text-amber-600">available</span>
+              <div className="mt-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px]">⭐</span>
+                    <span className="text-[11px] font-bold text-amber-700">
+                      {selectedCustomer.loyaltyPoints ?? 0} pts
+                    </span>
+                    <span className="text-[10px] text-amber-600">available</span>
+                  </div>
+                  {loyaltyDiscount > 0 && (
+                    <button
+                      onClick={() => { setRedeemInput(""); onRedeemPoints(0); }}
+                      className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded hover:bg-red-200 transition"
+                    >
+                      Remove ✕
+                    </button>
+                  )}
                 </div>
+
                 {loyaltyDiscount > 0 ? (
-                  <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">
-                    Applied ✓
-                  </span>
+                  <div className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded text-center">
+                    ✓ {loyaltyPointsUsed} pts applied (−Rs. {loyaltyDiscount.toLocaleString()})
+                  </div>
                 ) : (selectedCustomer.loyaltyPoints ?? 0) > 0 ? (
-                  <button
-                    onClick={onRedeemPoints}
-                    className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded hover:bg-amber-200 transition"
-                  >
-                    Redeem
-                  </button>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedCustomer.loyaltyPoints ?? 0}
+                      placeholder={`1 – ${selectedCustomer.loyaltyPoints ?? 0}`}
+                      value={redeemInput}
+                      onChange={e => setRedeemInput(e.target.value)}
+                      className="flex-1 border border-amber-300 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white"
+                    />
+                    <button
+                      onClick={() => {
+                        const pts = Math.min(
+                          Math.max(1, parseInt(redeemInput, 10) || 0),
+                          selectedCustomer.loyaltyPoints ?? 0,
+                          Math.floor(subtotal - discount),
+                        );
+                        if (pts > 0) { onRedeemPoints(pts); setRedeemInput(String(pts)); }
+                      }}
+                      className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded hover:bg-amber-200 transition whitespace-nowrap"
+                    >
+                      Redeem
+                    </button>
+                    <button
+                      onClick={() => {
+                        const max = Math.min(
+                          selectedCustomer.loyaltyPoints ?? 0,
+                          Math.floor(subtotal - discount),
+                        );
+                        setRedeemInput(String(max));
+                        onRedeemPoints(max);
+                      }}
+                      className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded hover:bg-amber-200 transition whitespace-nowrap"
+                    >
+                      All
+                    </button>
+                  </div>
                 ) : null}
               </div>
             )}

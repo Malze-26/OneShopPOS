@@ -39,6 +39,7 @@ export default function CheckoutModal({
   const [step, setStep] = useState<"pay" | "success">("pay");
   const [savedOffline, setSavedOffline] = useState(false);
   const [orderId, setOrderId] = useState(genId);
+  const [confirmedPointsEarned, setConfirmedPointsEarned] = useState(0);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const cashAmt = parseFloat(cash) || 0;
@@ -73,9 +74,10 @@ export default function CheckoutModal({
     if (isOnline) {
       try {
         const res = await api.post("/transactions", transactionData);
-        if (res.data?.data?.txnId) {
-          setOrderId(res.data.data.txnId);
-        }
+        const saved = res.data?.data;
+        if (saved?.txnId) setOrderId(saved.txnId);
+        // Use server-confirmed pointsEarned (computed on pre-loyalty subtotal)
+        if (typeof saved?.pointsEarned === 'number') setConfirmedPointsEarned(saved.pointsEarned);
         setSavedOffline(false);
       } catch {
         await savePendingTransaction(transactionData);
@@ -195,8 +197,14 @@ export default function CheckoutModal({
           
           ${state.discount > 0 ? `
           <div class="row">
-            <span>Discount (${state.discountCode})</span>
+            <span>Discount (${state.discountCode || "Promo"})</span>
             <span>−${fmt(state.discount)}</span>
+          </div>` : ""}
+
+          ${state.loyaltyDiscount > 0 ? `
+          <div class="row" style="color:#b45309;">
+            <span>⭐ Loyalty (${state.loyaltyPointsUsed} pts)</span>
+            <span>−${fmt(state.loyaltyDiscount)}</span>
           </div>` : ""}
         </div>
 
@@ -206,6 +214,14 @@ export default function CheckoutModal({
           <span>TOTAL</span>
           <span>${fmt(total)}</span>
         </div>
+
+        ${state.customer && state.customer._id !== "guest" && confirmedPointsEarned > 0 ? `
+        <div style="margin-bottom: 4px; font-size: 11px;">
+          <div class="row" style="color:#15803d; font-weight:bold;">
+            <span>⭐ Loyalty Points Earned</span>
+            <span>+${confirmedPointsEarned} pts</span>
+          </div>
+        </div>` : ""}
 
         ${method === "cash" ? `
         <div class="row" style="font-size: 12px;">
@@ -430,7 +446,17 @@ export default function CheckoutModal({
                 <div className="flex justify-between text-[#6B7280] mb-1"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
                 {state.discount > 0 && (
                   <div className="flex justify-between text-amber-600 mb-1 font-semibold">
-                    <span>Discount</span><span>−{fmt(state.discount)}</span>
+                    <span>Discount {state.discountCode ? `(${state.discountCode})` : ""}</span><span>−{fmt(state.discount)}</span>
+                  </div>
+                )}
+                {state.loyaltyDiscount > 0 && (
+                  <div className="flex justify-between text-amber-600 mb-1 font-semibold">
+                    <span>⭐ Loyalty ({state.loyaltyPointsUsed} pts)</span><span>−{fmt(state.loyaltyDiscount)}</span>
+                  </div>
+                )}
+                {state.customer && state.customer._id !== "guest" && confirmedPointsEarned > 0 && (
+                  <div className="flex justify-between text-emerald-600 font-semibold text-[11px] mb-1">
+                    <span>⭐ Loyalty Points Earned</span><span>+{confirmedPointsEarned} pts</span>
                   </div>
                 )}
                 <div
