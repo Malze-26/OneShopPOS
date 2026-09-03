@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { ChevronLeft, Printer } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface GRNItem {
   productName: string;
@@ -59,11 +60,7 @@ export default function GRNDetailPage() {
     );
   }
 
-  const dateStr = new Date(grn.createdAt).toLocaleDateString('en-CA', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateStr = formatStoreDate(grn.createdAt, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-CA');
 
   return (
     <>

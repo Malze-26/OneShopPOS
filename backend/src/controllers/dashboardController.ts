@@ -1,29 +1,28 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { lowStockFilter } from '../utils/stock';
+import { runEcomSync, txnToOrder, normalizeOnlineOrder } from './orderController';
+import { STORE_TZ_OFFSET, addDays, startOfStoreDay, endOfStoreDay, storeDateKey, formatStoreDate } from '../utils/timezone';
 
 function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
+  return { start: startOfStoreDay(), end: endOfStoreDay() };
 }
 
 function yesterdayRange() {
-  const start = new Date();
-  start.setDate(start.getDate() - 1);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
+  const yesterday = addDays(new Date(), -1);
+  return { start: startOfStoreDay(yesterday), end: endOfStoreDay(yesterday) };
 }
 
 // GET /api/dashboard/summary
 export async function getDashboardSummary(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, Order, Customer, Product, SupplierReturn } = req.models!;
+  const { Transaction, Order, Customer, Product } = req.models!;
   const today = todayRange();
   const yesterday = yesterdayRange();
+
+  // Best-effort: despatch any newly-arrived e-com orders (and their Stock
+  // History entries) before reading — dashboard is the first page any role
+  // hits after login, so this catches sales the Orders page hasn't yet.
+  try { await runEcomSync(req.models!); } catch { /* don't block reads on sync failure */ }
 
   // source: { $ne: 'physical' } matches ecom orders (no source field) and POS online orders
   const onlineFilter = { source: { $ne: 'physical' } };
@@ -38,7 +37,6 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
     pendingTxnCount,
     pendingOnlineCount,
     newCustomerCount,
-    todayReturnsAgg, yesterdayReturnsAgg,
   ] = await Promise.all([
     Transaction.aggregate([
       { $match: { status: 'success', createdAt: { $gte: today.start, $lte: today.end } } },
@@ -48,12 +46,15 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
       { $match: { status: 'success', createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
+    // Cancelled/refunded orders never became a sale, even if payment was
+    // captured before the cancellation — same rule getSalesTrend and
+    // getTopProducts already use, so all three agree on what counts.
     Order.aggregate([
-      { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', createdAt: { $gte: today.start, $lte: today.end } } },
+      { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', status: { $nin: ['cancelled', 'refunded'] }, createdAt: { $gte: today.start, $lte: today.end } } },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } } } },
     ]),
     Order.aggregate([
-      { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
+      { $match: { orderStatus: { $exists: true }, paymentStatus: 'paid', status: { $nin: ['cancelled', 'refunded'] }, createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } } } },
     ]),
     Transaction.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
@@ -72,28 +73,14 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
       createdAt: { $gte: today.start, $lte: today.end },
     }),
     Customer.countDocuments({ createdAt: { $gte: today.start, $lte: today.end } }),
-    // Expired/damaged stock sent back to suppliers is booked as a loss against
-    // the day's revenue the moment the return is saved.
-    SupplierReturn.aggregate([
-      { $match: { createdAt: { $gte: today.start, $lte: today.end } } },
-      { $group: { _id: null, total: { $sum: '$totalLossValue' } } },
-    ]),
-    SupplierReturn.aggregate([
-      { $match: { createdAt: { $gte: yesterday.start, $lte: yesterday.end } } },
-      { $group: { _id: null, total: { $sum: '$totalLossValue' } } },
-    ]),
   ]);
 
-  const todayGrossSales = (todaySalesAgg[0]?.total ?? 0) + (todayEcomSalesAgg[0]?.total ?? 0);
-  const yesterdayGrossSales = (yesterdaySalesAgg[0]?.total ?? 0) + (yesterdayEcomSalesAgg[0]?.total ?? 0);
-
-  const todayReturnsLoss = todayReturnsAgg[0]?.total ?? 0;
-  const yesterdayReturnsLoss = yesterdayReturnsAgg[0]?.total ?? 0;
-
-  // Headline revenue is net of supplier returns, so writing off expired or
-  // damaged stock moves the number on the next dashboard load.
-  const todaySales = todayGrossSales - todayReturnsLoss;
-  const yesterdaySales = yesterdayGrossSales - yesterdayReturnsLoss;
+  // Sales is revenue only — quantity sold × selling price, from customer
+  // transactions and orders. Supplier-side events (returns, allowances) are
+  // procurement/cost adjustments, not a change in what customers were sold,
+  // so they never touch this figure.
+  const todaySales = (todaySalesAgg[0]?.total ?? 0) + (todayEcomSalesAgg[0]?.total ?? 0);
+  const yesterdaySales = (yesterdaySalesAgg[0]?.total ?? 0) + (yesterdayEcomSalesAgg[0]?.total ?? 0);
 
   const salesChange = yesterdaySales !== 0
     ? Math.round(((todaySales - yesterdaySales) / Math.abs(yesterdaySales)) * 100)
@@ -108,8 +95,6 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
 
   res.json({
     todaySales,
-    todayGrossSales,
-    todayReturnsLoss,
     salesChange,
     todayOrders: todayOrderCount,
     ordersChange,
@@ -123,16 +108,14 @@ export async function getDashboardSummary(req: AuthRequest, res: Response): Prom
 // GET /api/dashboard/sales-trend
 export async function getSalesTrend(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { Transaction, Order, SupplierReturn } = req.models!;
+    const { Transaction, Order } = req.models!;
     const days = parseInt((req.query.days as string) ?? '7');
 
-    const since = new Date();
-    since.setDate(since.getDate() - (days - 1));
-    since.setHours(0, 0, 0, 0);
+    const since = startOfStoreDay(addDays(new Date(), -(days - 1)));
 
-    const dateGroup = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
+    const dateGroup = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: STORE_TZ_OFFSET } };
 
-    const [txnRaw, orderRaw, returnRaw] = await Promise.all([
+    const [txnRaw, orderRaw] = await Promise.all([
       Transaction.aggregate([
         { $match: { status: 'success', createdAt: { $gte: since } } },
         { $group: { _id: dateGroup, sales: { $sum: '$amount' } } },
@@ -141,28 +124,22 @@ export async function getSalesTrend(req: AuthRequest, res: Response): Promise<vo
         { $match: { status: { $nin: ['cancelled', 'refunded'] }, paymentStatus: 'paid', createdAt: { $gte: since } } },
         { $group: { _id: dateGroup, sales: { $sum: { $ifNull: ['$itemsPrice', { $ifNull: ['$subtotal', 0] }] } } } },
       ]),
-      SupplierReturn.aggregate([
-        { $match: { createdAt: { $gte: since } } },
-        { $group: { _id: dateGroup, loss: { $sum: '$totalLossValue' } } },
-      ]),
     ]);
 
+    // Sales is revenue from customer transactions/orders only — supplier
+    // returns and allowances are procurement adjustments and never net
+    // against it here.
     const byDay = new Map<string, number>();
     for (const r of [...txnRaw, ...orderRaw]) {
       byDay.set(r._id, (byDay.get(r._id) ?? 0) + r.sales);
     }
-    // Same netting as the summary card, so the trend line and the headline agree.
-    for (const r of returnRaw) {
-      byDay.set(r._id, (byDay.get(r._id) ?? 0) - r.loss);
-    }
 
     const trend = [];
     for (let i = days - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const d = addDays(new Date(), -i);
+      const key = storeDateKey(d);
       trend.push({
-        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: formatStoreDate(d, { month: 'short', day: 'numeric' }),
         sales: byDay.get(key) ?? 0,
       });
     }
@@ -333,60 +310,56 @@ export async function getPaymentMethods(req: AuthRequest, res: Response): Promis
   }
 }
 
-// GET /api/dashboard/employee-performance
+// GET /api/dashboard/employee-performance — despite the name, this is just
+// who's active today: employees whose account is active and who logged in
+// within today's store day. No revenue or transaction counts attached.
 export async function getEmployeePerformance(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction, User } = req.models!;
+  const { User } = req.models!;
   const today = todayRange();
 
-  const perf = await Transaction.aggregate([
-    { $match: { status: 'success', createdAt: { $gte: today.start, $lte: today.end } } },
-    {
-      $group: {
-        _id: '$createdBy',
-        revenue: { $sum: '$amount' },
-        transactions: { $sum: 1 },
-      },
-    },
-    { $sort: { revenue: -1 } },
-    { $limit: 10 },
-  ]);
-
-  const userIds = perf.map((p) => p._id).filter(Boolean);
-  const users = await User.find({ _id: { $in: userIds } }).select('name avatar').lean();
-  const userMap = new Map(users.map((u) => [String(u._id), u]));
-
-  const maxRevenue = perf[0]?.revenue ?? 1;
+  const users = await User.find({
+    isActive: true,
+    lastLogin: { $gte: today.start, $lte: today.end },
+  })
+    .select('name')
+    .sort({ lastLogin: -1 })
+    .lean();
 
   res.json({
-    data: perf.map((p) => {
-      const user = userMap.get(String(p._id));
-      const name = user?.name ?? 'Unknown';
+    data: users.map((u) => {
+      const name = u.name ?? 'Unknown';
       const initials = name
         .split(' ')
         .map((n: string) => n[0])
         .join('')
         .toUpperCase()
         .slice(0, 2);
-      return {
-        name,
-        avatar: initials,
-        revenue: p.revenue,
-        transactions: p.transactions,
-        performance: Math.round((p.revenue / maxRevenue) * 100),
-      };
+      return { name, avatar: initials };
     }),
   });
 }
 
-// GET /api/dashboard/recent-orders
+// GET /api/dashboard/recent-orders — the physical Transaction collection and
+// the online Order collection (both e-com-synced and native online orders),
+// merged and sorted by date so the widget reflects the whole business, not
+// just the till.
 export async function getRecentOrders(req: AuthRequest, res: Response): Promise<void> {
-  const { Transaction } = req.models!;
+  const { Transaction, Order } = req.models!;
   const limit = parseInt((req.query.limit as string) ?? '5');
 
-  const txns = await Transaction.find({})
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .lean();
+  try { await runEcomSync(req.models!); } catch { /* don't block reads on sync failure */ }
+
+  const [txns, onlineOrders] = await Promise.all([
+    Transaction.collection.find({}).sort({ createdAt: -1 }).limit(limit).toArray(),
+    Order.collection.find({}).sort({ createdAt: -1 }).limit(limit).toArray(),
+  ]);
+
+  const merged = [
+    ...txns.map((t) => txnToOrder(t as unknown as Record<string, unknown>)),
+    ...onlineOrders.map((d) => normalizeOnlineOrder(d as unknown as Record<string, unknown>)),
+  ]
+    .sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime())
+    .slice(0, limit);
 
   const now = new Date();
   const fmt = (d: Date) => {
@@ -398,21 +371,22 @@ export async function getRecentOrders(req: AuthRequest, res: Response): Promise<
     return `${Math.floor(hrs / 24)} day ago`;
   };
 
+  // Physical: 'success' | 'voided'. Online: 'pending' | 'confirmed' |
+  // 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'success'.
   const statusMap: Record<string, string> = {
     success: 'completed',
-    pending: 'pending',
-    refunded: 'refunded',
-    failed: 'cancelled',
+    delivered: 'completed',
     voided: 'cancelled',
   };
 
   res.json({
-    data: txns.map((t) => ({
-      id: t.txnId,
-      customer: t.customer ?? 'Walk-in',
-      amount: t.amount,
-      status: statusMap[t.status] ?? t.status,
-      time: fmt(new Date(t.createdAt as Date)),
+    data: merged.map((o) => ({
+      id: o.orderId,
+      customer: o.customerName ?? 'Walk-in',
+      amount: (o.total as number) ?? (o.subtotal as number) ?? 0,
+      source: o.source,
+      status: statusMap[o.status as string] ?? o.status,
+      time: fmt(new Date(o.createdAt as Date)),
     })),
   });
 }

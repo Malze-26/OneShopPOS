@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 
   useEffect(() => {
-    api.get<{ todaySales: number; todayGrossSales: number; todayReturnsLoss: number; salesChange: number | null; todayOrders: number; ordersChange: number | null; pendingOrders: number; totalCustomers: number; newCustomersToday: number; lowStockItems: number }>('/dashboard/summary')
+    api.get<{ todaySales: number; salesChange: number | null; todayOrders: number; ordersChange: number | null; pendingOrders: number; totalCustomers: number; newCustomersToday: number; lowStockItems: number }>('/dashboard/summary')
       .then(({ data }) => setSummary(data as unknown as Record<string, number>))
       .catch(() => {});
 
@@ -89,11 +89,7 @@ export default function DashboardPage() {
       value: fmt(summary.todaySales ?? 0),
       change: salesChange,
       changeColor: (summary.salesChange ?? 0) >= 0 ? '#12b76a' : '#f79009',
-      // Net of supplier returns — call the deduction out so the figure is not
-      // mistaken for gross takings on a day with write-offs.
-      subtext: (summary.todayReturnsLoss ?? 0) > 0
-        ? `vs yesterday · −${fmt(summary.todayReturnsLoss)} returns`
-        : 'vs yesterday',
+      subtext: 'vs yesterday',
       icon: DollarSign,
       iconBg: '#ecfdf3',
       iconColor: '#12b76a',
@@ -142,7 +138,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
         <TopProductsTable products={topProducts} />
-        <EmployeePerformanceList employees={employees} currency={currency} />
+        <EmployeePerformanceList employees={employees} />
         <RecentOrdersList orders={recentOrders} currency={currency} />
       </div>
     </div>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useFmt, useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -264,10 +265,8 @@ function OrdersPageInner() {
   const [page, setPage]           = useState(1);
   const PAGE_SIZE = 20;
 
-  // Auto-process any pending card/payhere e-com orders on first load
-  useEffect(() => {
-    api.post('/orders/sync').catch(() => { /* silent — non-critical */ });
-  }, []);
+  // Pending e-com orders are now auto-processed server-side on every
+  // GET /orders(/stats) and dashboard load, so no client-side kickoff is needed.
 
   const fetchStats = useCallback(async () => {
     try {
@@ -447,7 +446,7 @@ function OrdersPageInner() {
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {order.createdAt
-                          ? new Date(order.createdAt).toLocaleDateString(currencyLocale, { day: 'numeric', month: 'short', year: 'numeric' })
+                          ? formatStoreDate(order.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }, currencyLocale)
                           : '-'}
                       </span>
                     </td>

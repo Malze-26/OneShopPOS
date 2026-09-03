@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useFmt, useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ interface Order {
 
 function fmtDate(iso?: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatStoreDate(iso, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {

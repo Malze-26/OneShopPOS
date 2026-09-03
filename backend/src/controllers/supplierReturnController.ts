@@ -3,6 +3,7 @@ import { Model } from 'mongoose';
 import { AuthRequest } from '../types';
 import { ISupplierReturn, ReturnReason } from '../models/SupplierReturn';
 import { resolveSupplier } from '../utils/supplier';
+import { addDays, startOfStoreDay, endOfStoreDay } from '../utils/timezone';
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_LIMIT,
@@ -49,12 +50,8 @@ function parsePagination(page: unknown, limit: unknown): { pageNum: number; limi
 function buildDateFilter(from?: string, to?: string): Record<string, Date> | null {
   if (!from && !to) return null;
   const dateFilter: Record<string, Date> = {};
-  if (from) dateFilter.$gte = new Date(from);
-  if (to) {
-    const toDate = new Date(to);
-    toDate.setHours(23, 59, 59, 999);
-    dateFilter.$lte = toDate;
-  }
+  if (from) dateFilter.$gte = startOfStoreDay(new Date(from));
+  if (to) dateFilter.$lte = endOfStoreDay(new Date(to));
   return dateFilter;
 }
 
@@ -70,11 +67,9 @@ async function generateReturnNumber(SupplierReturn: Model<ISupplierReturn>): Pro
   return `${prefix}${String(next).padStart(RETURN_NUMBER_PAD_LENGTH, '0')}`;
 }
 
-/** Start of today — the cut-off an expiry date must fall before to count as expired. */
+/** Start of today, store-local (+05:30) — the cut-off an expiry date must fall before to count as expired. */
 function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return startOfStoreDay();
 }
 
 // ── GET /api/stocks/returns ────────────────────────────────────────────────
@@ -328,9 +323,7 @@ export async function getExpiringProducts(req: AuthRequest, res: Response, next:
     const status = req.query.status as string | undefined;
 
     const today = startOfToday();
-    const soonCutoff = new Date(today);
-    soonCutoff.setDate(soonCutoff.getDate() + days);
-    soonCutoff.setHours(23, 59, 59, 999);
+    const soonCutoff = endOfStoreDay(addDays(today, days));
 
     const expiryRange =
       status === 'expired' ? { $lt: today }
@@ -343,8 +336,7 @@ export async function getExpiringProducts(req: AuthRequest, res: Response, next:
       .lean();
 
     const data = products.map((p) => {
-      const expiry = new Date(p.expiryDate as Date);
-      expiry.setHours(0, 0, 0, 0);
+      const expiry = startOfStoreDay(new Date(p.expiryDate as Date));
       const daysLeft = Math.round((expiry.getTime() - today.getTime()) / 86400000);
       return {
         _id: p._id,

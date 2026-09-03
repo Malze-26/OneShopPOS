@@ -9,6 +9,7 @@ import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
 
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -87,7 +88,7 @@ export default function InventoryStatusPage() {
 
     doc.setFontSize(10);
     doc.setTextColor(74, 85, 101); // #4a5565
-    doc.text(`Date: ${data.dateRange || new Date().toLocaleDateString()}`, pageWidth / 2, 38, { align: 'center' });
+    doc.text(`Date: ${data.dateRange || formatStoreDate(new Date())}`, pageWidth / 2, 38, { align: 'center' });
 
     // Summary Section
     doc.setDrawColor(228, 231, 236); // #e4e7ec

@@ -64,7 +64,9 @@
       "Bash(node \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/ef9c841f-59b5-4c91-a3f2-ea301aa983b2/scratchpad/md2docx.js\" INVENTORY_TEST_CASES.md INVENTORY_TEST_CASES.docx)",
       "Bash(npx tsx *)",
       "Bash(cp \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/f3ac7103-58b7-4fc3-af00-e4fca3ff9cf1/scratchpad/diag-payments.ts\" ./diag-payments.ts)",
-      "Bash(cp \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/f3ac7103-58b7-4fc3-af00-e4fca3ff9cf1/scratchpad/verify-payments.ts\" ./verify-payments.ts)"
+      "Bash(cp \"C:/Users/ASUS/AppData/Local/Temp/claude/c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS/f3ac7103-58b7-4fc3-af00-e4fca3ff9cf1/scratchpad/verify-payments.ts\" ./verify-payments.ts)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\ASUS\\.claude\\projects\\c--Users-ASUS-Desktop-BACKUPS-Studies-ITM-aca-L2-Software-Project-OneShop-POS\\memory",

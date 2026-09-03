@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, Package as PackageIcon, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
@@ -21,6 +22,7 @@ interface Product {
   expiryDate: string | null;
   expiryStatus: 'expired' | 'expiring-soon' | 'fresh' | null;
   images: string[];
+  isWeightBased: boolean;
 }
 
 interface ProductTableProps {
@@ -180,14 +182,14 @@ export function ProductTable({ searchQuery, categoryFilter }: ProductTableProps)
                   </td>
                   <td className="px-6 py-4">
                     <span className={`${isLow ? 'text-amber-700' : 'text-gray-900'}`}>
-                      {product.stock} units
+                      {product.stock} {product.isWeightBased ? 'Kg' : 'units'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {product.expiryDate ? (
                       <div className="flex flex-col gap-1">
                         <span className="text-gray-900 text-sm">
-                          {new Date(product.expiryDate).toLocaleDateString('en-CA')}
+                          {formatStoreDate(product.expiryDate, undefined, 'en-CA')}
                         </span>
                         {product.expiryStatus && product.expiryStatus !== 'fresh' && (
                           <span className={`px-2 py-0.5 rounded text-xs w-fit ${expiryStyles[product.expiryStatus]}`}>

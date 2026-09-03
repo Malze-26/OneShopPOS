@@ -2,11 +2,12 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { buildDateFilter, getDateRangeLabel } from '../utils/dateRange';
 import { expiredExpr } from '../utils/stock';
+import { STORE_TZ_OFFSET, formatStoreDate, formatStoreTime } from '../utils/timezone';
 
 // ============= Sales Summary Report =============
 export const getSalesSummary = async (req: AuthRequest, res: Response) => {
   try {
-    const { Transaction, Order, SupplierReturn } = req.models!;
+    const { Transaction, Order } = req.models!;
     const { preset, startDate, endDate, channel } = req.query;
 
     const sourceFilter = channel === 'pos' ? 'physical' : channel === 'online' ? 'online' : null;
@@ -26,7 +27,6 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       posHourlyAgg, ecomHourlyAgg,
       posPaymentAgg, ecomPaymentAgg,
       posDailyAgg, ecomDailyAgg,
-      returnsAgg, returnsDailyAgg,
     ] = await Promise.all([
       // POS summary (Transaction collection)
       includePOS ? Transaction.aggregate([
@@ -58,14 +58,14 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       // POS hourly
       includePOS ? Transaction.aggregate([
         { $match: { ...dateFilter, status: 'success' } },
-        { $group: { _id: { $hour: '$createdAt' }, sales: { $sum: '$amount' } } },
+        { $group: { _id: { $hour: { date: '$createdAt', timezone: STORE_TZ_OFFSET } }, sales: { $sum: '$amount' } } },
         { $sort: { _id: 1 } },
       ]) : Promise.resolve([]),
 
       // E-com hourly
       includeEcom ? Order.aggregate([
         { $match: ecomMatch },
-        { $group: { _id: { $hour: '$createdAt' }, sales: { $sum: ecomAmountExpr } } },
+        { $group: { _id: { $hour: { date: '$createdAt', timezone: STORE_TZ_OFFSET } }, sales: { $sum: ecomAmountExpr } } },
         { $sort: { _id: 1 } },
       ]) : Promise.resolve([]),
 
@@ -86,7 +86,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         { $match: { ...dateFilter, status: 'success' } },
         {
           $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: STORE_TZ_OFFSET } },
             posSales: { $sum: '$amount' },
             discounts: { $sum: { $ifNull: ['$discount', 0] } },
             count: { $sum: 1 },
@@ -100,7 +100,7 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         { $match: ecomMatch },
         {
           $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: STORE_TZ_OFFSET } },
             onlineSales: { $sum: ecomAmountExpr },
             discounts: { $sum: { $ifNull: ['$discount', 0] } },
             count: { $sum: 1 },
@@ -108,30 +108,6 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         },
         { $sort: { _id: 1 } },
       ]) : Promise.resolve([]),
-
-      // Expired/damaged stock returned to suppliers over the same window. It is
-      // not tied to a sales channel, so it is counted whichever channel is shown.
-      SupplierReturn.aggregate([
-        { $match: { ...dateFilter } },
-        {
-          $group: {
-            _id: null,
-            lossValue: { $sum: '$totalLossValue' },
-            units: { $sum: '$totalItems' },
-            count: { $sum: 1 },
-          },
-        },
-      ]),
-      SupplierReturn.aggregate([
-        { $match: { ...dateFilter } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            lossValue: { $sum: '$totalLossValue' },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]),
     ]);
 
     // Merge summaries
@@ -143,16 +119,12 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
     const totalRefundCnt = posS.refundCount ?? 0;
     const totalTxnCount = posS.transactionCount + ecomS.transactionCount;
     const totalDiscounts = (posS.discounts ?? 0) + (ecomS.discounts ?? 0);
-    const returnsS = returnsAgg[0] ?? { lossValue: 0, units: 0, count: 0 };
-    const supplierReturnLoss = returnsS.lossValue ?? 0;
 
-    // Supplier returns reduce net sales alongside refunds and discounts.
-    const netSales = totalGross - totalRefund - totalDiscounts - supplierReturnLoss;
+    // Sales is revenue from what customers bought. Refunds and discounts are
+    // adjustments to that same sale, so they net against it; supplier returns
+    // are a procurement-side event and never do.
+    const netSales = totalGross - totalRefund - totalDiscounts;
     const avgOrder = totalTxnCount > 0 ? Math.round(totalGross / totalTxnCount) : 0;
-
-    const returnLossByDay = new Map<string, number>(
-      returnsDailyAgg.map((r) => [r._id as string, r.lossValue as number])
-    );
 
     // Merge hourly — fill hours 0–23
     const hourMap = new Map<number, number>();
@@ -189,28 +161,21 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
       dayMap.set(d._id, { ...prev, onlineSales: prev.onlineSales + (d.onlineSales ?? 0), discounts: prev.discounts + (d.discounts ?? 0), count: prev.count + (d.count ?? 0) });
     }
 
-    // Days with returns but no sales still belong in the breakdown — otherwise a
-    // write-off on a quiet day silently disappears from the table.
-    for (const dateStr of returnLossByDay.keys()) {
-      if (!dayMap.has(dateStr)) {
-        dayMap.set(dateStr, { posSales: 0, onlineSales: 0, discounts: 0, count: 0 });
-      }
-    }
-
     const salesBreakdown = Array.from(dayMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([dateStr, d]) => {
         const grossSales = d.posSales + d.onlineSales;
-        const supplierReturns = returnLossByDay.get(dateStr) ?? 0;
         return {
-          date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          // dateStr is already a store-local 'YYYY-MM-DD' key (from the +05:30
+          // $dateToString above) — format with timeZone: 'UTC' so the label
+          // isn't re-shifted by whatever timezone the server process is in.
+          date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }),
           posSales: d.posSales,
           onlineSales: d.onlineSales,
           discounts: d.discounts,
           tax: 0,
           grossSales,
-          supplierReturns,
-          netSales: grossSales - d.discounts - supplierReturns,
+          netSales: grossSales - d.discounts,
           count: d.count,
         };
       });
@@ -228,9 +193,6 @@ export const getSalesSummary = async (req: AuthRequest, res: Response) => {
         discounts: totalDiscounts,
         refundsCount: totalRefundCnt,
         refundTotal: totalRefund,
-        supplierReturnLoss,
-        supplierReturnUnits: returnsS.units ?? 0,
-        supplierReturnCount: returnsS.count ?? 0,
         netSales,
         transactionCount: totalTxnCount,
         avgOrderValue: avgOrder,
@@ -529,7 +491,7 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
     const cashSales = payMap.get('Cash')?.amount ?? 0;
     const openingFloat = 0;
 
-    const generatedAt = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const generatedAt = formatStoreTime(new Date(), { hour: '2-digit', minute: '2-digit', hour12: true });
 
     res.json({
       dateRange: dateLabel,

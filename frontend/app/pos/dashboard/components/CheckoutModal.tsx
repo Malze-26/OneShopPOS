@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import api from "@/app/lib/api";
 import { savePendingTransaction } from "@/app/lib/offlineDB";
 import { fmt, genId } from "../constants/pos";
+import { formatStoreDate, formatStoreTime } from "@/app/lib/timezone";
 
 interface CheckoutState {
   items: { id: string; name: string; sku: string; price: number; qty: number; unit: string }[];
@@ -89,12 +90,8 @@ export default function CheckoutModal({
     if (!printWindow) return;
 
     const now = new Date();
-    const dateStr = now.toLocaleDateString("en-LK", {
-      day: "2-digit", month: "short", year: "numeric",
-    });
-    const timeStr = now.toLocaleTimeString("en-LK", {
-      hour: "2-digit", minute: "2-digit",
-    });
+    const dateStr = formatStoreDate(now, { day: "2-digit", month: "short", year: "numeric" }, "en-LK");
+    const timeStr = formatStoreTime(now, { hour: "2-digit", minute: "2-digit" }, "en-LK");
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -413,7 +410,7 @@ export default function CheckoutModal({
                 )}
               </div>
               <div className="text-center text-[10px] text-[#9CA3AF] mt-3">
-                {new Date().toLocaleDateString("en-LK", { day: "2-digit", month: "short", year: "numeric" })} · {methodLabel}
+                {formatStoreDate(new Date(), { day: "2-digit", month: "short", year: "numeric" }, "en-LK")} · {methodLabel}
               </div>
             </div>
 

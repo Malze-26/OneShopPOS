@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Plus, Search, X, ChevronLeft, ChevronRight, Building2, CheckCircle, XCircle, Tag } from 'lucide-react';
 import api from '@/app/lib/api';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface Supplier {
   _id: string;
@@ -483,7 +484,7 @@ function SuppliersPageInner() {
               )}
 
               <p className="text-xs text-[#9aa3ae] mt-6">
-                Added {new Date(slideOver.createdAt).toLocaleDateString('en-CA')}
+                Added {formatStoreDate(slideOver.createdAt, undefined, 'en-CA')}
               </p>
             </div>
             <div className="px-6 py-4 border-t border-[#e4e7ec] flex gap-3">

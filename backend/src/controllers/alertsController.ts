@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { EXPIRY_SOON_DAYS } from '../constants';
 import { lowStockFilter } from '../utils/stock';
+import { addDays, startOfStoreDay, endOfStoreDay, storeDateKey } from '../utils/timezone';
 
 // GET /api/alerts/low-stock
 export async function getLowStockAlerts(req: AuthRequest, res: Response): Promise<void> {
@@ -56,11 +57,8 @@ export async function getExpiryAlerts(req: AuthRequest, res: Response): Promise<
   const { Product } = req.models!;
   const days = Math.max(0, parseInt((req.query.days as string) ?? '', 10) || EXPIRY_SOON_DAYS);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const cutoff = new Date(today);
-  cutoff.setDate(cutoff.getDate() + days);
-  cutoff.setHours(23, 59, 59, 999);
+  const today = startOfStoreDay();
+  const cutoff = endOfStoreDay(addDays(today, days));
 
   const products = await Product.find({ stock: { $gt: 0 }, expiryDate: { $ne: null, $lte: cutoff } })
     .select('name sku category stock costPrice expiryDate')
@@ -70,8 +68,7 @@ export async function getExpiryAlerts(req: AuthRequest, res: Response): Promise<
 
   res.json({
     data: products.map((p) => {
-      const expiry = new Date(p.expiryDate as Date);
-      expiry.setHours(0, 0, 0, 0);
+      const expiry = startOfStoreDay(new Date(p.expiryDate as Date));
       const daysLeft = Math.round((expiry.getTime() - today.getTime()) / 86400000);
       return {
         id: p._id,
@@ -93,8 +90,7 @@ export async function getNoSalesAlerts(req: AuthRequest, res: Response): Promise
   const { Product, Order } = req.models!;
   const days = parseInt((req.query.days as string) ?? '7');
 
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = startOfStoreDay(addDays(new Date(), -days));
 
   // product IDs sold recently
   const recentlySold = await Order.aggregate([
@@ -146,7 +142,7 @@ export async function getInactiveStaffAlerts(req: AuthRequest, res: Response): P
         id: u._id,
         name: u.name,
         role: u.role,
-        lastLogin: last ? last.toISOString().slice(0, 10) : 'Never',
+        lastLogin: last ? storeDateKey(last) : 'Never',
         daysInactive: daysInactive ?? 0,
       };
     }),

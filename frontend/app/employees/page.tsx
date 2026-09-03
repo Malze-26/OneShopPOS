@@ -12,8 +12,6 @@ interface Employee {
   role: string;
   email: string;
   phone: string;
-  revenue: number;
-  transactions: number;
   lastActive: string;
   status: 'active' | 'inactive';
 }
@@ -310,7 +308,7 @@ export default function EmployeesPage() {
             <table className="w-full">
               <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
                 <tr>
-                  {['Employee', 'Role', 'Contact', 'Revenue', 'Transactions', 'Last Active', 'Status', 'Actions'].map((col) => (
+                  {['Employee', 'Role', 'Contact', 'Last Active', 'Status', 'Actions'].map((col) => (
                     <th key={col} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">{col}</th>
                   ))}
                 </tr>
@@ -338,8 +336,6 @@ export default function EmployeesPage() {
                       <div className="text-sm text-[#101828]">{emp.email}</div>
                       <div className="text-xs text-[#4a5565]">{emp.phone}</div>
                     </td>
-                    <td className="px-5 py-4 text-sm font-semibold text-[#101828]">LKR {emp.revenue.toLocaleString()}</td>
-                    <td className="px-5 py-4 text-sm text-[#101828]">{emp.transactions}</td>
                     <td className="px-5 py-4 text-sm text-[#4a5565]">{emp.lastActive}</td>
                     <td className="px-5 py-4">
                       <span className="inline-block px-2 py-1 rounded-full text-xs font-medium"

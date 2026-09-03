@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, Undo2 } from 'lucide-react';
 import api from '@/app/lib/api';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface GRNRecord {
   _id: string;
@@ -162,7 +163,7 @@ export default function StocksPage() {
                     <tr key={grn._id} className="hover:bg-[#f9fafb] transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-[var(--color-primary)]">{grn.grnNumber}</td>
                       <td className="px-6 py-4 text-sm text-[#101828] whitespace-nowrap">
-                        {new Date(grn.createdAt).toLocaleDateString('en-CA')}
+                        {formatStoreDate(grn.createdAt, undefined, 'en-CA')}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#101828]">{grn.supplier || <span className="text-[#4a5565]">—</span>}</td>
                       <td className="px-6 py-4 text-sm text-[#4a5565]">{grn.referenceNumber || '—'}</td>
@@ -244,7 +245,7 @@ export default function StocksPage() {
                   movements.map((mov) => (
                     <tr key={mov._id} className="hover:bg-[#f9fafb] transition-colors">
                       <td className="px-6 py-4 text-sm text-[#101828] whitespace-nowrap">
-                        {new Date(mov.createdAt).toLocaleDateString('en-CA')}
+                        {formatStoreDate(mov.createdAt, undefined, 'en-CA')}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#101828]">
                         {mov.product ? (

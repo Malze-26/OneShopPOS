@@ -42,22 +42,21 @@ export interface TopProduct {
 }
 
 /** A row in the employee performance list. */
+/** An employee who has logged in today — name only, no performance metrics. */
 export interface EmployeePerf {
   name: string;
   avatar: string;
-  revenue: number;
-  transactions: number;
-  /** Performance score 0–100, used to size the background bar. */
-  performance: number;
 }
 
-export type OrderStatus = 'completed' | 'pending' | 'refunded';
+export type OrderStatus =
+  | 'completed' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'cancelled' | 'refunded';
 
-/** A row in the recent orders list. */
+/** A row in the recent orders list — pulled from both the physical till and the online store. */
 export interface RecentOrder {
   id: string;
   customer: string;
   amount: number;
+  source: 'physical' | 'online';
   status: OrderStatus;
   time: string;
 }

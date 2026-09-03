@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, ChevronLeft, Search } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, Search, Upload, Download, AlertCircle, X, Sparkles } from 'lucide-react';
 import api from '@/app/lib/api';
 
 interface Product {
@@ -45,6 +45,59 @@ function newLine(): LineItem {
   };
 }
 
+// GRN lines receive stock for products that already exist in the catalog —
+// unlike the product CSV import, this one never creates a product, so the
+// only columns needed are which SKU and how much/at what cost.
+const GRN_TEMPLATE_CSV = [
+  'sku,quantity_received,cost_price',
+  'BEV-001,50,130',
+  'SNK-003,24,180',
+].join('\n');
+
+interface ParsedGRNRow {
+  row: number;
+  sku: string;
+  quantityReceived: number;
+  costPrice: number | null;
+}
+
+function parseGRNCSV(text: string): ParsedGRNRow[] {
+  const lines = text.trim().split('\n').filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const get = (values: string[], ...keys: string[]) => {
+    for (const key of keys) {
+      const i = headers.indexOf(key);
+      if (i !== -1) return values[i] ?? '';
+    }
+    return '';
+  };
+
+  return lines.slice(1).map((line, i) => {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (const char of line) {
+      if (char === '"') { inQuotes = !inQuotes; continue; }
+      if (char === ',' && !inQuotes) { values.push(current.trim()); current = ''; continue; }
+      current += char;
+    }
+    values.push(current.trim());
+
+    const sku = get(values, 'sku', 'product_sku');
+    const qtyRaw = get(values, 'quantity_received', 'quantity', 'qty');
+    const costRaw = get(values, 'cost_price', 'cost');
+
+    return {
+      row: i + 2, // +1 for header, +1 for 1-based row numbering
+      sku,
+      quantityReceived: parseInt(qtyRaw) || 0,
+      costPrice: costRaw ? parseFloat(costRaw) || 0 : null,
+    };
+  });
+}
+
 export default function ReceiveGoodsPage() {
   const router = useRouter();
 
@@ -56,11 +109,30 @@ export default function ReceiveGoodsPage() {
   useEffect(() => {
     api.get('/suppliers').then((r) => setSuppliers(r.data.data)).catch(() => {});
   }, []);
+
   const [referenceNumber, setReferenceNumber] = useState('');
+  const [referenceLoading, setReferenceLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<LineItem[]>([newLine()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchNextReference = useCallback(async () => {
+    setReferenceLoading(true);
+    try {
+      const res = await api.get('/stocks/grns/next-reference');
+      setReferenceNumber(res.data.data.referenceNumber);
+    } catch {
+      // silent — the real number is still assigned server-side on save
+    } finally {
+      setReferenceLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchNextReference(); }, [fetchNextReference]);
 
   // Search debounce per line
   const searchProducts = useCallback(async (query: string): Promise<Product[]> => {
@@ -72,6 +144,68 @@ export default function ReceiveGoodsPage() {
       return [];
     }
   }, []);
+
+  // Looks up one SKU against the catalog — the search endpoint matches
+  // substrings, so an exact (case-insensitive) match is picked out of the
+  // results rather than trusting the first hit.
+  const findBySku = useCallback(async (sku: string): Promise<Product | null> => {
+    try {
+      const res = await api.get('/products', { params: { search: sku } });
+      const results = res.data.data as Product[];
+      return results.find((p) => p.sku.toLowerCase() === sku.toLowerCase()) ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const handleCSVFile = useCallback(async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setImportErrors(['Please upload a CSV file (.csv)']);
+      return;
+    }
+
+    const text = await file.text();
+    const parsedRows = parseGRNCSV(text);
+    if (parsedRows.length === 0) {
+      setImportErrors(['The file appears to be empty or has no data rows.']);
+      return;
+    }
+
+    setImporting(true);
+    setImportErrors([]);
+    try {
+      const resolved = await Promise.all(
+        parsedRows.map(async (row) => {
+          if (!row.sku) return { row, error: 'Missing SKU' };
+          if (row.quantityReceived <= 0) return { row, error: 'Quantity received must be greater than 0' };
+          const product = await findBySku(row.sku);
+          if (!product) return { row, error: `SKU "${row.sku}" was not found in the catalog` };
+          return { row, product };
+        })
+      );
+
+      const errors = resolved
+        .filter((r): r is { row: ParsedGRNRow; error: string } => 'error' in r)
+        .map((r) => `Row ${r.row.row}: ${r.error}`);
+
+      const newLines = resolved
+        .filter((r): r is { row: ParsedGRNRow; product: Product } => 'product' in r)
+        .map(({ row, product }) => ({
+          id: uid(),
+          product,
+          productSearch: `${product.name} (${product.sku})`,
+          showDropdown: false,
+          searchResults: [],
+          quantityReceived: row.quantityReceived,
+          costPrice: row.costPrice ?? product.costPrice,
+        }));
+
+      setImportErrors(errors);
+      if (newLines.length > 0) setLines(newLines);
+    } finally {
+      setImporting(false);
+    }
+  }, [findBySku]);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -110,6 +244,16 @@ export default function ReceiveGoodsPage() {
     setLines((prev) => [...prev, newLine()]);
   }
 
+  function handleDownloadTemplate() {
+    const blob = new Blob([GRN_TEMPLATE_CSV], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'grn_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function removeLine(idx: number) {
     setLines((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -135,7 +279,6 @@ export default function ReceiveGoodsPage() {
     try {
       const res = await api.post('/stocks/grns', {
         supplierId: supplier,
-        referenceNumber,
         notes,
         items: validLines.map((l) => ({
           productId: l.product!._id,
@@ -185,13 +328,24 @@ export default function ReceiveGoodsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Reference / PO Number</label>
-              <input
-                type="text"
-                value={referenceNumber}
-                onChange={(e) => setReferenceNumber(e.target.value)}
-                placeholder="e.g. PO-2025-0042"
-                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={referenceLoading ? 'Generating…' : referenceNumber}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-[#e4e7ec] bg-[#f9fafb] rounded-lg text-sm text-[#101828] font-mono tracking-wide focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={fetchNextReference}
+                  disabled={referenceLoading}
+                  title="Get the next PO number"
+                  className="p-2 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg transition-colors disabled:opacity-40"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-[#4a5565] mt-1">Auto-generated — guaranteed unique</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Notes</label>
@@ -210,14 +364,62 @@ export default function ReceiveGoodsPage() {
         <div className="bg-white rounded-xl shadow-sm border border-[#e4e7ec] overflow-hidden">
           <div className="px-6 py-4 border-b border-[#e4e7ec] flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#101828]">Products Received</h2>
-            <button
-              type="button"
-              onClick={addLine}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-xs font-medium transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Row
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[#4a5565] hover:bg-[#f9fafb] rounded-lg text-xs font-medium transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Template
+              </button>
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                disabled={importing}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" /> {importing ? 'Importing...' : 'Import CSV'}
+              </button>
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleCSVFile(f);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                onClick={addLine}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#e4e7ec] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-xs font-medium transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Row
+              </button>
+            </div>
           </div>
+
+          {importErrors.length > 0 && (
+            <div className="px-6 py-3 bg-[#fef3f2] border-b border-[#fecdca]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#f04438] mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-[#7a271a] space-y-0.5">
+                    {importErrors.map((msg, i) => <p key={i}>{msg}</p>)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImportErrors([])}
+                  className="text-[#7a271a] hover:opacity-70 flex-shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full">

@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Package, TrendingDown, UserX, ChevronRight, CalendarClock } from 'lucide-react';
+import { AlertTriangle, Package, PackageX, TrendingDown, UserX, ChevronRight, CalendarClock } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useFmt } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface LowStockAlert {
+  _id: string; name: string; sku: string; stock: number; lowStockThreshold: number; category: string;
+}
+interface OutOfStockAlert {
   _id: string; name: string; sku: string; stock: number; lowStockThreshold: number; category: string;
 }
 interface NoSalesAlert {
@@ -29,12 +33,39 @@ function expiryLabel(daysLeft: number) {
 }
 
 function formatExpiryDate(value: string) {
-  return new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatStoreDate(value, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function StatCard({
+  id, icon: Icon, label, value, sub, accent,
+}: {
+  id: string; icon: typeof AlertTriangle; label: string; value: number; sub?: string; accent: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => scrollToSection(id)}
+      className="text-left bg-white rounded-xl p-4 shadow-sm border-l-4 border border-[#e4e7ec] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+      style={{ borderLeftColor: accent }}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className="w-4 h-4" style={{ color: accent }} />
+        <p className="text-xs text-[#4a5565] font-semibold">{label}</p>
+      </div>
+      <h3 className="text-2xl font-bold" style={{ color: accent }}>{value}</h3>
+      {sub && <p className="text-xs text-[#4a5565] mt-1">{sub}</p>}
+    </button>
+  );
 }
 
 export default function AlertsPage() {
   const fmt = useFmt();
   const [lowStock, setLowStock]         = useState<LowStockAlert[]>([]);
+  const [outOfStock, setOutOfStock]     = useState<OutOfStockAlert[]>([]);
   const [expiring, setExpiring]         = useState<ExpiryAlert[]>([]);
   const [noSales, setNoSales]           = useState<NoSalesAlert[]>([]);
   const [inactiveStaff, setInactiveStaff] = useState<InactiveStaff[]>([]);
@@ -43,6 +74,7 @@ export default function AlertsPage() {
   useEffect(() => {
     Promise.all([
       api.get<{ data: LowStockAlert[] }>('/alerts/low-stock').then(r => setLowStock(r.data.data)).catch(() => {}),
+      api.get<{ data: OutOfStockAlert[] }>('/alerts/out-of-stock').then(r => setOutOfStock(r.data.data)).catch(() => {}),
       api.get<{ data: ExpiryAlert[] }>('/alerts/expiry').then(r => setExpiring(r.data.data)).catch(() => {}),
       api.get<{ data: NoSalesAlert[] }>('/alerts/no-sales').then(r => setNoSales(r.data.data)).catch(() => {}),
       api.get<{ data: InactiveStaff[] }>('/alerts/inactive-staff').then(r => setInactiveStaff(r.data.data)).catch(() => {}),
@@ -66,41 +98,72 @@ export default function AlertsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec]">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-[#f04438]" />
-            <p className="text-xs text-[#4a5565] font-semibold">Low Stock</p>
-          </div>
-          <h3 className="text-2xl font-bold text-[#f04438]">{lowStock.length}</h3>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec]">
-          <div className="flex items-center gap-2 mb-1">
-            <CalendarClock className="w-4 h-4 text-[#f79009]" />
-            <p className="text-xs text-[#4a5565] font-semibold">Expiring Soon</p>
-          </div>
-          <h3 className="text-2xl font-bold text-[#f79009]">{expiring.length}</h3>
-          <p className="text-xs text-[#4a5565] mt-1">{fmt(totalAtRisk)} at risk</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec]">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingDown className="w-4 h-4 text-[#f79009]" />
-            <p className="text-xs text-[#4a5565] font-semibold">No Sales</p>
-          </div>
-          <h3 className="text-2xl font-bold text-[#f79009]">{noSales.length}</h3>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec]">
-          <div className="flex items-center gap-2 mb-1">
-            <UserX className="w-4 h-4 text-[#f79009]" />
-            <p className="text-xs text-[#4a5565] font-semibold">Inactive Employees</p>
-          </div>
-          <h3 className="text-2xl font-bold text-[#f79009]">{inactiveStaff.length}</h3>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <StatCard id="out-of-stock-section" icon={PackageX} label="Out of Stock" value={outOfStock.length} accent="#f04438" />
+        <StatCard id="low-stock-section" icon={AlertTriangle} label="Low Stock" value={lowStock.length} accent="#f04438" />
+        <StatCard
+          id="expiring-section"
+          icon={CalendarClock}
+          label="Expiring Soon"
+          value={expiring.length}
+          sub={`${fmt(totalAtRisk)} at risk`}
+          accent="#f79009"
+        />
+        <StatCard id="no-sales-section" icon={TrendingDown} label="No Sales" value={noSales.length} accent="#f79009" />
+        <StatCard id="inactive-staff-section" icon={UserX} label="Inactive Employees" value={inactiveStaff.length} accent="#f79009" />
       </div>
 
       <div className="space-y-6">
+        {/* Out of Stock */}
+        <div id="out-of-stock-section" className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec] overflow-hidden scroll-mt-6">
+          <div className="px-5 py-4 bg-[#fef3f2] border-b border-[#e4e7ec] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PackageX className="w-5 h-5 text-[#f04438]" />
+              <h2 className="text-base font-semibold text-[#101828]">Out of Stock Alerts</h2>
+              <span className="px-2 py-0.5 bg-[#f04438] text-white text-xs font-medium rounded-full">
+                {outOfStock.length}
+              </span>
+            </div>
+            <Link href="/stocks" className="text-sm text-[var(--color-primary)] hover:underline font-medium">
+              View All
+            </Link>
+          </div>
+          <div className="p-5 space-y-3">
+            {outOfStock.length === 0 ? (
+              <p className="text-sm text-[#4a5565] text-center py-4">No out of stock items</p>
+            ) : (
+              outOfStock.map((item) => (
+                <div key={item._id} className="p-4 bg-[#fef3f2] border border-[#f04438]/20 rounded-lg flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <PackageX className="w-4 h-4 text-[#f04438]" />
+                      <div className="text-sm font-medium text-[#101828]">{item.name}</div>
+                      <span className="text-xs text-[#4a5565]">({item.sku})</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <span className="text-[#4a5565]">
+                        Current: <span className="font-semibold text-[#f04438]">{item.stock}</span>
+                      </span>
+                      <span className="text-[#4a5565]">
+                        Threshold: <span className="font-semibold text-[#101828]">{item.lowStockThreshold}</span>
+                      </span>
+                      <span className="px-2 py-0.5 bg-[#f9fafb] text-[#4a5565] rounded text-xs">{item.category}</span>
+                    </div>
+                  </div>
+                  <Link
+                    href="/stocks"
+                    className="ml-4 px-4 py-2 border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                  >
+                    Restock
+                  </Link>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Low Stock */}
-        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec] overflow-hidden">
+        <div id="low-stock-section" className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f04438] border border-[#e4e7ec] overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 bg-[#fef3f2] border-b border-[#e4e7ec] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-[#f04438]" />
@@ -148,7 +211,7 @@ export default function AlertsPage() {
         </div>
 
         {/* Expiring Soon */}
-        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec] overflow-hidden">
+        <div id="expiring-section" className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec] overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 bg-[#fffaeb] border-b border-[#e4e7ec] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-[#f79009]" />
@@ -220,7 +283,7 @@ export default function AlertsPage() {
         </div>
 
         {/* No Sales */}
-        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec] overflow-hidden">
+        <div id="no-sales-section" className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec] overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 bg-[#fffaeb] border-b border-[#e4e7ec] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-[#f79009]" />
@@ -260,7 +323,7 @@ export default function AlertsPage() {
         </div>
 
         {/* Inactive Cashiers */}
-        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec] overflow-hidden">
+        <div id="inactive-staff-section" className="bg-white rounded-xl shadow-sm border-l-4 border-l-[#f79009] border border-[#e4e7ec] overflow-hidden scroll-mt-6">
           <div className="px-5 py-4 bg-[#fffaeb] border-b border-[#e4e7ec] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <UserX className="w-5 h-5 text-[#f79009]" />

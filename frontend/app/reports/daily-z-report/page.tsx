@@ -7,6 +7,7 @@ import { ReportsTabs } from '../../components/ReportsTabs';
 import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface ShiftInfo {
   storeName: string; storeId: string; register: string;
@@ -92,7 +93,7 @@ export default function DailyZReportPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
                   OPEN (Shift in progress)
                 </span>
-                <span className="text-[11px] font-medium text-[#667085]">Generated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, {data.generatedAt || '--:--'}</span>
+                <span className="text-[11px] font-medium text-[#667085]">Generated: {formatStoreDate(new Date(), { month: 'short', day: 'numeric', year: 'numeric' })}, {data.generatedAt || '--:--'}</span>
               </div>
             </div>
             <button 

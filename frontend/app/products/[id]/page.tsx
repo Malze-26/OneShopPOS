@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Edit, ArrowLeftRight, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 const SERVER_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
@@ -286,7 +287,7 @@ export default function ProductDetailPage() {
                 pagedHistory.map((record) => (
                   <tr key={record._id} className="hover:bg-[#f9fafb] transition-colors">
                     <td className="px-6 py-4 text-sm text-[#101828]">
-                      {new Date(record.createdAt).toLocaleDateString('en-CA')}
+                      {formatStoreDate(record.createdAt, undefined, 'en-CA')}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${record.type === 'add' ? 'bg-[#ecfdf3] text-[#12b76a]' : 'bg-[#fef3f2] text-[#f04438]'}`}>

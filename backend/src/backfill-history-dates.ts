@@ -24,6 +24,10 @@
  *   npm run backfill:history-dates -- --tenant oneshop_open_door
  */
 import 'dotenv/config';
+import dns from 'dns';
+// Matches src/index.ts: this environment's default resolver can't reach the
+// SRV record for the Atlas hostname, so DNS-over-Google is used instead.
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 import mongoose from 'mongoose';
 import { getModels } from './db/tenantModels';
 

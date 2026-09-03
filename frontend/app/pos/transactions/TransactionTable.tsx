@@ -1,5 +1,6 @@
 import React from "react";
 import { Transaction } from "./types";
+import { formatStoreDate, formatStoreTime } from "@/app/lib/timezone";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -186,12 +187,12 @@ export default function TransactionTable({
             >
               {/* Date */}
               <div className="text-[13px] text-[#6B7280] font-medium">
-                {new Date(t.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
+                {formatStoreDate(t.createdAt, { day: "2-digit", month: "short", year: "numeric" })}
               </div>
 
               {/* Time */}
               <div className="text-[13px] text-[#6B7280] font-medium">
-                {new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {formatStoreTime(t.createdAt, { hour: "2-digit", minute: "2-digit" })}
               </div>
 
               {/* Transaction # */}
