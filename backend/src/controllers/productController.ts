@@ -347,7 +347,6 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
 
     const changes: Record<string, unknown> = {
       name, description, sellingPrice, costPrice, stock, lowStockThreshold,
-      isWeightBased, unit,
       category: resolvedCategory,
       supplierId: resolvedSupplier?._id,
       supplier: resolvedSupplier?.name,
