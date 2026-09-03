@@ -221,7 +221,7 @@ function OrderModal({ order, onClose, onStatusChange, onDeliver }: {
           </div>
 
           {/* Update Status — only for online orders in processing state */}
-          {!isPhysical && !isDone && order.status === 'processing' && (
+          {!isPhysical && !isDone && order.status === 'processing' && ['cash-on-delivery', 'payhere'].includes((order.paymentMethod ?? '').toLowerCase()) && (
             <div>
               <h3 className="text-sm font-semibold text-[#101828] mb-2">Update Status</h3>
               <button
@@ -332,11 +332,10 @@ function OrdersPageInner() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <StatCard label="Total Orders" value={stats.total}    icon={ShoppingBag} color="bg-[var(--color-primary-light)] text-[var(--color-primary)]" />
           <StatCard label="Physical"     value={stats.physical} icon={Store}       color="bg-[#e8f5e9] text-[#12b76a]" sub="In-store" />
           <StatCard label="Online"       value={stats.online}   icon={Globe}       color="bg-[#f3e8ff] text-[#7f56d9]" sub="Website" />
-          <StatCard label="Pending"      value={stats.pending}  icon={Clock}       color="bg-[#fff8e1] text-[#f59e0b]" sub="Needs attention" />
         </div>
       )}
 
@@ -405,10 +404,11 @@ function OrdersPageInner() {
                 const StatusIcon = cfg.icon;
                 const payColor   = PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR['pending'];
                 const isPhysical = order.source === 'physical';
-                // Confirm button only for online COD orders in processing state
+                // Confirm button for online COD and PayHere orders in processing state
+                const pm = order.paymentMethod?.toLowerCase() ?? '';
                 const canDeliver = !isPhysical
                   && order.status === 'processing'
-                  && order.paymentMethod?.toLowerCase() === 'cash-on-delivery';
+                  && (pm === 'cash-on-delivery' || pm === 'payhere');
 
                 return (
                   <tr key={order._id} className="hover:bg-[#f9fafb] transition-colors">
@@ -455,8 +455,8 @@ function OrdersPageInner() {
                         {canDeliver && (
                           <button
                             onClick={() => {
-                              const isCOD = order.paymentMethod?.toLowerCase() === 'cash-on-delivery';
-                              isCOD ? handleConfirm(order._id) : handleStatusChange(order._id, 'delivered');
+                              const isCODorPayHere = ['cash-on-delivery', 'payhere'].includes(order.paymentMethod?.toLowerCase() ?? '');
+                              isCODorPayHere ? handleConfirm(order._id) : handleStatusChange(order._id, 'delivered');
                             }}
                             disabled={confirming.has(order._id)}
                             className="flex items-center gap-1 px-2.5 py-1.5 text-[#12b76a] hover:bg-[#e8f5e9] rounded-lg transition-colors text-xs font-medium disabled:opacity-50"
@@ -511,8 +511,8 @@ function OrdersPageInner() {
           onClose={() => setSelected(null)}
           onStatusChange={handleStatusChange}
           onDeliver={(id) => {
-            const isCOD = selected.paymentMethod?.toLowerCase() === 'cash-on-delivery';
-            isCOD ? handleConfirm(id) : handleStatusChange(id, 'delivered');
+            const isCODorPayHere = ['cash-on-delivery', 'payhere'].includes(selected.paymentMethod?.toLowerCase() ?? '');
+            isCODorPayHere ? handleConfirm(id) : handleStatusChange(id, 'delivered');
           }}
         />
       )}

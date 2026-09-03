@@ -51,6 +51,18 @@ export default function CustomerFormModal({
     "w-full px-4 py-2.5 text-[13px] bg-[#F7F8FC] border border-[#E3E6F0] rounded-xl outline-none text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/20 transition-all";
   const labelClass = "block text-[12px] font-semibold text-[#374151] mb-1.5";
 
+  const formatErrorMessage = (msg: string) => {
+    if (!msg) return "";
+    if (msg.includes("E11000") || msg.toLowerCase().includes("duplicate key")) {
+      if (msg.includes("phone")) return "A customer with this phone number already exists.";
+      if (msg.includes("email")) return "A customer with this email address already exists.";
+      return "A customer with this phone number or email already exists.";
+    }
+    return msg;
+  };
+
+  const displayError = formatErrorMessage(error);
+
   return (
     <div
       className="fixed inset-0 bg-black/45 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
@@ -80,14 +92,14 @@ export default function CustomerFormModal({
         </div>
 
         {/* Error */}
-        {error && (
+        {displayError && (
           <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <p className="text-[12px] text-red-700 font-medium">{error}</p>
+            <p className="text-[12px] text-red-700 font-medium">{displayError}</p>
           </div>
         )}
 
@@ -150,7 +162,8 @@ export default function CustomerFormModal({
             <button
               type="submit"
               disabled={loading || !form.name.trim() || !form.phone.trim()}
-              className="flex-1 px-4 py-2.5 text-[13px] font-semibold text-white bg-[#065F46] rounded-xl hover:bg-[#047857] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 text-[13px] font-semibold text-white rounded-xl hover:brightness-95 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+              style={{ backgroundColor: "var(--color-primary)" }}
             >
               {loading ? (
                 <>

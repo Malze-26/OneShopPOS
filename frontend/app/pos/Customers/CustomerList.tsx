@@ -33,7 +33,8 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
         </div>
         <button
           onClick={onAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-[#065F46] text-white text-[13px] font-semibold rounded-xl hover:bg-[#047857] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-white text-[13px] font-semibold rounded-xl hover:brightness-95 transition-all shadow-sm cursor-pointer"
+          style={{ backgroundColor: "var(--color-primary)" }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -44,7 +45,7 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
       {/* Header */}
       <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_60px] py-2.5 px-6 bg-[#FAFAFA] border-b border-[#E3E6F0]">
         {["Customer", "Contact", "Orders", "Total Spent", "Loyalty Points", "Last Purchase", ""].map((h) => (
-          <div key={h} className="text-[12px] font-bold text-[#065F46] tracking-[0.3px]">{h}</div>
+          <div key={h} className="text-[12px] font-bold text-[#374151] tracking-[0.3px]">{h}</div>
         ))}
       </div>
       {/* Rows */}
@@ -54,9 +55,14 @@ export default function CustomerList({ customers, search, onSearch, onSelect, on
         </div>
       ) : (
         filtered.map((c, i) => (
-          <div key={c._id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_60px] px-6 py-4 border-b border-[#E3E6F0] hover:bg-[#ECFDF5] cursor-pointer" onClick={() => onSelect(c)}>
+          <div key={c._id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_60px] px-6 py-4 border-b border-[#E3E6F0] hover:bg-[#F9FAFB] cursor-pointer" onClick={() => onSelect(c)}>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#ECFDF5] flex items-center justify-center font-bold text-[#065F46] text-[15px]">{getInitials(c.name)}</div>
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[15px]"
+                style={{ backgroundColor: "var(--color-primary-light, #eff4ff)", color: "var(--color-primary)" }}
+              >
+                {getInitials(c.name)}
+              </div>
               <div>
                 <div className="font-semibold text-[#111827] text-[14px]">{c.name}</div>
                 <div className="text-[#6B7280] text-[12px]">{formatDate(c.createdAt)}</div>

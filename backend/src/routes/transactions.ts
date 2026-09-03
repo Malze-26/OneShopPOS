@@ -21,8 +21,8 @@ router.use(protect);
 router.get('/stats', asyncHandler(getTransactionStats));
 router.get('/', asyncHandler(getTransactions));
 router.get('/:id', asyncHandler(getTransaction));
-router.post('/', requireRole('Cashier'), asyncHandler(createTransaction));
+router.post('/', requireRole('Cashier', 'Sales Representative', 'Manager'), asyncHandler(createTransaction));
 
-router.patch('/:id/void', asyncHandler(voidTransaction));
+router.patch('/:id/void', requireRole('Manager'), asyncHandler(voidTransaction));
 
 export default router;

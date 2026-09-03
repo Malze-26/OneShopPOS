@@ -12,6 +12,8 @@ import { ISupplier, supplierSchema } from '../models/Supplier';
 import { IGRN, grnSchema } from '../models/GRN';
 import { ISupplierReturn, supplierReturnSchema } from '../models/SupplierReturn';
 import { IShift, shiftSchema } from '../models/Shift';
+import { IConversation, conversationSchema } from '../models/Conversation';
+import { IMessage, messageSchema } from '../models/Message';
 
 export interface TenantModels {
   User: Model<IUser>;
@@ -27,6 +29,8 @@ export interface TenantModels {
   GRN: Model<IGRN>;
   SupplierReturn: Model<ISupplierReturn>;
   Shift: Model<IShift>;
+  Conversation: Model<IConversation>;
+  Message: Model<IMessage>;
 }
 
 export function getModels(conn: Connection): TenantModels {
@@ -44,5 +48,7 @@ export function getModels(conn: Connection): TenantModels {
     GRN: conn.models['GRN'] ?? conn.model<IGRN>('GRN', grnSchema),
     SupplierReturn: conn.models['SupplierReturn'] ?? conn.model<ISupplierReturn>('SupplierReturn', supplierReturnSchema),
     Shift: conn.models['Shift'] ?? conn.model<IShift>('Shift', shiftSchema),
+    Conversation: conn.models['Conversation'] ?? conn.model<IConversation>('Conversation', conversationSchema),
+    Message: conn.models['Message'] ?? conn.model<IMessage>('Message', messageSchema),
   };
 }

@@ -85,27 +85,38 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Customer, Product, StockHistory } = req.models!;
+    const { Transaction, Customer, Product, StockHistory, Promo } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user?.id;
 
     const txnId = generateTxnId();
 
-    const status = req.body.status || 'success';
-    const orderStatus   = status === 'voided' ? 'cancelled' : status;
-    const paymentStatus = status === 'success' ? 'paid' : status === 'voided' ? 'voided' : status;
+    // Enforce server-side statuses for new transactions to prevent client injection
+    const status = 'success';
+    const orderStatus = 'success';
+    const paymentStatus = 'paid';
 
     const transaction = await Transaction.create({
       ...req.body,
       txnId,
       storeId,
       createdBy: userId,
+      status,
       orderStatus,
       paymentStatus,
     });
 
-    // Deduct inventory for each item in the POS transaction
-    if (Array.isArray(req.body.items) && req.body.items.length > 0) {
+    // Increment promo usage count if a promo code was applied
+    const promoCode = req.body.discountCode || req.body.promoCode;
+    if (promoCode && Promo) {
+      await Promo.findOneAndUpdate(
+        { code: String(promoCode).toUpperCase() },
+        { $inc: { usedCount: 1 } }
+      );
+    }
+
+    // Deduct inventory for each item in the POS transaction only if status is success
+    if (status === 'success' && Array.isArray(req.body.items) && req.body.items.length > 0) {
       for (const item of req.body.items) {
         if (item.product) {
           await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
@@ -121,46 +132,88 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       }
     }
 
-    // Recalculate customer stats and send receipt email
+    // Recalculate customer stats, process loyalty redemption, and send receipt email
     if (req.body.customerId && req.body.customerId !== 'guest') {
-  console.log('🔍 customerId:', req.body.customerId);
-  const customer = await Customer.findById(req.body.customerId);
-  console.log('🔍 customer found:', customer?.name);
-  
-  if (customer) {
-    const amountPaid = req.body.total ?? req.body.amount;
-    const pointsEarned = Math.floor(amountPaid / 100);
+      const customer = await Customer.findById(req.body.customerId);
+      
+      if (customer) {
+        // ── Loyalty points validation ────────────────────────────────────────
+        // Points are earned on the pre-loyalty subtotal (amount = subtotal - promoDiscount).
+        // This prevents loyalty redemption from reducing earned points.
+        const preDiscountBase = req.body.amount ?? 0; // subtotal after promo, before loyalty
+        const pointsEarned = Math.floor(preDiscountBase / 100);
 
-    const [agg] = await Transaction.aggregate([
-      { $match: { customerId: req.body.customerId, status: 'success' } },
-      { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
-    ]);
+        // Validate how many points the client wants to redeem
+        const rawPointsUsed = parseInt(req.body.loyaltyPointsUsed, 10) || 0;
 
-    console.log('🔍 agg result:', agg);
+        // Server-side guards:
+        // 1. Cannot exceed customer's actual balance
+        // 2. Cannot exceed the order value (prevents over-discount)
+        // 3. Cannot be negative
+        const maxAllowedByBalance = Math.max(0, customer.loyaltyPoints || 0);
+        const maxAllowedByOrder   = Math.floor(preDiscountBase); // 1 pt = Rs 1
+        const pointsUsed = Math.min(
+          Math.max(0, rawPointsUsed),
+          maxAllowedByBalance,
+          maxAllowedByOrder,
+        );
 
-    await Customer.findByIdAndUpdate(req.body.customerId, {
-      $set: {
-        totalSpent:   agg?.totalSpent  ?? 0,
-        totalOrders:  agg?.totalOrders ?? 0,
-        lastPurchase: agg?.lastPurchase ?? new Date(),
-      },
-      $inc: { loyaltyPoints: pointsEarned },
-    });
+        // Server always computes loyaltyDiscount — never trust client value
+        const loyaltyDiscount = pointsUsed; // 1 point = Rs 1
 
-    console.log('✅ Customer stats updated');
+        // Atomic deduction: only deduct if balance is still sufficient.
+        // This prevents a race condition where two simultaneous transactions
+        // both read the same balance and both are allowed.
+        if (pointsUsed > 0) {
+          const deductResult = await Customer.findOneAndUpdate(
+            { _id: req.body.customerId, loyaltyPoints: { $gte: pointsUsed } },
+            { $inc: { loyaltyPoints: -pointsUsed } },
+            { new: true }
+          );
+          if (!deductResult) {
+            res.status(409).json({ message: 'Insufficient loyalty points — balance may have changed. Please refresh and try again.' });
+            return;
+          }
+        }
+
+        // Patch the saved transaction with server-computed loyalty values
+        // so the stored record reflects the validated numbers, not client-sent ones
+        await Transaction.collection.updateOne(
+          { _id: transaction._id },
+          { $set: { loyaltyDiscount, loyaltyPointsUsed: pointsUsed, pointsEarned } }
+        );
+
+        const [agg] = await Transaction.aggregate([
+          { $match: { customerId: req.body.customerId, status: 'success' } },
+          { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
+        ]);
+
+        const netPointsChange = pointsEarned - 0; // deduction already done atomically above
+        await Customer.findByIdAndUpdate(req.body.customerId, {
+          $set: {
+            totalSpent:   agg?.totalSpent  ?? 0,
+            totalOrders:  agg?.totalOrders ?? 0,
+            lastPurchase: agg?.lastPurchase ?? new Date(),
+          },
+          $inc: { loyaltyPoints: netPointsChange },
+        });
 
         // Send receipt email if customer has email
         if (customer.email) {
           try {
             await sendReceiptEmail({
-              customerName:  customer.name,
-              customerEmail: customer.email,
-              orderId:       txnId,
-              items:         req.body.items || [],
-              subtotal:      req.body.amount,
-              discount:      req.body.discount || 0,
-              total:         req.body.total ?? req.body.amount,
-              paymentMethod: req.body.paymentMethod,
+              customerName:      customer.name,
+              customerEmail:     customer.email,
+              orderId:           txnId,
+              items:             req.body.items || [],
+              subtotal:          req.body.amount,
+              discount:          req.body.discount || 0,
+              discountCode:      req.body.discountCode || req.body.promoCode,
+              loyaltyDiscount,
+              loyaltyPointsUsed: pointsUsed,
+              pointsEarned,
+              total:             req.body.total ?? req.body.amount,
+              paymentMethod:     req.body.paymentMethod,
               date: formatStoreDate(new Date(), { day: '2-digit', month: 'short', year: 'numeric' }, 'en-LK'),
             });
           } catch (emailErr) {
@@ -226,6 +279,43 @@ export async function voidTransaction(req: AuthRequest, res: Response, next: Nex
           reason: `Transaction voided: ${transaction.txnId}`,
           by: req.user!.id,
           storeId: transaction.storeId,
+        });
+      }
+    }
+
+    // Revert customer loyalty points and recalculate stats if linked to a customer
+    if (transaction.customerId && transaction.customerId !== 'guest') {
+      const { Customer } = req.models!;
+      const [agg] = await Transaction.aggregate([
+        { $match: { customerId: transaction.customerId, status: 'success' } },
+        { $group: { _id: null, totalSpent: { $sum: { $ifNull: ['$total', '$amount'] } }, totalOrders: { $sum: 1 }, lastPurchase: { $max: '$createdAt' } } },
+      ]);
+
+      // Use the saved pointsEarned from when the transaction was created,
+      // not a recomputed value — prevents drift if total changed.
+      const pointsEarned = transaction.pointsEarned || 0;
+      const pointsUsed   = transaction.loyaltyPointsUsed || 0;
+
+      // Reverse: refund the redeemed points back, deduct the earned points.
+      // Do these as two separate guarded increments:
+      // 1. Refund redeemed points (always safe to add back)
+      // 2. Deduct earned points (guarded — cannot go below 0)
+      const customer = await Customer.findById(transaction.customerId);
+      if (customer) {
+        let netPointsDelta = pointsUsed - pointsEarned; // positive = net refund, negative = net deduction
+
+        // If net is negative (customer would go below 0), clamp to -(current balance)
+        if (netPointsDelta < 0) {
+          netPointsDelta = Math.max(netPointsDelta, -customer.loyaltyPoints);
+        }
+
+        await Customer.findByIdAndUpdate(transaction.customerId, {
+          $set: {
+            totalSpent:   agg?.totalSpent  ?? 0,
+            totalOrders:  agg?.totalOrders ?? 0,
+            lastPurchase: agg?.lastPurchase ?? new Date(),
+          },
+          $inc: { loyaltyPoints: netPointsDelta },
         });
       }
     }

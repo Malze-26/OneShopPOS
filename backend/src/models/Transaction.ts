@@ -22,6 +22,10 @@ export interface ITransaction extends Document {
   paymentMethod: PaymentMethod;
   amount: number;
   discount: number;
+  discountCode?: string;
+  loyaltyDiscount?: number;
+  loyaltyPointsUsed?: number;
+  pointsEarned?: number;
   total: number;
   status: TransactionStatus;
   orderStatus: OrderStatus;
@@ -76,6 +80,25 @@ export const transactionSchema = new Schema<ITransaction>(
       min: [0, 'Amount must be non-negative'],
     },
     discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    discountCode: {
+      type: String,
+      default: null,
+    },
+    loyaltyDiscount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    loyaltyPointsUsed: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pointsEarned: {
       type: Number,
       default: 0,
       min: 0,

@@ -174,8 +174,17 @@ export function normalizeOnlineOrder(doc: Record<string, unknown>) {
     : [];
 
   const rawItems = ((doc.orderItems || doc.items || []) as Record<string, unknown>[]);
-  const orderStatus   = (doc.orderStatus ?? doc.status ?? 'processing') as string;
-  const paymentStatus = (doc.paymentStatus ?? 'pending') as string;
+  let orderStatus   = (doc.orderStatus ?? doc.status ?? 'processing') as string;
+  let paymentStatus = (doc.paymentStatus ?? 'pending') as string;
+  const payMethod   = ((doc.paymentMethod as string) || '').toLowerCase();
+
+  if (payMethod === 'payhere' && paymentStatus !== 'paid' && paymentStatus !== 'success') {
+    paymentStatus = 'failed';
+    orderStatus   = 'cancelled';
+  } else if (paymentStatus === 'declined') {
+    paymentStatus = 'failed';
+    orderStatus   = 'cancelled';
+  }
 
   return {
     _id:           doc._id,
@@ -475,12 +484,15 @@ export async function runEcomSync(models: TenantModels): Promise<number> {
     const payStatus = ((order.paymentStatus as string) || '').toLowerCase();
 
     let newOrderStatus: string | null = null;
+    let newPaymentStatus: string | null = null;
 
     if (payMethod === 'payhere') {
       if (payStatus === 'paid' || payStatus === 'success') {
         newOrderStatus = 'processing';
       } else if (payStatus === 'declined') {
-        newOrderStatus = 'cancelled';
+        // No inventory change — stock is never touched here (see comment above).
+        newOrderStatus   = 'cancelled';
+        newPaymentStatus = 'failed';
       }
     } else if (payMethod === 'cash-on-delivery' && payStatus === 'pending') {
       newOrderStatus = 'processing';
@@ -488,13 +500,20 @@ export async function runEcomSync(models: TenantModels): Promise<number> {
 
     if (!newOrderStatus) continue;
 
+    // Build the fields to set atomically
+    const setFields: Record<string, string> = {
+      orderStatus: newOrderStatus,
+      status:      newOrderStatus,
+    };
+    if (newPaymentStatus) setFields.paymentStatus = newPaymentStatus;
+
     // Atomic claim — prevent double-processing under concurrent calls
     const claimed = await Order.collection.findOneAndUpdate(
       {
         _id:         (order as { _id: mongoose.Types.ObjectId })._id,
         orderStatus: { $nin: ECOM_TERMINAL_STATUSES },
       },
-      { $set: { orderStatus: newOrderStatus, status: newOrderStatus } }
+      { $set: setFields }
     );
     if (!claimed) continue;
 
@@ -511,10 +530,10 @@ export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<v
 }
 
 // PATCH /api/orders/:id/confirm
-// Marks a COD e-com order in 'processing' as delivered.
-// Sets paymentStatus='paid' and orderStatus='delivered'.
-// Stock was already deducted when the order moved to 'processing' via sync.
-// Revenue is now counted because paymentStatus='paid'.
+// Marks a COD or PayHere e-com order in 'processing' as delivered.
+//
+// COD:     paymentStatus → 'paid' (paid on delivery), stock was already deducted at processing.
+// PayHere: paymentStatus stays 'paid' (already paid at checkout), stock deducted NOW on delivery.
 export async function confirmOrder(req: AuthRequest, res: Response): Promise<void> {
   const { Order } = req.models!;
 
@@ -525,8 +544,8 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
   const payMethod   = ((raw.paymentMethod as string) || '').toLowerCase();
   const orderStatus = (raw.orderStatus as string) || (raw.status as string) || '';
 
-  if (!ecom || payMethod !== 'cash-on-delivery') {
-    res.status(400).json({ message: 'Only COD e-com orders can be confirmed through this endpoint.' });
+  if (!ecom || !['cash-on-delivery', 'payhere'].includes(payMethod)) {
+    res.status(400).json({ message: 'Only COD or PayHere e-com orders can be confirmed through this endpoint.' });
     return;
   }
 
@@ -536,7 +555,8 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
   }
 
   const updateFields: Record<string, unknown> = {
-    paymentStatus: 'paid',
+    // COD: becomes paid now. PayHere: already paid at checkout, keep it.
+    paymentStatus: payMethod === 'cash-on-delivery' ? 'paid' : (raw.paymentStatus ?? 'paid'),
     orderStatus:   'delivered',
     status:        'delivered',
     confirmedBy:   new mongoose.Types.ObjectId(req.user!.id),
@@ -546,6 +566,12 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
     { _id: (raw as { _id: mongoose.Types.ObjectId })._id },
     { $set: updateFields }
   );
+
+  // PayHere: stock was held at 'processing' — deduct it now on delivery.
+  // COD: stock was already deducted when the order moved to 'processing'.
+  if (payMethod === 'payhere') {
+    await releaseOrderStock(req.models!, { ...raw, ...updateFields } as Record<string, unknown>, req.user!.id);
+  }
 
   res.json({ data: normalizeOnlineOrder({ ...raw, ...updateFields }) });
 }

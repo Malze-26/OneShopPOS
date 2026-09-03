@@ -87,6 +87,7 @@ customerSchema.methods.comparePassword = async function (candidate: string): Pro
 };
 
 customerSchema.index({ storeId: 1 });
-customerSchema.index({ email: 1 });
+customerSchema.index({ phone: 1 }, { unique: true });
+customerSchema.index({ email: 1 }, { unique: true, sparse: true });
 
 export const Customer = mongoose.model<ICustomer>('Customer', customerSchema);

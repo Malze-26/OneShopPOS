@@ -437,6 +437,7 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
             transactionCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
             refundAmount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
             voidAmount: { $sum: { $cond: [{ $eq: ['$status', 'voided'] }, '$amount', 0] } },
+            discounts: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, { $ifNull: ['$discount', 0] }, 0] } },
           },
         },
       ]),
@@ -457,7 +458,7 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
       // POS payment methods
       Transaction.aggregate([
         { $match: { ...dateMatchFilter, status: 'success' } },
-        { $group: { _id: '$paymentMethod', amount: { $sum: '$amount' }, transactionCount: { $sum: 1 } } },
+        { $group: { _id: '$paymentMethod', amount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, '$total', 0] } }, transactionCount: { $sum: 1 } } },
       ]),
 
       // E-com payment methods
@@ -467,11 +468,11 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
       ]),
     ]);
 
-    const posS = posSummaryAgg[0] || { grossSales: 0, transactionCount: 0, refundAmount: 0, voidAmount: 0 };
+    const posS = posSummaryAgg[0] || { grossSales: 0, transactionCount: 0, refundAmount: 0, voidAmount: 0, discounts: 0 };
     const ecomS = ecomSummaryAgg[0] || { grossSales: 0, discounts: 0, transactionCount: 0 };
 
     const totalGross = posS.grossSales + ecomS.grossSales;
-    const totalDiscounts = ecomS.discounts ?? 0;
+    const totalDiscounts = (posS.discounts ?? 0) + (ecomS.discounts ?? 0);
     const totalRefunds = posS.refundAmount ?? 0;
     const netSales = totalGross - totalDiscounts - totalRefunds;
 
@@ -509,7 +510,6 @@ export const getDailyZReport = async (req: AuthRequest, res: Response) => {
         discounts: totalDiscounts,
         refunds: totalRefunds,
         netSales,
-        taxCollected: 0,
         totalTransactions: posS.transactionCount + ecomS.transactionCount,
       },
       paymentBreakdown: paymentMethods,
@@ -628,7 +628,15 @@ export const getInventoryStatusReport = async (req: AuthRequest, res: Response) 
               ],
             },
           },
-          expiredCount: { $sum: { $cond: ['$isExpired', 1, 0] } },
+          expiredCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $gt: ['$stock', 0] }, '$isExpired'] },
+                1,
+                0,
+              ],
+            },
+          },
           outOfStockCount: { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
           totalProducts: { $sum: 1 },
           totalUnits: { $sum: '$stock' },

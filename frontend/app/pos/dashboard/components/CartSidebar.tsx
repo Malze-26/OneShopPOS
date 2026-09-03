@@ -1,5 +1,6 @@
 "use client";
 import { C } from "../constants/tokens";
+import { useState } from "react";
 
 interface CartItem {
   id: string;
@@ -44,7 +45,7 @@ interface CartSidebarProps {
   onUpdateQty: (id: string, delta: number) => void;
   onClearCart: () => void;
   onShowPromo: () => void;
-  onRedeemPoints: () => void;
+  onRedeemPoints: (points: number) => void;
   onCheckout: () => void;
 }
 
@@ -71,6 +72,7 @@ export default function CartSidebar({
   onRedeemPoints,
   onCheckout,
 }: CartSidebarProps) {
+  const [redeemInput, setRedeemInput] = useState("");
 
   // Helper function to filter customers based on search input, matching telephone number only
   const filterCustomers = (list: Customer[], search: string) => {
@@ -89,7 +91,10 @@ export default function CartSidebar({
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-extrabold text-gray-800">Cart</span>
           {cart.length > 0 && (
-            <div className="bg-[#065F46] text-white rounded-full px-2 py-[1px] text-[11px] font-bold">
+            <div
+              className="text-white rounded-full px-2 py-[1px] text-[11px] font-bold"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
               {cart.length} {cart.length === 1 ? "item" : "items"}
             </div>
           )}
@@ -111,7 +116,10 @@ export default function CartSidebar({
         {selectedCustomer ? (
           <div>
             <div className="flex items-center gap-2.5 p-2.5 bg-gray-100 rounded-lg border border-gray-200">
-              <div className="w-8 h-8 rounded-full bg-[#065F46] flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
                 {selectedCustomer.avatar}
               </div>
               <div className="flex-1 min-w-0">
@@ -125,25 +133,67 @@ export default function CartSidebar({
 
             {/* Loyalty Points Badge */}
             {selectedCustomer._id !== 'guest' && (
-              <div className="mt-1.5 flex items-center justify-between px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[13px]">⭐</span>
-                  <span className="text-[11px] font-bold text-amber-700">
-                    {selectedCustomer.loyaltyPoints ?? 0} pts
-                  </span>
-                  <span className="text-[10px] text-amber-600">available</span>
+              <div className="mt-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px]">⭐</span>
+                    <span className="text-[11px] font-bold text-amber-700">
+                      {selectedCustomer.loyaltyPoints ?? 0} pts
+                    </span>
+                    <span className="text-[10px] text-amber-600">available</span>
+                  </div>
+                  {loyaltyDiscount > 0 && (
+                    <button
+                      onClick={() => { setRedeemInput(""); onRedeemPoints(0); }}
+                      className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded hover:bg-red-200 transition"
+                    >
+                      Remove ✕
+                    </button>
+                  )}
                 </div>
+
                 {loyaltyDiscount > 0 ? (
-                  <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">
-                    Applied ✓
-                  </span>
+                  <div className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-1 rounded text-center">
+                    ✓ {loyaltyPointsUsed} pts applied (−Rs. {loyaltyDiscount.toLocaleString()})
+                  </div>
                 ) : (selectedCustomer.loyaltyPoints ?? 0) > 0 ? (
-                  <button
-                    onClick={onRedeemPoints}
-                    className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded hover:bg-amber-200 transition"
-                  >
-                    Redeem
-                  </button>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedCustomer.loyaltyPoints ?? 0}
+                      placeholder={`1 – ${selectedCustomer.loyaltyPoints ?? 0}`}
+                      value={redeemInput}
+                      onChange={e => setRedeemInput(e.target.value)}
+                      className="flex-1 border border-amber-300 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white"
+                    />
+                    <button
+                      onClick={() => {
+                        const pts = Math.min(
+                          Math.max(1, parseInt(redeemInput, 10) || 0),
+                          selectedCustomer.loyaltyPoints ?? 0,
+                          Math.floor(subtotal - discount),
+                        );
+                        if (pts > 0) { onRedeemPoints(pts); setRedeemInput(String(pts)); }
+                      }}
+                      className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded hover:bg-amber-200 transition whitespace-nowrap"
+                    >
+                      Redeem
+                    </button>
+                    <button
+                      onClick={() => {
+                        const max = Math.min(
+                          selectedCustomer.loyaltyPoints ?? 0,
+                          Math.floor(subtotal - discount),
+                        );
+                        setRedeemInput(String(max));
+                        onRedeemPoints(max);
+                      }}
+                      className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded hover:bg-amber-200 transition whitespace-nowrap"
+                    >
+                      All
+                    </button>
+                  </div>
                 ) : null}
               </div>
             )}
@@ -159,7 +209,7 @@ export default function CartSidebar({
               value={customerSearch}
               onChange={e => { onCustomerSearch(e.target.value); onShowCustomerDropdown(true); }}
               onFocus={() => onShowCustomerDropdown(true)}
-              className="w-full border border-gray-200 rounded-lg px-7 py-1.5 text-[13px] focus:ring-2 focus:ring-[#065F46] focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-7 py-1.5 text-[13px] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-none"
             />
           </div>
         )}
@@ -186,13 +236,20 @@ export default function CartSidebar({
                 onClick={() => onSelectCustomer(c)}
                 className="flex items-center gap-2.5 p-2.5 cursor-pointer hover:bg-gray-100 border-b border-gray-200"
               >
-                <div className="w-7 h-7 rounded-full bg-[#065F46] flex items-center justify-center text-[11px] font-bold text-white">{c.avatar}</div>
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  {c.avatar}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-bold text-gray-800 truncate">{c.name}</div>
                   <div className="text-[10px] text-gray-500">{c.phone} · {c.totalOrders} orders</div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5">
-                  <div className="text-[10px] font-bold text-[#065F46]">Rs. {c.totalSpent.toLocaleString()}</div>
+                  <div className="text-[10px] font-bold" style={{ color: "var(--color-primary)" }}>
+                    Rs. {c.totalSpent.toLocaleString()}
+                  </div>
                   {(c.loyaltyPoints ?? 0) > 0 && (
                     <div className="text-[9px] font-bold text-amber-600">⭐ {c.loyaltyPoints} pts</div>
                   )}
@@ -225,7 +282,12 @@ export default function CartSidebar({
         ) : (
           cart.map(item => (
             <div key={item.id} className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-[#ECFDF5] rounded-lg flex items-center justify-center text-[13px] font-bold text-[#065F46] flex-shrink-0">{item.name.charAt(0).toUpperCase()}</div>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold flex-shrink-0"
+                style={{ backgroundColor: "var(--color-primary-light, #eff4ff)", color: "var(--color-primary)" }}
+              >
+                {item.name.charAt(0).toUpperCase()}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-semibold text-gray-800 truncate mb-0.5">{item.name}</div>
                 <div className="text-[11px] text-gray-500">Rs. {item.price.toLocaleString()} / {item.unit || "unit"}</div>
@@ -274,7 +336,12 @@ export default function CartSidebar({
         )}
         <div className="flex justify-between items-center border-t border-gray-200 mt-1 pt-2">
           <span className="text-[14px] font-bold text-gray-800">Total</span>
-          <span className="text-[22px] font-extrabold text-[#065F46] tracking-[-1px] font-mono">Rs. {total.toLocaleString()}</span>
+          <span
+            className="text-[22px] font-extrabold tracking-[-1px] font-mono"
+            style={{ color: "var(--color-primary)" }}
+          >
+            Rs. {total.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -300,7 +367,12 @@ export default function CartSidebar({
         <button
           onClick={onCheckout}
           disabled={cart.length === 0}
-          className={`w-full flex items-center justify-center px-3 py-2 rounded text-white font-bold transition ${cart.length === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-[#065F46] hover:bg-[#047857]"}`}
+          className={`w-full flex items-center justify-center px-3 py-2.5 rounded-lg text-white font-bold transition shadow-sm ${
+            cart.length === 0 ? "bg-gray-400 cursor-not-allowed" : "hover:brightness-95 cursor-pointer"
+          }`}
+          style={{
+            backgroundColor: cart.length === 0 ? undefined : "var(--color-primary)",
+          }}
         >
           <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />

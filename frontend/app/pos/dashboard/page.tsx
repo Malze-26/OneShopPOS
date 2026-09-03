@@ -25,13 +25,16 @@ import TopBar from "./components/TopBar";
 
 
 
-// Main POS Dashboard component that handles product listing, cart management, customer selection, and checkout flow
 export default function POSDashboard() {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
-  const { subscriptionPlan, refresh: refreshStore } = useStore();
+  const { storeName, logoUrl, primaryColor, subscriptionPlan, refresh: refreshStore } = useStore();
   const isOnline = useOnlineStatus();
-  const { storeName } = useStore();
+
+  // Refresh store appearance / info when user is authenticated
+  useEffect(() => {
+    if (user) refreshStore();
+  }, [user, refreshStore]);
 
   // Custom hooks for state management
   const { cart, setCart, addedId, setAddedId, showCheckout, setShowCheckout } = useCartState();
@@ -71,6 +74,24 @@ export default function POSDashboard() {
       }
     };
     fetchData();
+
+    // Auto-refresh products + categories every 3 minutes so that
+    // changes made in the admin panel (e.g. toggling weight-based,
+    // changing price, adding stock) are reflected without page reload.
+    const productRefreshInterval = setInterval(async () => {
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          api.get("/products"),
+          api.get("/categories"),
+        ]);
+        setProducts(productsRes.data.data);
+        setCategories(categoriesRes.data.data);
+      } catch (err) {
+        console.error("Background product refresh failed:", err);
+      }
+    }, 3 * 60 * 1000); // every 3 minutes
+
+    return () => clearInterval(productRefreshInterval);
   }, [user]);
 
   const refreshPendingCount = useCallback(async () => {
@@ -106,27 +127,26 @@ export default function POSDashboard() {
   const handleLogout = () => { logout(); router.push("/pos/login"); };
 
   // ── Loyalty Points Redeem ─────────────────────────────────────────────────
-  const handleRedeemPoints = async () => {
+  const handleRedeemPoints = (points: number) => {
     if (!selectedCustomer || selectedCustomer._id === "guest") return;
+
+    // Allow clearing loyalty redemption by passing 0
+    if (points <= 0) {
+      setLoyaltyDiscount(0);
+      setLoyaltyPointsUsed(0);
+      return;
+    }
+
     const availablePoints = selectedCustomer.loyaltyPoints ?? 0;
     if (availablePoints <= 0) return;
 
-    // Cap redemption at remaining order total after promo discount
+    // Client-side cap (server will also validate independently)
     const maxRedeemable = Math.floor(subtotal - discount);
-    const pointsToRedeem = Math.min(availablePoints, maxRedeemable);
+    const pointsToRedeem = Math.min(points, availablePoints, maxRedeemable);
     if (pointsToRedeem <= 0) return;
 
-    try {
-      await api.post(`/customers/${selectedCustomer._id}/redeem-points`, { points: pointsToRedeem });
-      setLoyaltyDiscount(pointsToRedeem);
-      setLoyaltyPointsUsed(pointsToRedeem);
-      // Update points locally so UI reflects immediately
-      const updatedCustomer = { ...selectedCustomer, loyaltyPoints: availablePoints - pointsToRedeem };
-      setSelectedCustomer(updatedCustomer);
-      setCustomers(prev => prev.map(c => c._id === selectedCustomer._id ? updatedCustomer : c));
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to redeem points");
-    }
+    setLoyaltyDiscount(pointsToRedeem);
+    setLoyaltyPointsUsed(pointsToRedeem);
   };
 
   const subtotal = parseFloat(
@@ -173,6 +193,15 @@ export default function POSDashboard() {
     }
   }, []);
 
+  const refreshCustomers = useCallback(async () => {
+    try {
+      const customersRes = await api.get("/customers");
+      setCustomers(customersRes.data.data);
+    } catch (err) {
+      console.error("Failed to refresh customers:", err);
+    }
+  }, []);
+
   const handleCheckoutSuccess = () => {
     setCart([]);
     setSelectedCustomer(null);
@@ -184,6 +213,7 @@ export default function POSDashboard() {
     setShowCheckout(false);
     refreshPendingCount();
     refreshProducts(); // Refresh inventory to show updated stock levels
+    refreshCustomers(); // Refresh customer loyalty balances
   };
 
   const checkoutState = {
@@ -200,7 +230,15 @@ export default function POSDashboard() {
     return (
       <div className="flex items-center justify-center h-screen bg-[#F0F2F8]">
         <div className="text-center">
-          <div className="mx-auto w-12 h-12 border-[3px] border-[#065F46] border-t-transparent rounded-full animate-spin" />
+          <div
+            className="mx-auto w-12 h-12 border-[3px] rounded-full animate-spin"
+            style={{
+              borderRightColor: primaryColor || "var(--color-primary, #155dfc)",
+              borderBottomColor: primaryColor || "var(--color-primary, #155dfc)",
+              borderLeftColor: primaryColor || "var(--color-primary, #155dfc)",
+              borderTopColor: "transparent",
+            }}
+          />
           <p className="mt-4 text-sm text-[#6B7280]">Loading...</p>
         </div>
       </div>
@@ -214,6 +252,8 @@ export default function POSDashboard() {
 
       <TopBar
         storeName={storeName}
+        logoUrl={logoUrl}
+        primaryColor={primaryColor}
         user={user}
         time={time}
         isOnline={isOnline}
@@ -224,6 +264,7 @@ export default function POSDashboard() {
         showMenu={showMenu}
         onSearch={setSearch}
         onSync={handleSync}
+        onRefreshProducts={refreshProducts}
         onToggleMenu={() => setShowMenu(v => !v)}
         onLogout={handleLogout}
         subscriptionPlan={subscriptionPlan}
@@ -243,9 +284,12 @@ export default function POSDashboard() {
                   onClick={() => setActiveCategory(cat)}
                   className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border-[1.5px] whitespace-nowrap transition-all duration-150 ${
                     activeCategory === cat
-                      ? "bg-[#065F46] text-white border-transparent shadow-sm"
-                      : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[#10B981] hover:text-[#065F46]"
+                      ? "text-white border-transparent shadow-sm"
+                      : "bg-white text-[#6B7280] border-[#E3E6F0] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                   }`}
+                  style={{
+                    backgroundColor: activeCategory === cat ? (primaryColor || "var(--color-primary, #155dfc)") : undefined,
+                  }}
                 >
                   {cat}
                 </button>
@@ -285,7 +329,7 @@ export default function POSDashboard() {
             <div className="flex gap-2">
               <button
                 onClick={() => router.push("/pos/transactions")}
-                className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#10B981] hover:text-[#065F46] hover:bg-[#ECFDF5]"
+                className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -294,7 +338,7 @@ export default function POSDashboard() {
               </button>
               <button
                 onClick={() => router.push("/pos/Customers")}
-                className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[#10B981] hover:text-[#065F46] hover:bg-[#ECFDF5]"
+                className="flex items-center gap-1.5 bg-transparent border-[1.5px] border-[#E3E6F0] rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[#6B7280] transition-all hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
@@ -366,6 +410,7 @@ export default function POSDashboard() {
           subtotal={subtotal}
           total={total}
           isOnline={isOnline}
+          storeName={storeName}
           onClose={() => setShowCheckout(false)}
           onSuccess={handleCheckoutSuccess}
         />

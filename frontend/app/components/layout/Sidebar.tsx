@@ -17,6 +17,7 @@ import {
   Bell,
   Settings,
   LogOut,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/app/contexts/AuthContext';
 
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   // People
   { label: 'Customers',  icon: UserIcon,         path: '/customers',  section: 'People' },
   { label: 'Employees',  icon: Users,            path: '/employees' },
+  { label: 'Messages',   icon: MessageSquare,    path: '/messages' },
 
   // Insights
   { label: 'Reports',    icon: BarChart3,        path: '/reports',    section: 'Insights' },
