@@ -253,7 +253,39 @@ export async function getTransaction(req: AuthRequest, res: Response, next: Next
 // DELETE /api/transactions/:id/void — Void transaction
 export async function voidTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Transaction, Product, StockHistory } = req.models!;
+    const { Transaction, Product, StockHistory, User } = req.models!;
+
+    // Check manager authorization: either logged-in user is Manager or override credentials provided
+    let authorizedByManager = req.user?.role === 'Manager';
+    let managerName = req.user?.name || 'Manager';
+
+    if (!authorizedByManager) {
+      const { managerEmail, managerPassword } = req.body || {};
+      if (!managerEmail || !managerPassword) {
+        res.status(403).json({ message: 'Manager authorization required. Please provide manager credentials.' });
+        return;
+      }
+
+      const manager = await User.findOne({ email: String(managerEmail).trim().toLowerCase() }).select('+password');
+      if (!manager || !(await manager.comparePassword(managerPassword))) {
+        res.status(401).json({ message: 'Invalid manager email or password' });
+        return;
+      }
+
+      if (manager.role !== 'Manager') {
+        res.status(403).json({ message: 'The specified user is not authorized as a Manager' });
+        return;
+      }
+
+      if (!manager.isActive) {
+        res.status(403).json({ message: 'This manager account is inactive' });
+        return;
+      }
+
+      authorizedByManager = true;
+      managerName = manager.name;
+    }
+
     const transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) {
@@ -279,7 +311,7 @@ export async function voidTransaction(req: AuthRequest, res: Response, next: Nex
           product: item.product,
           type: 'add',
           quantity: item.quantity,
-          reason: `Transaction voided: ${transaction.txnId}`,
+          reason: `Transaction voided: ${transaction.txnId} (Authorized by ${managerName})`,
           by: req.user!.id,
           storeId: transaction.storeId,
         });

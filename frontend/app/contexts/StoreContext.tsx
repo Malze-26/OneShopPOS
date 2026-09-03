@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
 import api from '@/app/lib/api';
 
 interface StoreSettings {
@@ -38,33 +38,36 @@ const StoreContext = createContext<StoreContextValue>({ ...defaults, refresh: ()
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaults);
 
-  // Uses the Axios instance so the OneShop-Tenant-ID header is automatically
-  // included when a tenant has been selected (stored in localStorage).
-  const fetchSettings = async (): Promise<void> => {
+  const applyColors = useCallback((colorHex: string) => {
+    if (typeof document !== 'undefined' && colorHex) {
+      const color = '#' + colorHex.replace(/^#+/, '');
+      document.documentElement.style.setProperty('--color-primary', color);
+      document.documentElement.style.setProperty('--primary', color);
+      document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${color} 12%, white)`);
+      document.documentElement.style.setProperty('--color-primary-dark', `color-mix(in srgb, ${color} 85%, black)`);
+    }
+  }, []);
+
+  const fetchSettings = useCallback(async (): Promise<void> => {
     try {
       const { data } = await api.get<{ data: StoreSettings }>('/settings');
       if (data.data) {
         setSettings(data.data);
-        if (typeof window !== 'undefined' && data.data.primaryColor) {
-          const color = '#' + data.data.primaryColor.replace(/^#+/, '');
-          document.documentElement.style.setProperty('--color-primary', color);
-          document.documentElement.style.setProperty('--primary', color);
-          document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${color} 12%, white)`);
-          document.documentElement.style.setProperty('--color-primary-dark', `color-mix(in srgb, ${color} 85%, black)`);
+        if (data.data.primaryColor) {
+          applyColors(data.data.primaryColor);
         }
       }
     } catch {
       /* keep defaults if no tenant is set yet */
     }
-  };
+  }, [applyColors]);
 
-  const refreshWithBroadcast = async () => {
+  const refreshWithBroadcast = useCallback(async () => {
     await fetchSettings();
     if (typeof window !== 'undefined') {
       localStorage.setItem('store_settings_timestamp', Date.now().toString());
-      window.dispatchEvent(new CustomEvent('store-settings-updated'));
     }
-  };
+  }, [fetchSettings]);
 
   useEffect(() => {
     fetchSettings();
@@ -80,46 +83,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const handleFocus = () => {
-      fetchSettings();
-    };
-
-    const handleCustomEvent = () => {
-      fetchSettings();
-    };
-
     window.addEventListener('storage', handleStorage);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('store-settings-updated', handleCustomEvent);
-
-    // Auto-poll store settings every 60 seconds
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && !document.hidden) {
-        fetchSettings();
-      }
-    }, 60 * 1000);
-
     return () => {
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('store-settings-updated', handleCustomEvent);
-      clearInterval(interval);
     };
-  }, []);
+  }, [fetchSettings]);
 
-  // Update CSS variable for primary color whenever it changes
-  useEffect(() => {
-    if (typeof document !== 'undefined' && settings.primaryColor) {
-      const color = '#' + settings.primaryColor.replace(/^#+/, '');
-      document.documentElement.style.setProperty('--color-primary', color);
-      document.documentElement.style.setProperty('--primary', color);
-      document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${color} 12%, white)`);
-      document.documentElement.style.setProperty('--color-primary-dark', `color-mix(in srgb, ${color} 85%, black)`);
-    }
-  }, [settings.primaryColor]);
+  const contextValue = useMemo<StoreContextValue>(() => ({
+    ...settings,
+    refresh: refreshWithBroadcast,
+  }), [settings, refreshWithBroadcast]);
 
   return (
-    <StoreContext.Provider value={{ ...settings, refresh: refreshWithBroadcast }}>
+    <StoreContext.Provider value={contextValue}>
       {children}
     </StoreContext.Provider>
   );

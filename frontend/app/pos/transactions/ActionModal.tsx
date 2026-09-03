@@ -1,4 +1,6 @@
+import { useState } from "react";
 import api from "@/app/lib/api";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { Transaction } from "./types";
 
 interface ActionModalProps {
@@ -26,16 +28,32 @@ export default function ActionModal({
   onActionError,
   onUpdateTransactions,
 }: ActionModalProps) {
+  const { user } = useAuth();
+  const isManager = user?.role === "Manager";
+
+  // Manager Override state for Cashiers
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [mgrEmail, setMgrEmail] = useState("");
+  const [mgrPassword, setMgrPassword] = useState("");
+  const [overrideError, setOverrideError] = useState("");
+  const [overrideLoading, setOverrideLoading] = useState(false);
+
   // Always read live status from transactions array
   const liveTxn = transactions.find((t) => t._id === selectedTxn._id) ?? selectedTxn;
 
-  const handleVoid = async () => {
-    if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
+  const executeVoid = async (credentials?: { managerEmail: string; managerPassword: string }) => {
     onActionLoading(true);
     onActionError("");
     try {
-      await api.patch(`/transactions/${liveTxn._id}/void`);
-      onActionMessage("Transaction voided successfully");
+      await api.patch(`/transactions/${liveTxn._id}/void`, credentials);
+      onActionMessage(
+        credentials
+          ? "✓ Transaction voided with Manager authorization"
+          : "✓ Transaction voided successfully"
+      );
+      setShowOverrideModal(false);
+      setMgrEmail("");
+      setMgrPassword("");
       // Update all three status fields so UI reflects correctly
       onUpdateTransactions((prev) =>
         prev.map((t) =>
@@ -45,10 +63,37 @@ export default function ActionModal({
         )
       );
     } catch (err: any) {
-      onActionError(err.response?.data?.message || "Failed to void. Please try again.");
+      const msg = err.response?.data?.message || "Failed to void. Please check credentials and try again.";
+      if (credentials) {
+        setOverrideError(msg);
+      } else {
+        onActionError(msg);
+      }
     } finally {
       onActionLoading(false);
+      setOverrideLoading(false);
     }
+  };
+
+  const handleVoidClick = () => {
+    if (isManager) {
+      if (!confirm("Are you sure you want to void this transaction? This cannot be undone.")) return;
+      executeVoid();
+    } else {
+      setOverrideError("");
+      setShowOverrideModal(true);
+    }
+  };
+
+  const handleOverrideSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mgrEmail.trim() || !mgrPassword) {
+      setOverrideError("Please enter both manager email and password");
+      return;
+    }
+    setOverrideLoading(true);
+    setOverrideError("");
+    await executeVoid({ managerEmail: mgrEmail.trim(), managerPassword: mgrPassword });
   };
 
   const orderStatus = liveTxn.orderStatus ?? liveTxn.status;
@@ -216,7 +261,7 @@ export default function ActionModal({
           {liveTxn.status === "success" && !actionMessage && (
             <button
               disabled={actionLoading}
-              onClick={handleVoid}
+              onClick={handleVoidClick}
               className="flex-1 py-2.5 bg-red-50 border border-red-200 rounded-xl text-[13px] font-bold text-red-600 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-red-100 transition-colors"
             >
               {actionLoading ? (
@@ -227,7 +272,7 @@ export default function ActionModal({
                   <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
                 </svg>
               )}
-              Void Transaction
+              {isManager ? "Void Transaction" : "Void (Manager Override)"}
             </button>
           )}
 
@@ -242,6 +287,86 @@ export default function ActionModal({
         </div>
 
       </div>
+
+      {/* ── Manager Override Modal Dialog ────────────────────────────────────── */}
+      {showOverrideModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !overrideLoading) setShowOverrideModal(false); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 font-sans shadow-2xl border border-gray-100">
+            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 text-lg font-bold">
+                🔒
+              </div>
+              <div>
+                <h4 className="text-[16px] font-bold text-gray-900 m-0">Manager Authorization Required</h4>
+                <p className="text-[12px] text-gray-500 m-0">A manager must enter their credentials to void #{liveTxn.txnId}</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleOverrideSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Manager Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={mgrEmail}
+                  onChange={(e) => setMgrEmail(e.target.value)}
+                  placeholder="e.g. mng01@opendoor.lk"
+                  disabled={overrideLoading}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[13px] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Manager Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={mgrPassword}
+                  onChange={(e) => setMgrPassword(e.target.value)}
+                  placeholder="••••••••"
+                  disabled={overrideLoading}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[13px] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-none"
+                />
+              </div>
+
+              {overrideError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-[12px] text-red-700 font-semibold m-0">✗ {overrideError}</p>
+                </div>
+              )}
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={overrideLoading}
+                  onClick={() => setShowOverrideModal(false)}
+                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 border-none rounded-xl text-[13px] font-bold text-gray-700 cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={overrideLoading}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white border-none rounded-xl text-[13px] font-bold cursor-pointer transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {overrideLoading ? (
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : null}
+                  Authorize & Void
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

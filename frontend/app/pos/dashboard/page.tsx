@@ -31,10 +31,10 @@ export default function POSDashboard() {
   const { storeName, logoUrl, primaryColor, subscriptionPlan, refresh: refreshStore } = useStore();
   const isOnline = useOnlineStatus();
 
-  // Refresh store appearance / info when user is authenticated
+  // Refresh store appearance / info once on user load
   useEffect(() => {
-    if (user) refreshStore();
-  }, [user, refreshStore]);
+    if (user?.id) refreshStore();
+  }, [user?.id, refreshStore]);
 
   // Custom hooks for state management
   const { cart, setCart, addedId, setAddedId, showCheckout, setShowCheckout } = useCartState();
@@ -192,6 +192,7 @@ export default function POSDashboard() {
   };
 
   const refreshProducts = useCallback(async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
     try {
       const [productsRes, categoriesRes] = await Promise.all([
         api.get("/products"),
@@ -200,17 +201,22 @@ export default function POSDashboard() {
       if (Array.isArray(productsRes.data?.data)) setProducts(productsRes.data.data);
       if (Array.isArray(categoriesRes.data?.data)) setCategories(categoriesRes.data.data);
       refreshStore();
-    } catch (err) {
-      console.error("Failed to refresh products:", err);
+    } catch (err: any) {
+      if (err?.message !== "Network Error") {
+        console.warn("Could not refresh products:", err?.message);
+      }
     }
   }, [refreshStore]);
 
   const refreshCustomers = useCallback(async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
     try {
       const customersRes = await api.get("/customers");
-      setCustomers(customersRes.data.data);
-    } catch (err) {
-      console.error("Failed to refresh customers:", err);
+      if (Array.isArray(customersRes.data?.data)) setCustomers(customersRes.data.data);
+    } catch (err: any) {
+      if (err?.message !== "Network Error") {
+        console.warn("Could not refresh customers:", err?.message);
+      }
     }
   }, []);
 
@@ -224,8 +230,10 @@ export default function POSDashboard() {
     setLoyaltyPointsUsed(0);
     setShowCheckout(false);
     refreshPendingCount();
-    refreshProducts(); // Refresh inventory to show updated stock levels
-    refreshCustomers(); // Refresh customer loyalty balances
+    if (typeof navigator === "undefined" || navigator.onLine) {
+      refreshProducts(); // Refresh inventory to show updated stock levels when online
+      refreshCustomers(); // Refresh customer loyalty balances when online
+    }
   };
 
   const checkoutState = {

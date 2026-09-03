@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   Search, Eye, X, Mail, Phone, MapPin,
   ShoppingBag, Store, Globe, Clock, CheckCircle,
-  Package, Truck, XCircle, RotateCcw, DollarSign,
+  Package, Truck, XCircle, RotateCcw,
 } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useFmt, useStore } from '@/app/contexts/StoreContext';
@@ -66,19 +66,25 @@ function fmtDate(iso?: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: React.ElementType }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending:    { label: 'Pending',    color: 'bg-[#fff8e1] text-[#f59e0b]', icon: Clock },
   confirmed:  { label: 'Confirmed',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   processing: { label: 'Processing', color: 'bg-[var(--color-primary-light)] text-[var(--color-primary)]', icon: Package },
   shipped:    { label: 'Shipped',    color: 'bg-[#f3e8ff] text-[#7f56d9]', icon: Truck },
   delivered:  { label: 'Delivered',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
+  success:    { label: 'Success',    color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
+  completed:  { label: 'Completed',  color: 'bg-[#e8f5e9] text-[#12b76a]', icon: CheckCircle },
   cancelled:  { label: 'Cancelled',  color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
+  failed:     { label: 'Failed',     color: 'bg-[#fef3f2] text-[#f04438]', icon: XCircle },
 };
 
-const PAYMENT_COLOR: Record<PaymentStatus, string> = {
+const PAYMENT_COLOR: Record<string, string> = {
   pending:  'bg-[#fff8e1] text-[#f59e0b]',
   paid:     'bg-[#e8f5e9] text-[#12b76a]',
+  success:  'bg-[#e8f5e9] text-[#12b76a]',
   failed:   'bg-[#fef3f2] text-[#f04438]',
+  voided:   'bg-[#fef3f2] text-[#f04438]',
+  refunded: 'bg-[#fff8e1] text-[#f59e0b]',
 };
 
 // ── Customer Detail Panel ─────────────────────────────────────────────────────
@@ -144,16 +150,11 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
           </div>
 
           {/* Summary stats */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-[var(--color-primary-light)] rounded-xl p-3 text-center">
               <ShoppingBag className="w-4 h-4 text-[var(--color-primary)] mx-auto mb-1" />
               <p className="text-lg font-bold text-[#101828]">{customer.totalOrders}</p>
               <p className="text-xs text-[#4a5565]">Orders</p>
-            </div>
-            <div className="bg-[#e8f5e9] rounded-xl p-3 text-center">
-              <DollarSign className="w-4 h-4 text-[#12b76a] mx-auto mb-1" />
-              <p className="text-sm font-bold text-[#101828]">{fmt(customer.totalSpent)}</p>
-              <p className="text-xs text-[#4a5565]">Spent</p>
             </div>
             <div className="bg-[#fff8e1] rounded-xl p-3 text-center">
               <Clock className="w-4 h-4 text-[#f59e0b] mx-auto mb-1" />
@@ -175,8 +176,19 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
             ) : (
               <div className="space-y-3">
                 {orders.map(order => {
-                  const cfg = STATUS_CONFIG[order.status];
+                  const statusKey = (order.status || '').toLowerCase();
+                  const cfg = STATUS_CONFIG[statusKey] || {
+                    label: order.status || 'Success',
+                    color: 'bg-[#e8f5e9] text-[#12b76a]',
+                    icon: CheckCircle,
+                  };
                   const StatusIcon = cfg.icon;
+                  const paymentKey = (order.paymentStatus || '').toLowerCase();
+                  const paymentBadgeColor = PAYMENT_COLOR[paymentKey] || 'bg-[#e8f5e9] text-[#12b76a]';
+                  const paymentLabel = order.paymentStatus
+                    ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)
+                    : 'Paid';
+
                   return (
                     <div key={order._id} className="border border-[#e4e7ec] rounded-xl p-4 space-y-2">
                       {/* Order header */}
@@ -197,8 +209,8 @@ function CustomerPanel({ customer, onClose }: { customer: Customer; onClose: () 
                           <StatusIcon className="w-3 h-3" />
                           {cfg.label}
                         </span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PAYMENT_COLOR[order.paymentStatus]}`}>
-                          {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)} · {order.paymentMethod}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${paymentBadgeColor}`}>
+                          {paymentLabel} · {order.paymentMethod || 'Cash'}
                         </span>
                       </div>
 
@@ -285,7 +297,7 @@ function CustomersPageInner() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec]">
           <p className="text-xs text-[#4a5565] mb-1">Total Customers</p>
           <h3 className="text-2xl font-bold text-[#101828]">{stats ? stats.totalCustomers.toLocaleString() : '—'}</h3>
@@ -293,10 +305,6 @@ function CustomersPageInner() {
         <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec]">
           <p className="text-xs text-[#4a5565] mb-1">New This Month</p>
           <h3 className="text-2xl font-bold text-[#101828]">{stats ? stats.newThisMonth.toLocaleString() : '—'}</h3>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#e4e7ec]">
-          <p className="text-xs text-[#4a5565] mb-1">Average Lifetime Value</p>
-          <h3 className="text-2xl font-bold text-[#101828]">{stats ? `${currency} ${(stats.avgLifetimeValue ?? 0).toLocaleString()}` : '—'}</h3>
         </div>
       </div>
 
@@ -343,7 +351,7 @@ function CustomersPageInner() {
           <table className="w-full">
             <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
               <tr>
-                {['Customer', 'Email', 'Phone', 'Total Orders', 'Total Spent', 'Last Purchase', ''].map(h => (
+                {['Customer', 'Email', 'Phone', 'Total Orders', 'Last Purchase', ''].map(h => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-[#4a5565] uppercase tracking-wider">
                     {h}
                   </th>
@@ -353,11 +361,11 @@ function CustomersPageInner() {
             <tbody className="divide-y divide-[#e4e7ec]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-[#4a5565]">Loading customers...</td>
+                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-[#4a5565]">Loading customers...</td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-[#4a5565]">No customers found.</td>
+                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-[#4a5565]">No customers found.</td>
                 </tr>
               ) : customers.map(customer => (
                 <tr key={customer._id} className="hover:bg-[#f9fafb] transition-colors">
@@ -372,7 +380,6 @@ function CustomersPageInner() {
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.email ?? '—'}</td>
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{customer.phone ?? '—'}</td>
                   <td className="px-5 py-4 text-sm font-medium text-[#101828]">{customer.totalOrders}</td>
-                  <td className="px-5 py-4 text-sm font-semibold text-[#101828]">{currency} {(customer.totalSpent ?? 0).toLocaleString()}</td>
                   <td className="px-5 py-4 text-sm text-[#4a5565]">{fmtDate(customer.lastPurchase)}</td>
                   <td className="px-5 py-4">
                     <button

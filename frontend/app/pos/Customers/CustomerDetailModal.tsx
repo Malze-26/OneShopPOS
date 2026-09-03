@@ -58,12 +58,6 @@ export default function CustomerDetailModal({
                 {customer.email || "No email"} · {customer.phone || "No phone"}
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-[12px] text-[#6B7280]">Total Spent</div>
-              <div className="font-bold text-[16px]" style={{ color: "var(--color-primary)" }}>
-                Rs. {customer.totalSpent.toLocaleString()}
-              </div>
-            </div>
           </div>
 
           {/* Customer Details Content */}
@@ -76,14 +70,6 @@ export default function CustomerDetailModal({
               <div>
                 <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">Loyalty Points</div>
                 <div className="text-[15px] font-semibold text-[#111827]">{customer.loyaltyPoints}</div>
-              </div>
-              <div>
-                <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">Avg. Spend</div>
-                <div className="text-[15px] font-semibold text-[#111827]">
-                  Rs. {customer.totalOrders > 0
-                    ? Math.round(customer.totalSpent / customer.totalOrders).toLocaleString()
-                    : "0"}
-                </div>
               </div>
               <div>
                 <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">Last Purchase</div>

@@ -246,14 +246,11 @@ export default function CartSidebar({
                   <div className="text-[12px] font-bold text-gray-800 truncate">{c.name}</div>
                   <div className="text-[10px] text-gray-500">{c.phone} · {c.totalOrders} orders</div>
                 </div>
-                <div className="flex flex-col items-end gap-0.5">
-                  <div className="text-[10px] font-bold" style={{ color: "var(--color-primary)" }}>
-                    Rs. {c.totalSpent.toLocaleString()}
-                  </div>
-                  {(c.loyaltyPoints ?? 0) > 0 && (
+                {(c.loyaltyPoints ?? 0) > 0 && (
+                  <div className="flex flex-col items-end gap-0.5">
                     <div className="text-[9px] font-bold text-amber-600">⭐ {c.loyaltyPoints} pts</div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             ))}
 
