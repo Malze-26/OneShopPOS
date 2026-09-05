@@ -10,7 +10,7 @@ import { TenantModels } from '../db/tenantModels';
  *   'success' → paymentStatus='paid',   orderStatus='success'  (stock deducted, added to sales)
  *   'voided'  → paymentStatus='voided', orderStatus='cancelled' (stock restocked, removed from sales)
  */
-function txnToOrder(txn: Record<string, unknown>) {
+export function txnToOrder(txn: Record<string, unknown>) {
   const orderStatus   = (txn.orderStatus ?? txn.status) as string;
   const paymentStatus = txn.paymentStatus
     ? (txn.paymentStatus as string)
@@ -70,6 +70,9 @@ async function releaseOrderStock(
 
   const orderId = (orderDoc.orderId as string) ?? String(_id);
   const items = (orderDoc.orderItems || orderDoc.items || []) as Record<string, unknown>[];
+  // Dated to the order, not to whenever the sync happened to run — a stuck
+  // order caught days later must not show up as if it just sold today.
+  const placedAt = (orderDoc.createdAt as Date) ?? new Date();
 
   for (const item of items) {
     const productId = item.product as mongoose.Types.ObjectId | string | undefined;
@@ -84,6 +87,8 @@ async function releaseOrderStock(
       reason: `E-com order ${orderId}`,
       by: actor,
       storeId: (orderDoc.storeId as string) ?? '',
+      createdAt: placedAt,
+      updatedAt: placedAt,
     });
   }
 
@@ -118,6 +123,10 @@ async function restoreOrderStock(
 
   const orderId = (orderDoc.orderId as string) ?? String(_id);
   const items = (orderDoc.orderItems || orderDoc.items || []) as Record<string, unknown>[];
+  // updateOrderStatus writes the cancellation via the raw collection, bypassing
+  // Mongoose's timestamps plugin, so there's no reliable "cancelled at" moment
+  // to date this to — the order's own date is the only one dependably present.
+  const placedAt = (orderDoc.createdAt as Date) ?? new Date();
 
   for (const item of items) {
     const productId = item.product as mongoose.Types.ObjectId | string | undefined;
@@ -132,6 +141,8 @@ async function restoreOrderStock(
       reason: `E-com order ${orderId} cancelled`,
       by: actor,
       storeId: (orderDoc.storeId as string) ?? '',
+      createdAt: placedAt,
+      updatedAt: placedAt,
     });
   }
 
@@ -152,7 +163,7 @@ function isEcomOrder(doc: Record<string, unknown>): boolean {
  * E-com orderStatus values: 'processing' | 'cancelled' | 'delivered'
  * E-com paymentStatus values: 'paid' | 'declined' | 'pending'
  */
-function normalizeOnlineOrder(doc: Record<string, unknown>) {
+export function normalizeOnlineOrder(doc: Record<string, unknown>) {
   if (!isEcomOrder(doc)) {
     return doc;
   }
@@ -163,8 +174,17 @@ function normalizeOnlineOrder(doc: Record<string, unknown>) {
     : [];
 
   const rawItems = ((doc.orderItems || doc.items || []) as Record<string, unknown>[]);
-  const orderStatus   = (doc.orderStatus ?? doc.status ?? 'processing') as string;
-  const paymentStatus = (doc.paymentStatus ?? 'pending') as string;
+  let orderStatus   = (doc.orderStatus ?? doc.status ?? 'processing') as string;
+  let paymentStatus = (doc.paymentStatus ?? 'pending') as string;
+  const payMethod   = ((doc.paymentMethod as string) || '').toLowerCase();
+
+  if (payMethod === 'payhere' && paymentStatus !== 'paid' && paymentStatus !== 'success') {
+    paymentStatus = 'failed';
+    orderStatus   = 'cancelled';
+  } else if (paymentStatus === 'declined') {
+    paymentStatus = 'failed';
+    orderStatus   = 'cancelled';
+  }
 
   return {
     _id:           doc._id,
@@ -204,6 +224,11 @@ function normalizeOnlineOrder(doc: Record<string, unknown>) {
 export async function getOrders(req: AuthRequest, res: Response): Promise<void> {
   const { Order, Transaction } = req.models!;
   const { source, status, search, page = '1', limit = '20' } = req.query as Record<string, string>;
+
+  // Best-effort: despatch any newly-arrived e-com orders (and their Stock
+  // History entries) before reading, whoever's asking — this used to depend
+  // on a Manager opening the page, so orders could sit unprocessed forever.
+  try { await runEcomSync(req.models!); } catch { /* don't block reads on sync failure */ }
 
   const pageNum  = parseInt(page);
   const limitNum = parseInt(limit);
@@ -291,6 +316,8 @@ export async function getOrders(req: AuthRequest, res: Response): Promise<void> 
 // GET /api/orders/stats
 export async function getOrderStats(req: AuthRequest, res: Response): Promise<void> {
   const { Order, Transaction } = req.models!;
+
+  try { await runEcomSync(req.models!); } catch { /* don't block reads on sync failure */ }
 
   const [txnAgg, orderAgg] = await Promise.all([
     // POS: count all transactions; revenue only from status='success' (paymentStatus='paid')
@@ -421,72 +448,92 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
   res.status(201).json({ data: order });
 }
 
-// POST /api/orders/sync — Manager only
+/** Any orderStatus value that isn't one of these is a raw, just-arrived state (e.g. 'pending'). */
+const ECOM_TERMINAL_STATUSES = [...STOCK_CONSUMING_STATUSES, 'cancelled'];
+
 // Auto-processes new e-com orders based on paymentMethod + paymentStatus.
 // Rules:
-//   payhere + paid     → orderStatus='processing', reduce stock (revenue counted via paymentStatus='paid')
-//   payhere + declined → orderStatus='cancelled',  no stock change
-//   COD     + pending  → orderStatus='processing', reduce stock (no revenue yet; paymentStatus stays 'pending')
-// Idempotent: orders already in 'processing'/'cancelled'/'delivered' are skipped.
-export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<void> {
-  const { Order, Product, StockHistory } = req.models!;
-
-  // Find all e-com orders not yet processed (orderStatus field exists but not in terminal states)
-  const unprocessed = await Order.find({
-    orderStatus: { $exists: true, $nin: ['processing', 'cancelled', 'delivered'] },
-  }).lean() as Record<string, unknown>[];
-
+//   payhere + paid/success → orderStatus='processing' (revenue counted via paymentStatus='paid')
+//   payhere + declined     → orderStatus='cancelled'
+//   COD     + pending      → orderStatus='processing' (no revenue yet; paymentStatus stays 'pending')
+// Idempotent: orders already in a terminal status are skipped.
+//
+// Stock is deliberately NOT touched here. The e-com website's own backend
+// writes directly into this tenant's `products`/`stockhistories` collections
+// for these orders (reason "Online transaction <id>") — this sync used to
+// *also* release/restore stock for the same orders, and the two uncoordinated
+// writers were double- (sometimes triple-) deducting the same sale. The
+// website is the sole source of truth for e-com stock movements; this backend
+// only keeps `orderStatus`/`status` in sync for the Orders UI and reporting.
+//
+// Called both from the explicit POST /orders/sync route and from every
+// order-reading endpoint below, so the status shown is never stale regardless
+// of who's looking or what role they have. The atomic per-order claim below
+// means running this repeatedly is a no-op once an order has already been
+// processed.
+export async function runEcomSync(models: TenantModels): Promise<number> {
+  const { Order } = models;
   let processed = 0;
+
+  const unprocessed = await Order.find({
+    orderStatus: { $exists: true, $nin: ECOM_TERMINAL_STATUSES },
+  }).lean() as Record<string, unknown>[];
 
   for (const order of unprocessed) {
     const payMethod = ((order.paymentMethod as string) || '').toLowerCase();
     const payStatus = ((order.paymentStatus as string) || '').toLowerCase();
 
     let newOrderStatus: string | null = null;
-    let shouldReduceStock = false;
+    let newPaymentStatus: string | null = null;
 
     if (payMethod === 'payhere') {
-      if (payStatus === 'paid') {
-        // Payhere + paid → processing: stock deducted, revenue counted immediately
-        newOrderStatus    = 'processing';
-        shouldReduceStock = true;
+      if (payStatus === 'paid' || payStatus === 'success') {
+        newOrderStatus = 'processing';
       } else if (payStatus === 'declined') {
-        // Payhere + declined → cancelled: no inventory change
-        newOrderStatus = 'cancelled';
+        // No inventory change — stock is never touched here (see comment above).
+        newOrderStatus   = 'cancelled';
+        newPaymentStatus = 'failed';
       }
     } else if (payMethod === 'cash-on-delivery' && payStatus === 'pending') {
-      // COD + pending → processing: stock deducted now; revenue only when delivered
-      newOrderStatus    = 'processing';
-      shouldReduceStock = true;
+      newOrderStatus = 'processing';
     }
 
     if (!newOrderStatus) continue;
+
+    // Build the fields to set atomically
+    const setFields: Record<string, string> = {
+      orderStatus: newOrderStatus,
+      status:      newOrderStatus,
+    };
+    if (newPaymentStatus) setFields.paymentStatus = newPaymentStatus;
 
     // Atomic claim — prevent double-processing under concurrent calls
     const claimed = await Order.collection.findOneAndUpdate(
       {
         _id:         (order as { _id: mongoose.Types.ObjectId })._id,
-        orderStatus: { $nin: ['processing', 'cancelled', 'delivered'] },
+        orderStatus: { $nin: ECOM_TERMINAL_STATUSES },
       },
-      { $set: { orderStatus: newOrderStatus, status: newOrderStatus } }
+      { $set: setFields }
     );
     if (!claimed) continue;
-
-    if (shouldReduceStock) {
-      await releaseOrderStock(req.models!, order as Record<string, unknown>, req.user!.id);
-    }
 
     processed++;
   }
 
+  return processed;
+}
+
+// POST /api/orders/sync — Manager only (explicit manual trigger; see runEcomSync)
+export async function syncEcomOrders(req: AuthRequest, res: Response): Promise<void> {
+  const processed = await runEcomSync(req.models!);
   res.json({ data: { processed } });
 }
 
 // PATCH /api/orders/:id/confirm
-// Marks a COD e-com order in 'processing' as delivered.
-// Sets paymentStatus='paid' and orderStatus='delivered'.
-// Stock was already deducted when the order moved to 'processing' via sync.
-// Revenue is now counted because paymentStatus='paid'.
+// Marks a COD or PayHere e-com order in 'processing' as delivered.
+//
+// COD:     paymentStatus → 'paid' (paid on delivery), stock was already deducted at processing.
+// PayHere: paymentStatus stays 'paid' (already paid at checkout), stock deducted NOW on delivery.
 export async function confirmOrder(req: AuthRequest, res: Response): Promise<void> {
   const { Order } = req.models!;
 
@@ -497,8 +544,8 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
   const payMethod   = ((raw.paymentMethod as string) || '').toLowerCase();
   const orderStatus = (raw.orderStatus as string) || (raw.status as string) || '';
 
-  if (!ecom || payMethod !== 'cash-on-delivery') {
-    res.status(400).json({ message: 'Only COD e-com orders can be confirmed through this endpoint.' });
+  if (!ecom || !['cash-on-delivery', 'payhere'].includes(payMethod)) {
+    res.status(400).json({ message: 'Only COD or PayHere e-com orders can be confirmed through this endpoint.' });
     return;
   }
 
@@ -508,7 +555,8 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
   }
 
   const updateFields: Record<string, unknown> = {
-    paymentStatus: 'paid',
+    // COD: becomes paid now. PayHere: already paid at checkout, keep it.
+    paymentStatus: payMethod === 'cash-on-delivery' ? 'paid' : (raw.paymentStatus ?? 'paid'),
     orderStatus:   'delivered',
     status:        'delivered',
     confirmedBy:   new mongoose.Types.ObjectId(req.user!.id),
@@ -518,6 +566,12 @@ export async function confirmOrder(req: AuthRequest, res: Response): Promise<voi
     { _id: (raw as { _id: mongoose.Types.ObjectId })._id },
     { $set: updateFields }
   );
+
+  // PayHere: stock was held at 'processing' — deduct it now on delivery.
+  // COD: stock was already deducted when the order moved to 'processing'.
+  if (payMethod === 'payhere') {
+    await releaseOrderStock(req.models!, { ...raw, ...updateFields } as Record<string, unknown>, req.user!.id);
+  }
 
   res.json({ data: normalizeOnlineOrder({ ...raw, ...updateFields }) });
 }
@@ -534,22 +588,40 @@ export async function updateOrderStatus(req: AuthRequest, res: Response): Promis
     return;
   }
 
+  // Read before writing: whether this is an e-com order has to be judged from
+  // the document as it stood before this update, not after — the update
+  // itself sets `orderStatus`, so checking post-write would call every order
+  // e-com from its very first status change onward.
+  const before = await Order.findById(req.params.id).lean();
+  if (!before) { res.status(404).json({ message: 'Order not found' }); return; }
+  const ecom = isEcomOrder(before as unknown as Record<string, unknown>);
+
+  // A backend-created online order (no external system involved) never had an
+  // `orderStatus` field — stamping one on here would misfile it as an e-com
+  // order in every listing/stat that keys off that field from now on.
+  const setFields: Record<string, unknown> = ecom ? { status, orderStatus: status } : { status };
+
   await Order.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(req.params.id as string) },
-    { $set: { status, orderStatus: status } }
+    { $set: setFields }
   );
 
   const updated = await Order.findById(req.params.id).lean();
   if (!updated) { res.status(404).json({ message: 'Order not found' }); return; }
 
-  if (status === 'cancelled') {
-    // A COD order already took its stock out on the way to 'processing' —
-    // cancelling it has to put those units back, not just relabel the order.
-    await restoreOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
-  } else if (STOCK_CONSUMING_STATUSES.includes(status)) {
-    // Overriding an order into a fulfilled state despatches the goods, so the
-    // stock has to leave here as well — the sync job may never see this order.
-    await releaseOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
+  // The e-com website's own backend owns stock for orders it wrote — this
+  // override only ever relabels those. For a backend-created online order,
+  // this remains the only place that ever moves its stock.
+  if (!ecom) {
+    if (status === 'cancelled') {
+      // A COD order already took its stock out on the way to 'processing' —
+      // cancelling it has to put those units back, not just relabel the order.
+      await restoreOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
+    } else if (STOCK_CONSUMING_STATUSES.includes(status)) {
+      // Overriding an order into a fulfilled state despatches the goods, so the
+      // stock has to leave here as well — the sync job may never see this order.
+      await releaseOrderStock(req.models!, updated as unknown as Record<string, unknown>, req.user!.id);
+    }
   }
 
   res.json({ data: normalizeOnlineOrder(updated as unknown as Record<string, unknown>) });

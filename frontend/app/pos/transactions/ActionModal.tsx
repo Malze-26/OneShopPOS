@@ -2,6 +2,7 @@ import { useState } from "react";
 import api from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { Transaction } from "./types";
+import { formatStoreDate, formatStoreTime } from "@/app/lib/timezone";
 
 interface ActionModalProps {
   selectedTxn: Transaction;
@@ -144,8 +145,8 @@ export default function ActionModal({
               <div>
                 <span className="text-[#6B7280] block text-[11px] font-medium uppercase tracking-wider mb-0.5">Date & Time</span>
                 <span className="font-semibold text-[#374151]">
-                  {new Date(liveTxn.createdAt).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}{" "}
-                  · {new Date(liveTxn.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {formatStoreDate(liveTxn.createdAt, { day: "2-digit", month: "short", year: "numeric" })}{" "}
+                  · {formatStoreTime(liveTxn.createdAt, { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
               <div>

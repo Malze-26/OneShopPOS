@@ -19,6 +19,7 @@ import alertsRoutes from './routes/alerts';
 import tenantRoutes from './routes/tenants';
 import shiftRoutes from './routes/shifts';
 import uploadRoutes from './routes/uploads';
+import messageRoutes from './routes/messageRoutes';
 import { tenantMiddleware } from './middleware/tenantMiddleware';
 
 const app = express();
@@ -89,6 +90,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/messages', messageRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found' });

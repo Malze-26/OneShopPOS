@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { protect, requireRole } from '../middleware/authMiddleware';
-import { getGRNs, createGRN, getGRN, getStockHistory } from '../controllers/stockController';
+import { getGRNs, createGRN, getGRN, getNextGRNReference, getStockHistory } from '../controllers/stockController';
 import {
   getReturns,
   createReturn,
@@ -22,6 +22,8 @@ router.get('/history', asyncHandler(getStockHistory));
 
 router.get('/grns', asyncHandler(getGRNs));
 router.post('/grns', requireRole('Manager'), asyncHandler(createGRN));
+// '/grns/next-reference' must precede '/grns/:id' or 'next-reference' is read as an id.
+router.get('/grns/next-reference', asyncHandler(getNextGRNReference));
 router.get('/grns/:id', asyncHandler(getGRN));
 
 // Products whose stock has expired or is close to it — the return worklist.

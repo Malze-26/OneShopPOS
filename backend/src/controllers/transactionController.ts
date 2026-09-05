@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { sendReceiptEmail } from '../utils/sendReceiptEmail';
+import { startOfStoreDay, endOfStoreDay, formatStoreDate } from '../utils/timezone';
 
 function generateTxnId(): string {
   const num = Math.floor(Math.random() * 90000) + 10000;
@@ -52,13 +53,11 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
   try {
     const { Transaction } = req.models!;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = startOfStoreDay();
+    const todayEnd = endOfStoreDay();
 
     const stats = await Transaction.aggregate([
-      { $match: { status: 'success', createdAt: { $gte: today, $lt: tomorrow } } },
+      { $match: { status: 'success', createdAt: { $gte: today, $lte: todayEnd } } },
       {
         $group: {
           _id: '$paymentMethod',
@@ -215,9 +214,7 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
               pointsEarned,
               total:             req.body.total ?? req.body.amount,
               paymentMethod:     req.body.paymentMethod,
-              date: new Date().toLocaleDateString('en-LK', {
-                day: '2-digit', month: 'short', year: 'numeric',
-              }),
+              date: formatStoreDate(new Date(), { day: '2-digit', month: 'short', year: 'numeric' }, 'en-LK'),
             });
           } catch (emailErr) {
             console.error('Failed to send receipt email:', emailErr);

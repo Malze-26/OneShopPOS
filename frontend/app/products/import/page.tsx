@@ -14,8 +14,8 @@ interface ParsedRow {
   supplier: string;
   selling_price: number;
   cost_price: number;
-  stock: number;
   low_stock_threshold: number;
+  is_weight_based: boolean;
   errors: string[];
 }
 
@@ -30,12 +30,15 @@ type Phase = 'upload' | 'preview' | 'importing' | 'done';
 // ── CSV helpers ────────────────────────────────────────────────────────────────
 
 // No sku column: SKUs are issued by the server from the category's
-// three-letter code (Beverages -> BEV-001, BEV-002, …).
+// three-letter code (Beverages -> BEV-001, BEV-002, …). No stock column
+// either: imported products start at zero and only gain stock once goods
+// are actually received through Receive Goods (GRN).
 const TEMPLATE_CSV = [
-  'name,category,supplier,selling_price,cost_price,stock,low_stock_threshold',
-  'Coca-Cola 500ml,Beverages,Ceylon Beverages Ltd,180,130,100,20',
-  "Lay's Classic Chips 100g,Snacks,Maliban Biscuit Manufactories,250,180,60,15",
-  'Anchor Butter 200g,Dairy,Anchor Foods Lanka,490,380,25,10',
+  'name,category,supplier,selling_price,cost_price,low_stock_threshold,is_weight_based',
+  'Coca-Cola 500ml,Beverages,Ceylon Beverages Ltd,180,130,20,false',
+  "Lay's Classic Chips 100g,Snacks,Maliban Biscuit Manufactories,250,180,15,false",
+  'Anchor Butter 200g,Dairy,Anchor Foods Lanka,490,380,10,false',
+  'Fresh Carrots,Vegetables,Fresh Harvest Suppliers,180,120,15,true',
 ].join('\n');
 
 function parseCSV(text: string): ParsedRow[] {
@@ -63,17 +66,17 @@ function parseCSV(text: string): ParsedRow[] {
     const supplier = get('supplier');
     const selling_price = parseFloat(get('selling_price')) || 0;
     const cost_price = parseFloat(get('cost_price')) || 0;
-    const stock = parseInt(get('stock')) || 0;
     const low_stock_threshold = parseInt(get('low_stock_threshold')) || 10;
+    const is_weight_based = /^(true|yes|1)$/i.test(get('is_weight_based'));
 
     const errors: string[] = [];
     if (!name) errors.push('Product name is required');
     if (!selling_price || selling_price <= 0) errors.push('Selling price must be greater than 0');
-    // Imported stock was delivered by someone too — the server rejects a row
-    // whose supplier is missing or unknown, so flag it here before uploading.
+    // Every imported product has to come from somewhere — the server rejects
+    // a row whose supplier is missing or unknown, so flag it here before uploading.
     if (!supplier) errors.push('Supplier is required');
 
-    return { row: i + 1, name, category, supplier, selling_price, cost_price, stock, low_stock_threshold, errors };
+    return { row: i + 1, name, category, supplier, selling_price, cost_price, low_stock_threshold, is_weight_based, errors };
   });
 }
 
@@ -197,10 +200,13 @@ export default function CSVImportPage() {
               <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">name</span>,{' '}
               <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">category</span>,{' '}
               <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">supplier</span>,{' '}
-              <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">selling_price</span>. All other columns are optional.
+              <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">selling_price</span>. All other columns are optional,
+              including <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">is_weight_based</span> (true/false —
+              defaults to false, meaning sold by item rather than by kg).
               The supplier must already exist on the Suppliers page — nothing reaches the shelf without one.
               SKUs are generated from the category — don&apos;t include a{' '}
               <span className="font-mono text-xs bg-[#f9fafb] px-1 rounded">sku</span> column.
+              Imported products start at zero stock — receive their first delivery via Receive Goods afterwards.
             </p>
           </div>
           <button
@@ -271,7 +277,7 @@ export default function CSVImportPage() {
               <table className="w-full">
                 <thead className="bg-[#f9fafb] border-b border-[#e4e7ec]">
                   <tr>
-                    {['Row', 'Product Name', 'SKU', 'Category', 'Supplier', 'Price (LKR)', 'Stock', 'Status'].map((h) => (
+                    {['Row', 'Product Name', 'SKU', 'Category', 'Supplier', 'Price (LKR)', 'Weight-based', 'Status'].map((h) => (
                       <th
                         key={h}
                         className="px-6 py-3 text-left text-xs font-medium text-[#4a5565] uppercase tracking-wider"
@@ -314,7 +320,7 @@ export default function CSVImportPage() {
                             <div className="text-xs text-[#f04438] mt-0.5">Invalid</div>
                           )}
                         </td>
-                        <td className="px-6 py-3 text-sm text-[#101828]">{row.stock}</td>
+                        <td className="px-6 py-3 text-sm text-[#101828]">{row.is_weight_based ? 'kg' : 'item'}</td>
                         <td className="px-6 py-3">
                           {hasError ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#fef3f2] text-[#f04438] rounded-full text-xs font-medium">

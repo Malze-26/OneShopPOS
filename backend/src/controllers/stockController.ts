@@ -1,13 +1,12 @@
 import { Response, NextFunction } from 'express';
-import { Model } from 'mongoose';
 import { AuthRequest } from '../types';
-import { IGRN } from '../models/GRN';
 import { resolveSupplier } from '../utils/supplier';
+import { generateGRNNumber, generateGRNReferenceNumber } from '../utils/grn';
+import { startOfStoreDay, endOfStoreDay } from '../utils/timezone';
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_LIMIT,
   MAX_PAGE_LIMIT,
-  GRN_NUMBER_PAD_LENGTH,
   SYSTEM_ACTOR,
 } from '../constants';
 
@@ -21,7 +20,6 @@ interface CreateGRNBody {
   /** Supplier _id. `supplier` is still accepted as a name for older clients. */
   supplierId?: string;
   supplier?: string;
-  referenceNumber?: string;
   notes?: string;
   items: GRNItem[];
 }
@@ -44,25 +42,9 @@ function parsePagination(page: unknown, limit: unknown): { pageNum: number; limi
 function buildDateFilter(from?: string, to?: string): Record<string, Date> | null {
   if (!from && !to) return null;
   const dateFilter: Record<string, Date> = {};
-  if (from) dateFilter.$gte = new Date(from);
-  if (to) {
-    const toDate = new Date(to);
-    toDate.setHours(23, 59, 59, 999);
-    dateFilter.$lte = toDate;
-  }
+  if (from) dateFilter.$gte = startOfStoreDay(new Date(from));
+  if (to) dateFilter.$lte = endOfStoreDay(new Date(to));
   return dateFilter;
-}
-
-async function generateGRNNumber(GRN: Model<IGRN>): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `GRN-${year}-`;
-
-  const last = await GRN.findOne({ grnNumber: { $regex: `^${prefix}` } })
-    .sort({ grnNumber: -1 })
-    .lean();
-
-  const next = last ? parseInt((last.grnNumber as string).replace(prefix, ''), 10) + 1 : 1;
-  return `${prefix}${String(next).padStart(GRN_NUMBER_PAD_LENGTH, '0')}`;
 }
 
 // ── GET /api/stocks/grns ───────────────────────────────────────────────────
@@ -106,7 +88,7 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
     const { GRN, Product, StockHistory, Supplier } = req.models!;
     const storeId = req.user!.storeId;
     const receivedBy = req.user?.email ?? SYSTEM_ACTOR;
-    const { supplierId, supplier, referenceNumber, notes, items } = req.body as CreateGRNBody;
+    const { supplierId, supplier, notes, items } = req.body as CreateGRNBody;
     const supplierRef = supplierId ?? supplier;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -162,12 +144,15 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
     const totalItems = resolvedItems.reduce((sum, r) => sum + r.quantityReceived, 0);
     const totalCost = resolvedItems.reduce((sum, r) => sum + r.subtotal, 0);
     const grnNumber = await generateGRNNumber(GRN);
+    // Auto-assigned — a free-text PO number let two GRNs collide on the same
+    // reference, so it is generated the same way grnNumber is.
+    const referenceNumber = await generateGRNReferenceNumber(GRN);
 
     const grn = await GRN.create({
       grnNumber,
       supplierId: resolvedSupplier._id,
       supplier: resolvedSupplier.name,
-      referenceNumber: referenceNumber?.trim() ?? '',
+      referenceNumber,
       notes: notes?.trim() ?? '',
       items: resolvedItems,
       totalItems,
@@ -189,6 +174,20 @@ export async function createGRN(req: AuthRequest, res: Response, next: NextFunct
     }
 
     res.status(201).json({ data: grn });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── GET /api/stocks/grns/next-reference ────────────────────────────────────
+// Lets the Receive Goods form show the PO number it will be assigned before
+// the GRN is actually saved. The value is only a preview: createGRN assigns
+// the real one at save time, so a concurrent GRN can never steal it.
+export async function getNextGRNReference(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { GRN } = req.models!;
+    const referenceNumber = await generateGRNReferenceNumber(GRN);
+    res.json({ data: { referenceNumber } });
   } catch (err) {
     next(err);
   }

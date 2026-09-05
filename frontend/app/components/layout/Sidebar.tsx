@@ -17,6 +17,7 @@ import {
   Bell,
   Settings,
   LogOut,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/app/contexts/AuthContext';
 

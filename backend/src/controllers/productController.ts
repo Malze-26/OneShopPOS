@@ -5,13 +5,13 @@ import fs from 'fs';
 import { AuthRequest } from '../types';
 import { ICategory } from '../models/Category';
 import { ISupplier } from '../models/Supplier';
+import { IProduct } from '../models/Product';
 import { deleteObject, keyBelongsToTenant, publicUrl } from '../storage/s3';
 import { getCategoryPrefix, issueSku, previewSku, skuBelongsToPrefix } from '../utils/sku';
 import { resolveSupplier } from '../utils/supplier';
 import {
   DEFAULT_LOW_STOCK_THRESHOLD,
   DEFAULT_COST_PRICE,
-  DEFAULT_STOCK,
   STOCK_HISTORY_RECENT_LIMIT,
   SYSTEM_ACTOR,
 } from '../constants';
@@ -22,8 +22,8 @@ interface CSVRow {
   supplier: string;
   selling_price: number;
   cost_price: number;
-  stock: number;
   low_stock_threshold: number;
+  is_weight_based?: boolean;
 }
 
 interface StockAdjustBody {
@@ -49,6 +49,22 @@ async function resolveCategoryName(
   const categories = await CategoryModel.find({}).select('name').lean();
   const match = categories.find((c) => c.name.trim().toLowerCase() === wanted);
   return match ? match.name : null;
+}
+
+/**
+ * Finds a product already carrying the given name (case/whitespace-insensitive).
+ * A product out of stock is still that same product — the fix is to receive it
+ * again through Receive Goods, not to mint a second record under a new SKU.
+ */
+async function findProductByName(
+  ProductModel: Model<IProduct>,
+  name: string
+): Promise<{ name: string; sku: string } | null> {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return null;
+  const products = await ProductModel.find({}).select('name sku').lean();
+  const match = products.find((p) => p.name.trim().toLowerCase() === wanted);
+  return match ? { name: match.name, sku: match.sku } : null;
 }
 
 // ── GET /api/products ──────────────────────────────────────────────────────
@@ -141,18 +157,20 @@ export async function getNextSku(req: AuthRequest, res: Response, next: NextFunc
 // ── POST /api/products ─────────────────────────────────────────────────────
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product, Category, StockHistory, Supplier } = req.models!;
+    const { Product, Category, Supplier } = req.models!;
     const storeId = req.user!.storeId;
     const userId = req.user!.id;
 
     // sku is deliberately not read from the body — it is issued from the
     // category below so every product in a category shares its three letters.
+    // stock is not accepted here either — creating a product is master-data
+    // setup only. A product starts at zero and only gains stock once goods
+    // are actually received through Receive Goods (GRN).
     const {
       name,
       description,
       sellingPrice,
       costPrice,
-      stock,
       lowStockThreshold,
       category,
       images,
@@ -165,7 +183,6 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       description?: string;
       sellingPrice: number;
       costPrice?: number;
-      stock?: number;
       lowStockThreshold?: number;
       category: string;
       images?: string[];
@@ -198,6 +215,16 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       return;
     }
 
+    // A product that already exists — even sitting at zero stock — is
+    // restocked through Receive Goods, not recreated under a second SKU.
+    const duplicate = await findProductByName(Product, name);
+    if (duplicate) {
+      res.status(409).json({
+        message: `"${duplicate.name}" already exists (SKU ${duplicate.sku}). Use Receive Goods to add stock to it instead of creating a new product.`,
+      });
+      return;
+    }
+
     // The SKU always belongs to the category: the client's value is accepted
     // only when it already carries this category's prefix, otherwise the next
     // free number under that prefix is issued.
@@ -208,7 +235,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
         description,
         sellingPrice,
         costPrice: costPrice ?? DEFAULT_COST_PRICE,
-        stock: stock ?? DEFAULT_STOCK,
+        stock: 0,
         lowStockThreshold: lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
         category: resolvedCategory,
         images: images ?? [],
@@ -227,17 +254,6 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       { $inc: { productCount: 1 } }
     );
 
-    if (product.stock > 0) {
-      await StockHistory.create({
-        product: product._id,
-        type: 'add',
-        quantity: product.stock,
-        reason: 'Initial Stock',
-        by: req.user?.email ?? SYSTEM_ACTOR,
-        storeId,
-      });
-    }
-
     res.status(201).json({ data: product });
   } catch (err) {
     next(err);
@@ -247,7 +263,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 // ── PUT /api/products/:id ──────────────────────────────────────────────────
 export async function updateProduct(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product, Category, Supplier, StockHistory } = req.models!;
+    const { Product, Category, Supplier, StockHistory, GRN } = req.models!;
 
     const {
       name,
@@ -315,6 +331,18 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
     // Editing the stock field moves stock just as surely as a sale does, so
     // the difference is recorded rather than silently overwriting the total —
     // otherwise a product's history stops adding up to what is on the shelf.
+    // A product that has never received a GRN has nothing to correct: its
+    // stock can only start moving once goods have actually arrived.
+    if (stock !== undefined && stock !== product.stock) {
+      const hasReceivedGRN = await GRN.exists({ storeId: product.storeId, 'items.product': product._id });
+      if (!hasReceivedGRN) {
+        res.status(400).json({
+          message: 'This product has not received any goods yet. Add a GRN via Receive Goods before adjusting its stock.',
+        });
+        return;
+      }
+    }
+
     const stockBefore = product.stock;
 
     const changes: Record<string, unknown> = {
@@ -392,7 +420,7 @@ export async function deleteProduct(req: AuthRequest, res: Response, next: NextF
 // ── POST /api/products/:id/adjust-stock ───────────────────────────────────
 export async function adjustStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { Product, StockHistory } = req.models!;
+    const { Product, StockHistory, GRN } = req.models!;
     const storeId = req.user!.storeId;
     const { type, quantity, reason } = req.body as StockAdjustBody;
 
@@ -408,6 +436,16 @@ export async function adjustStock(req: AuthRequest, res: Response, next: NextFun
     const product = await Product.findById(req.params.id);
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    // A product only starts moving once goods have actually arrived — a
+    // manual adjustment cannot be the first stock a product ever sees.
+    const hasReceivedGRN = await GRN.exists({ storeId, 'items.product': product._id });
+    if (!hasReceivedGRN) {
+      res.status(400).json({
+        message: 'This product has not received any goods yet. Add a GRN via Receive Goods before adjusting its stock.',
+      });
       return;
     }
 
@@ -458,6 +496,11 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
       supplierDocs.map((s) => [s.name.trim().toLowerCase(), s])
     );
 
+    // A product that already exists is restocked through Receive Goods, not
+    // recreated under a second SKU — checked against the catalog up front,
+    // and updated as the batch goes so two rows for the same item both flag.
+    const productDocs = await Product.find({}).select('name sku').lean();
+    const productSkuByLower = new Map(productDocs.map((p) => [p.name.trim().toLowerCase(), p.sku]));
 
     const results = {
       imported: 0,
@@ -494,6 +537,14 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
         rowErrors.push(`Supplier "${rawSupplier}" does not exist. Create it on the Suppliers page first.`);
       }
 
+      // A product with this name already exists — restock it through Receive
+      // Goods rather than importing a duplicate under a new SKU.
+      const nameLower = row.name?.trim().toLowerCase();
+      const existingSku = nameLower ? productSkuByLower.get(nameLower) : undefined;
+      if (existingSku) {
+        rowErrors.push(`"${row.name.trim()}" already exists (SKU ${existingSku}). Use Receive Goods to add stock to it instead.`);
+      }
+
       if (rowErrors.length > 0) {
         results.failed++;
         results.errors.push({ row: i + 1, errors: rowErrors });
@@ -502,21 +553,26 @@ export async function importCSV(req: AuthRequest, res: Response, next: NextFunct
 
       try {
         // Imported rows carry no SKU: each one is issued from its category.
-        await issueSku(Category, Product, resolvedCategory!, (issued) =>
+        const created = await issueSku(Category, Product, resolvedCategory!, (issued) =>
           Product.create({
             name: row.name.trim(),
             sku: issued,
             category: resolvedCategory,
             sellingPrice: row.selling_price,
             costPrice: row.cost_price ?? DEFAULT_COST_PRICE,
-            stock: row.stock ?? DEFAULT_STOCK,
+            stock: 0,
             lowStockThreshold: row.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+            isWeightBased: row.is_weight_based ?? false,
+            unit: row.is_weight_based ? 'kg' : 'item',
             supplierId: resolvedSupplier!._id,
             supplier: resolvedSupplier!.name,
             storeId,
             createdBy: userId,
           })
         );
+        // So a second row further down the same file, for the same product,
+        // is caught too instead of creating a second duplicate.
+        productSkuByLower.set(nameLower!, created.sku);
         results.imported++;
       } catch {
         results.failed++;

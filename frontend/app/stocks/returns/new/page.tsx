@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Plus, Trash2, ChevronLeft, Search, TrendingDown } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 type Reason = 'expired' | 'damaged';
 
@@ -18,6 +19,8 @@ interface Product {
   stock: number;
   expiryDate: string | null;
   expiryStatus: 'expired' | 'expiring-soon' | 'fresh' | null;
+  supplierId: string;
+  isWeightBased: boolean;
 }
 
 interface Supplier {
@@ -164,6 +167,7 @@ function NewReturnForm() {
   const [lines, setLines] = useState<LineItem[]>([newLine()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [supplierLocked, setSupplierLocked] = useState(false);
 
   const fmt = (n: number) => `${currency} ${n.toLocaleString()}`;
 
@@ -189,6 +193,12 @@ function NewReturnForm() {
           // Expired stock is returned in full — nothing on that batch is sellable.
           quantity: Math.max(1, p.stock),
         }]);
+        // Arriving from Expiry Watch means this return is for one specific
+        // product's stock, so it must go back to that product's own supplier.
+        if (p.supplierId) {
+          setSupplierId(p.supplierId);
+          setSupplierLocked(true);
+        }
       })
       .catch(() => {});
   }, [searchParams]);
@@ -247,7 +257,8 @@ function NewReturnForm() {
       return;
     }
     if (overStockLine) {
-      setError(`Cannot return more than the ${overStockLine.product!.stock} units in stock for "${overStockLine.product!.name}".`);
+      const unitLabel = overStockLine.product!.isWeightBased ? 'kg' : 'units';
+      setError(`Cannot return more than the ${overStockLine.product!.stock} ${unitLabel} in stock for "${overStockLine.product!.name}".`);
       return;
     }
 
@@ -299,13 +310,19 @@ function NewReturnForm() {
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] text-[#101828] bg-white"
+                disabled={supplierLocked}
+                className={`w-full px-3 py-2 border border-[#e4e7ec] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] text-[#101828] ${
+                  supplierLocked ? 'bg-[#f9fafb] cursor-not-allowed' : 'bg-white'
+                }`}
               >
                 <option value="">Choose a supplier</option>
                 {suppliers.map((s) => (
                   <option key={s._id} value={s._id}>{s.name}</option>
                 ))}
               </select>
+              {supplierLocked && (
+                <p className="text-xs text-[#4a5565] mt-1">Locked to this product&apos;s supplier</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-[#4a5565] mb-1.5">Reference / Debit Note No.</label>
@@ -374,7 +391,7 @@ function NewReturnForm() {
                       <td className="px-4 py-3 text-sm whitespace-nowrap">
                         {line.product?.expiryDate ? (
                           <span className={line.product.expiryStatus === 'expired' ? 'text-[#f04438] font-medium' : 'text-[#101828]'}>
-                            {new Date(line.product.expiryDate).toLocaleDateString('en-CA')}
+                            {formatStoreDate(line.product.expiryDate, undefined, 'en-CA')}
                           </span>
                         ) : (
                           <span className="text-[#4a5565]">—</span>

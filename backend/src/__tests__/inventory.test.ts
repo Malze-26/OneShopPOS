@@ -101,7 +101,7 @@ describe('Auth guard', () => {
 // ─── Product CRUD ─────────────────────────────────────────────────────────────
 
 describe('Product CRUD', () => {
-  it('Manager can create a product', async () => {
+  it('Manager can create a product, starting at zero stock', async () => {
     const res = await request(app)
       .post('/api/products')
       .set('OneShop-Tenant-ID', TENANT)
@@ -110,13 +110,15 @@ describe('Product CRUD', () => {
         name: 'Test Rice 5kg',
         sellingPrice: 250,
         costPrice: 180,
-        stock: 100,
         category: 'Groceries',
         supplierId,
       });
     expect(res.status).toBe(201);
     // The SKU is issued from the category, not supplied by the client.
     expect(res.body.data).toMatchObject({ name: 'Test Rice 5kg', sku: 'GRO-001' });
+    // Creating a product is master-data setup, not a stock transaction — it
+    // has nothing on the shelf until a GRN actually brings goods in.
+    expect(res.body.data.stock).toBe(0);
     productId = res.body.data._id;
   });
 
@@ -130,7 +132,6 @@ describe('Product CRUD', () => {
         sku: 'NO-ACCESS-001',
         sellingPrice: 10,
         costPrice: 5,
-        stock: 0,
         category: 'Misc',
         supplierId,
       });
@@ -146,7 +147,6 @@ describe('Product CRUD', () => {
         name: 'Supplierless Rice',
         sellingPrice: 250,
         costPrice: 180,
-        stock: 10,
         category: 'Groceries',
       });
     expect(res.status).toBe(400);
@@ -162,12 +162,60 @@ describe('Product CRUD', () => {
         name: 'Ghost Sourced Rice',
         sellingPrice: 250,
         costPrice: 180,
-        stock: 10,
         category: 'Groceries',
         supplierId: 'Nobody Ltd',
       });
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/supplier/i);
+  });
+
+  it('ignores a client-supplied stock value — a product always starts at zero', async () => {
+    // A category of its own, so this doesn't perturb the sequential SKU
+    // numbers the "Category-derived SKUs" tests expect from 'Groceries'.
+    await request(app)
+      .post('/api/categories')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ name: 'Stock Ignore Test Category' });
+
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name: 'Smuggled Stock Rice',
+        sellingPrice: 250,
+        costPrice: 180,
+        stock: 500,
+        category: 'Stock Ignore Test Category',
+        supplierId,
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.data.stock).toBe(0);
+  });
+
+  it('refuses to create a second record for a product that already exists', async () => {
+    const category = 'Stock Ignore Test Category';
+
+    const first = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ name: 'Carrot', sellingPrice: 80, costPrice: 40, category, supplierId });
+    expect(first.status).toBe(201);
+
+    // Out of stock is still the same product — case and stray whitespace
+    // must not be enough to dodge the check either.
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ name: '  carrot  ', sellingPrice: 85, costPrice: 45, category, supplierId });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toContain(first.body.data.sku);
+
+    const products = await models.Product.find({ name: { $regex: /^carrot$/i } });
+    expect(products).toHaveLength(1);
   });
 
   it('Cashier can list products', async () => {
@@ -216,7 +264,7 @@ describe('Category-derived SKUs', () => {
       .post('/api/products')
       .set('OneShop-Tenant-ID', TENANT)
       .set('Authorization', `Bearer ${managerToken}`)
-      .send({ sellingPrice: 100, costPrice: 50, stock: 5, supplierId, ...body });
+      .send({ sellingPrice: 100, costPrice: 50, supplierId, ...body });
 
   const createCategory = (name: string) =>
     request(app)
@@ -349,7 +397,29 @@ describe('Category-derived SKUs', () => {
 // ─── Stock adjustment ─────────────────────────────────────────────────────────
 
 describe('Stock adjustment', () => {
-  it('Manager can add stock', async () => {
+  it('refuses to adjust stock for a product that has never received a GRN', async () => {
+    const res = await request(app)
+      .post(`/api/products/${productId}/adjust-stock`)
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ type: 'add', quantity: 10, reason: 'Attempted bypass' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/GRN|goods/i);
+  });
+
+  it('brings the product into stock via a GRN', async () => {
+    const res = await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId, quantityReceived: 100, costPrice: 180 }] });
+    expect(res.status).toBe(201);
+
+    const product = await models.Product.findById(productId);
+    expect(product!.stock).toBe(100);
+  });
+
+  it('Manager can add stock once a GRN exists', async () => {
     const res = await request(app)
       .post(`/api/products/${productId}/adjust-stock`)
       .set('OneShop-Tenant-ID', TENANT)
@@ -425,13 +495,22 @@ describe('low stock counts', () => {
         name,
         sellingPrice: 100,
         costPrice: 60,
-        stock: 2,
         lowStockThreshold: 10,
         category: 'Groceries',
         supplierId,
         expiryDate,
       });
     expect(res.status).toBe(201);
+
+    // A product with no stock is "out of stock", not "low stock" — a GRN has
+    // to bring it in before it can register as running low.
+    const grn = await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId: res.body.data._id, quantityReceived: 2, costPrice: 60 }] });
+    expect(grn.status).toBe(201);
+
     return res.body.data;
   };
 
@@ -503,7 +582,6 @@ describe('stock always equals what was added minus what was removed', () => {
         name: 'Ledger Test Flour 1kg',
         sellingPrice: 300,
         costPrice: 200,
-        stock: 30,
         category: 'Groceries',
         supplierId,
       });
@@ -511,11 +589,36 @@ describe('stock always equals what was added minus what was removed', () => {
     ledgerProductId = res.body.data._id;
   });
 
-  it('holds after the opening stock', async () => {
+  it('starts at zero with an empty ledger', async () => {
+    const product = await models.Product.findById(ledgerProductId);
+    expect(product!.stock).toBe(0);
+    expect(await ledgerFor(ledgerProductId)).toBe(0);
+  });
+
+  it('refuses a direct stock edit before any GRN has been received', async () => {
+    const res = await request(app)
+      .put(`/api/products/${ledgerProductId}`)
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ stock: 18 });
+    expect(res.status).toBe(400);
+
+    const product = await models.Product.findById(ledgerProductId);
+    expect(product!.stock).toBe(0);
+  });
+
+  it('holds after receiving the opening stock through a GRN', async () => {
+    const res = await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId: ledgerProductId, quantityReceived: 30, costPrice: 200 }] });
+    expect(res.status).toBe(201);
+
     expect(await ledgerFor(ledgerProductId)).toBe(30);
   });
 
-  it('holds after editing the stock field directly', async () => {
+  it('holds after editing the stock field directly, now that a GRN exists', async () => {
     // The edit form writes stock straight onto the product; without a movement
     // to match, the history stops explaining what is on the shelf.
     const res = await request(app)
@@ -530,7 +633,7 @@ describe('stock always equals what was added minus what was removed', () => {
     expect(await ledgerFor(ledgerProductId)).toBe(18);
   });
 
-  it('holds after receiving goods and adjusting by hand', async () => {
+  it('holds after receiving more goods and adjusting by hand', async () => {
     await request(app)
       .post('/api/stocks/grns')
       .set('OneShop-Tenant-ID', TENANT)
@@ -549,12 +652,20 @@ describe('stock always equals what was added minus what was removed', () => {
   });
 });
 
-// ─── E-com order despatch ─────────────────────────────────────────────────────
+// ─── E-com orders: stock stays with the e-com website ─────────────────────────
+//
+// The e-com website's own backend writes directly into this tenant's
+// `products`/`stockhistories` collections for orders it despatches (reason
+// "Online transaction <id>"). This backend used to *also* release/restore
+// stock for the same orders, and the two uncoordinated writers double- (and
+// sometimes triple-) deducted the same sale. Stock is now never touched here
+// for a document carrying an `orderStatus` field (the e-com website's marker)
+// — this backend only keeps `orderStatus`/`status` in sync for reporting.
 
-describe('E-com order despatch', () => {
+describe('E-com orders: stock stays with the e-com website', () => {
   let orderProductId: string;
 
-  const makeOrder = async (orderId: string) => {
+  const makeOrder = async (orderId: string, overrides: Record<string, unknown> = {}) => {
     const conn = mongoose.connection.useDb(TENANT, { useCache: true });
     return conn.collection('orders').insertOne({
       orderId,
@@ -572,6 +683,7 @@ describe('E-com order despatch', () => {
       createdBy: new mongoose.Types.ObjectId(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      ...overrides,
     });
   };
 
@@ -584,18 +696,45 @@ describe('E-com order despatch', () => {
         name: 'Web Sold Sugar 1kg',
         sellingPrice: 100,
         costPrice: 70,
-        stock: 50,
         category: 'Groceries',
         supplierId,
       });
     expect(res.status).toBe(201);
     orderProductId = res.body.data._id;
+
+    const grn = await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId: orderProductId, quantityReceived: 50, costPrice: 70 }] });
+    expect(grn.status).toBe(201);
   });
 
-  it('takes stock out when a manager marks an order delivered', async () => {
-    // The status override used to write the new status straight to the
-    // collection, despatching the goods without touching inventory.
-    const { insertedId } = await makeOrder('ORD-TEST-01');
+  it('syncs orderStatus for a raw order but never touches stock', async () => {
+    // COD + pending is the one rule that actually transitions the status.
+    const { insertedId } = await makeOrder('ORD-TEST-01', { paymentStatus: 'pending' });
+    const before = (await models.Product.findById(orderProductId))!.stock;
+
+    const res = await request(app)
+      .get('/api/orders')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+
+    // COD + pending still gets despatched to 'processing' for the Orders UI...
+    const conn = mongoose.connection.useDb(TENANT, { useCache: true });
+    const order = await conn.collection('orders').findOne({ _id: insertedId });
+    expect(order!.orderStatus).toBe('processing');
+
+    // ...but no stock or Stock History moves for it from this side.
+    const after = (await models.Product.findById(orderProductId))!.stock;
+    expect(after).toBe(before);
+    const movements = await models.StockHistory.find({ reason: { $regex: 'ORD-TEST-01' } });
+    expect(movements).toHaveLength(0);
+  });
+
+  it('a manager marking an e-com order delivered relabels it without touching stock', async () => {
+    const { insertedId } = await makeOrder('ORD-TEST-02');
     const before = (await models.Product.findById(orderProductId))!.stock;
 
     const res = await request(app)
@@ -604,36 +743,15 @@ describe('E-com order despatch', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .send({ status: 'delivered' });
     expect(res.status).toBe(200);
+    expect(res.body.data.orderStatus).toBe('delivered');
 
     const after = (await models.Product.findById(orderProductId))!.stock;
-    expect(after).toBe(before - 4);
-
-    const movements = await models.StockHistory.find({ product: orderProductId, type: 'remove' });
-    expect(movements.filter((m) => m.reason.includes('ORD-TEST-01'))).toHaveLength(1);
+    expect(after).toBe(before);
+    const movements = await models.StockHistory.find({ reason: { $regex: 'ORD-TEST-02' } });
+    expect(movements).toHaveLength(0);
   });
 
-  it('never takes the same order stock twice', async () => {
-    const { insertedId } = await makeOrder('ORD-TEST-02');
-    const before = (await models.Product.findById(orderProductId))!.stock;
-
-    for (const status of ['processing', 'delivered']) {
-      const res = await request(app)
-        .patch(`/api/orders/${insertedId}/status`)
-        .set('OneShop-Tenant-ID', TENANT)
-        .set('Authorization', `Bearer ${managerToken}`)
-        .send({ status });
-      expect(res.status).toBe(200);
-    }
-
-    // Two fulfilment transitions, one despatch.
-    const after = (await models.Product.findById(orderProductId))!.stock;
-    expect(after).toBe(before - 4);
-
-    const movements = await models.StockHistory.find({ product: orderProductId, type: 'remove' });
-    expect(movements.filter((m) => m.reason.includes('ORD-TEST-02'))).toHaveLength(1);
-  });
-
-  it('leaves stock alone when an order is cancelled', async () => {
+  it('a manager cancelling an e-com order does not restore stock either', async () => {
     const { insertedId } = await makeOrder('ORD-TEST-03');
     const before = (await models.Product.findById(orderProductId))!.stock;
 
@@ -646,9 +764,159 @@ describe('E-com order despatch', () => {
 
     const after = (await models.Product.findById(orderProductId))!.stock;
     expect(after).toBe(before);
+    const movements = await models.StockHistory.find({ reason: { $regex: 'ORD-TEST-03' } });
+    expect(movements).toHaveLength(0);
+  });
+
+  it('leaves stock alone for an order the website wrote directly into a terminal state', async () => {
+    // Even the old catch-up logic for an order landing straight at
+    // 'delivered'/'success' with no `stockReleased` flag must stay a no-op now.
+    const { insertedId } = await makeOrder('ORD-TEST-04', {
+      status: 'success',
+      orderStatus: 'success',
+      paymentMethod: 'payhere',
+      paymentStatus: 'success',
+    });
+    const before = (await models.Product.findById(orderProductId))!.stock;
+
+    const res = await request(app)
+      .get('/api/orders')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+
+    const after = (await models.Product.findById(orderProductId))!.stock;
+    expect(after).toBe(before);
+    const movements = await models.StockHistory.find({ reason: { $regex: 'ORD-TEST-04' } });
+    expect(movements).toHaveLength(0);
+
+    const conn = mongoose.connection.useDb(TENANT, { useCache: true });
+    const order = await conn.collection('orders').findOne({ _id: insertedId });
+    expect(order!.stockReleased).toBeFalsy();
+  });
+});
+
+// ─── Backend-created online orders: this backend remains the sole authority ───
+//
+// An order placed through this backend's own POST /api/orders (source
+// 'online', not the e-com website) carries no `orderStatus` field, so it is
+// never mistaken for an e-com order — no external system is involved, and
+// this backend still owns despatching its stock.
+
+describe('Backend-created online order despatch', () => {
+  let orderProductId: string;
+
+  beforeAll(async () => {
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name: 'Backend Online Order Rice 5kg',
+        sellingPrice: 900,
+        costPrice: 700,
+        category: 'Groceries',
+        supplierId,
+      });
+    expect(res.status).toBe(201);
+    orderProductId = res.body.data._id;
+
+    const grn = await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId: orderProductId, quantityReceived: 30, costPrice: 700 }] });
+    expect(grn.status).toBe(201);
+  });
+
+  const placeOrder = (orderId: string, quantity: number) =>
+    request(app)
+      .post('/api/orders')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        orderId,
+        source: 'online',
+        customerName: 'Phone Shopper',
+        items: [{
+          product: orderProductId,
+          productName: 'Backend Online Order Rice 5kg',
+          sku: 'TEST-BOL',
+          quantity,
+          unitPrice: 900,
+          subtotal: 900 * quantity,
+        }],
+        subtotal: 900 * quantity,
+        total: 900 * quantity,
+        paymentMethod: 'Card',
+      });
+
+  it('takes stock out when a manager marks it delivered, dated to when it was placed', async () => {
+    const create = await placeOrder('BOL-TEST-01', 2);
+    expect(create.status).toBe(201);
+    const orderDbId = create.body.data._id;
+
+    const before = (await models.Product.findById(orderProductId))!.stock;
+
+    const res = await request(app)
+      .patch(`/api/orders/${orderDbId}/status`)
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ status: 'delivered' });
+    expect(res.status).toBe(200);
+
+    const after = (await models.Product.findById(orderProductId))!.stock;
+    expect(after).toBe(before - 2);
 
     const movements = await models.StockHistory.find({ product: orderProductId, type: 'remove' });
-    expect(movements.filter((m) => m.reason.includes('ORD-TEST-03'))).toHaveLength(0);
+    const movement = movements.find((m) => m.reason.includes('BOL-TEST-01'));
+    expect(movement).toBeDefined();
+    // Dated to the order's own placement, not to whenever the override ran.
+    expect(new Date(movement!.get('createdAt')).toISOString()).toBe(new Date(create.body.data.createdAt).toISOString());
+  });
+
+  it('never takes the same order stock twice', async () => {
+    const create = await placeOrder('BOL-TEST-02', 2);
+    expect(create.status).toBe(201);
+    const orderDbId = create.body.data._id;
+    const before = (await models.Product.findById(orderProductId))!.stock;
+
+    for (const status of ['processing', 'delivered']) {
+      const res = await request(app)
+        .patch(`/api/orders/${orderDbId}/status`)
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({ status });
+      expect(res.status).toBe(200);
+    }
+
+    const after = (await models.Product.findById(orderProductId))!.stock;
+    expect(after).toBe(before - 2);
+    const movements = await models.StockHistory.find({ product: orderProductId, type: 'remove' });
+    expect(movements.filter((m) => m.reason.includes('BOL-TEST-02'))).toHaveLength(1);
+  });
+
+  it('restores stock when cancelled after despatch', async () => {
+    const create = await placeOrder('BOL-TEST-03', 3);
+    expect(create.status).toBe(201);
+    const orderDbId = create.body.data._id;
+    const before = (await models.Product.findById(orderProductId))!.stock;
+
+    await request(app)
+      .patch(`/api/orders/${orderDbId}/status`)
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ status: 'delivered' });
+
+    const res = await request(app)
+      .patch(`/api/orders/${orderDbId}/status`)
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ status: 'cancelled' });
+    expect(res.status).toBe(200);
+
+    const after = (await models.Product.findById(orderProductId))!.stock;
+    expect(after).toBe(before);
   });
 });
 
@@ -666,7 +934,6 @@ describe('Goods received notes', () => {
         name: 'Delivered Lentils 1kg',
         sellingPrice: 400,
         costPrice: 300,
-        stock: 0,
         category: 'Groceries',
         supplierId,
       });
@@ -767,6 +1034,105 @@ describe('Goods received notes', () => {
   });
 });
 
+// ─── CSV import ────────────────────────────────────────────────────────────────
+
+describe('CSV import', () => {
+  const importRows = (rows: Record<string, unknown>[]) =>
+    request(app)
+      .post('/api/products/bulk/import-csv')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ rows });
+
+  it('carries is_weight_based onto the created product', async () => {
+    const res = await importRows([
+      {
+        name: 'CSV Loose Rice 1kg',
+        category: 'Groceries',
+        supplier: 'Test Distributors',
+        selling_price: 300,
+        cost_price: 200,
+        is_weight_based: true,
+      },
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.body.imported).toBe(1);
+
+    const product = await models.Product.findOne({ name: 'CSV Loose Rice 1kg' });
+    expect(product!.isWeightBased).toBe(true);
+    expect(product!.unit).toBe('kg');
+  });
+
+  it('ignores any stock value in the row and raises no GRN or stock movement', async () => {
+    // Import is master-data setup, not a stock transaction — GRNs are
+    // reserved for goods actually received through Receive Goods, so an
+    // imported product starts at zero even if the row carries a stock column.
+    const res = await importRows([
+      {
+        name: 'CSV Canned Tuna 200g',
+        category: 'Groceries',
+        supplier: 'Test Distributors',
+        selling_price: 350,
+        cost_price: 250,
+        stock: 20,
+      },
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.body.imported).toBe(1);
+
+    const product = await models.Product.findOne({ name: 'CSV Canned Tuna 200g' });
+    expect(product!.stock).toBe(0);
+    expect(await models.GRN.findOne({ 'items.product': product!._id })).toBeNull();
+    expect(await models.StockHistory.findOne({ product: product!._id })).toBeNull();
+  });
+
+  it('flags a row naming a product that already exists instead of creating a duplicate', async () => {
+    const existing = await models.Product.findOne({ name: 'CSV Canned Tuna 200g' });
+
+    const res = await importRows([
+      {
+        // Case and stray whitespace must not dodge the check either.
+        name: '  csv canned tuna 200g  ',
+        category: 'Groceries',
+        supplier: 'Test Distributors',
+        selling_price: 350,
+        cost_price: 250,
+      },
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.body.imported).toBe(0);
+    expect(res.body.failed).toBe(1);
+    expect(res.body.errors[0].errors[0]).toContain(existing!.sku);
+
+    expect(await models.Product.countDocuments({ name: { $regex: /^csv canned tuna 200g$/i } })).toBe(1);
+  });
+
+  it('imports the first of two identically named rows and flags the second as a duplicate', async () => {
+    const res = await importRows([
+      {
+        name: 'CSV Duplicate Within Batch',
+        category: 'Groceries',
+        supplier: 'Test Distributors',
+        selling_price: 120,
+        cost_price: 80,
+      },
+      {
+        name: 'CSV Duplicate Within Batch',
+        category: 'Groceries',
+        supplier: 'Test Distributors',
+        selling_price: 120,
+        cost_price: 80,
+      },
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.body.imported).toBe(1);
+    expect(res.body.failed).toBe(1);
+    expect(res.body.errors[0].row).toBe(2);
+
+    expect(await models.Product.countDocuments({ name: 'CSV Duplicate Within Batch' })).toBe(1);
+  });
+});
+
 // ─── Returns to supplier ──────────────────────────────────────────────────────
 
 describe('Returns to supplier', () => {
@@ -781,12 +1147,18 @@ describe('Returns to supplier', () => {
         name: 'Returned Yoghurt 400g',
         sellingPrice: 250,
         costPrice: 180,
-        stock: 20,
         category: 'Groceries',
         supplierId,
       });
     expect(res.status).toBe(201);
     returnProductId = res.body.data._id;
+
+    const grn = await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId: returnProductId, quantityReceived: 20, costPrice: 180 }] });
+    expect(grn.status).toBe(201);
   });
 
   const sendBack = (body: Record<string, unknown>) =>
@@ -832,5 +1204,118 @@ describe('Returns to supplier', () => {
     const fromThisReturn = movements.filter((m) => m.reason.includes(res.body.data.returnNumber));
     expect(fromThisReturn).toHaveLength(1);
     expect(fromThisReturn[0].reason).toContain('Test Distributors');
+  });
+});
+
+// ─── Dashboard sales figure ───────────────────────────────────────────────────
+//
+// Sales is revenue from what customers bought — quantity x selling price —
+// never profit, and never adjusted by anything that happens on the supplier
+// side. These guard the two ways that boundary was crossed before.
+
+describe('Dashboard sales figure', () => {
+  const todaySales = async () => {
+    const res = await request(app)
+      .get('/api/dashboard/summary')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    return res.body.todaySales as number;
+  };
+
+  it('is not reduced by a supplier return recorded the same day', async () => {
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name: 'Dashboard Return Test Item',
+        sellingPrice: 300,
+        costPrice: 200,
+        category: 'Groceries',
+        supplierId,
+      });
+    const productId = res.body.data._id;
+
+    await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId, quantityReceived: 10, costPrice: 200 }] });
+
+    const before = await todaySales();
+
+    await request(app)
+      .post('/api/stocks/returns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId, quantity: 5, reason: 'expired' }] });
+
+    expect(await todaySales()).toBe(before);
+  });
+
+  it('does not count a cancelled online order even when it was already paid', async () => {
+    const before = await todaySales();
+
+    const conn = mongoose.connection.useDb(TENANT, { useCache: true });
+    await conn.collection('orders').insertOne({
+      orderId: 'ORD-DASH-CANCELLED-01',
+      source: 'online',
+      customerName: 'Web Shopper',
+      items: [],
+      subtotal: 5000,
+      total: 5000,
+      status: 'cancelled',
+      orderStatus: 'cancelled',
+      paymentMethod: 'payhere',
+      paymentStatus: 'paid',
+      storeId: 'STORE-TEST-001',
+      createdBy: new mongoose.Types.ObjectId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    expect(await todaySales()).toBe(before);
+  });
+
+  it('the Sales Summary report is not reduced by a supplier return either', async () => {
+    const res = await request(app)
+      .post('/api/products')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name: 'Sales Report Return Test Item',
+        sellingPrice: 300,
+        costPrice: 200,
+        category: 'Groceries',
+        supplierId,
+      });
+    const productId = res.body.data._id;
+
+    await request(app)
+      .post('/api/stocks/grns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId, quantityReceived: 10, costPrice: 200 }] });
+
+    const netSalesFor = async () => {
+      const r = await request(app)
+        .get('/api/reports/sales-summary')
+        .query({ preset: 'today' })
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`);
+      expect(r.status).toBe(200);
+      return r.body.summary.netSales as number;
+    };
+
+    const before = await netSalesFor();
+
+    await request(app)
+      .post('/api/stocks/returns')
+      .set('OneShop-Tenant-ID', TENANT)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ supplierId, items: [{ productId, quantity: 5, reason: 'expired' }] });
+
+    expect(await netSalesFor()).toBe(before);
   });
 });

@@ -9,6 +9,7 @@ import { ReportsDateToolbar } from '../../components/ReportsDateToolbar';
 import api from '@/app/lib/api';
 
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -87,7 +88,7 @@ export default function InventoryStatusPage() {
 
     doc.setFontSize(10);
     doc.setTextColor(74, 85, 101); // #4a5565
-    doc.text(`Date: ${data.dateRange || new Date().toLocaleDateString()}`, pageWidth / 2, 38, { align: 'center' });
+    doc.text(`Date: ${data.dateRange || formatStoreDate(new Date())}`, pageWidth / 2, 38, { align: 'center' });
 
     // Summary Section
     doc.setDrawColor(228, 231, 236); // #e4e7ec
@@ -171,7 +172,10 @@ export default function InventoryStatusPage() {
         <div className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
           <p className="text-sm text-[#4a5565] mb-3">Stock Alerts</p>
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors"
+              onClick={() => setStatus("Low Stock")}
+            >
               <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fffaeb' }}>
                 <AlertTriangle className="w-5 h-5" style={{ color: '#f79009' }} />
               </div>
@@ -180,7 +184,10 @@ export default function InventoryStatusPage() {
                 <p className="text-xs text-[#4a5565]">Needs reordering</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors"
+              onClick={() => setStatus("Expired")}
+            >
               <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fef3f2' }}>
                 <AlertTriangle className="w-5 h-5" style={{ color: '#b42318' }} />
               </div>
@@ -189,7 +196,10 @@ export default function InventoryStatusPage() {
                 <p className="text-xs text-[#4a5565]">Return to supplier</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors"
+              onClick={() => setStatus("Out of Stock")}
+            >
               <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fef3f2' }}>
                 <Siren className="w-5 h-5" style={{ color: '#f04438' }} />
               </div>

@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Plus, ChevronLeft, ChevronRight, Search, AlertTriangle,
-  CalendarX, PackageX, TrendingDown, Undo2,
+  PackageX, Undo2,
 } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface ReturnItem {
   productName: string;
@@ -99,7 +100,7 @@ export default function SupplierReturnsPage() {
   const fetchExpiring = useCallback(async () => {
     setExpiringLoading(true);
     try {
-      const res = await api.get('/stocks/expiring');
+      const res = await api.get('/stocks/expiring', { params: { status: 'expired' } });
       setExpiring(res.data.data);
     } catch {
       // silent
@@ -122,22 +123,6 @@ export default function SupplierReturnsPage() {
       icon: Undo2,
       bg: 'var(--color-primary-light)',
       color: 'var(--color-primary)',
-    },
-    {
-      label: 'Deducted from Revenue',
-      value: fmt(stats?.totalLossValue ?? 0),
-      sub: 'Booked at cost price',
-      icon: TrendingDown,
-      bg: '#fef3f2',
-      color: '#f04438',
-    },
-    {
-      label: 'Expired Stock Loss',
-      value: fmt(stats?.expired.lossValue ?? 0),
-      sub: `${stats?.expired.units ?? 0} units`,
-      icon: CalendarX,
-      bg: '#fffaeb',
-      color: '#f79009',
     },
     {
       label: 'Damaged Stock Loss',
@@ -190,7 +175,7 @@ export default function SupplierReturnsPage() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {cards.map((c) => (
           <div key={c.label} className="bg-white rounded-xl p-5 shadow-sm border border-[#e4e7ec]">
             <div className="flex items-start justify-between">
@@ -274,7 +259,7 @@ export default function SupplierReturnsPage() {
                       <tr key={r._id} className="hover:bg-[#f9fafb] transition-colors">
                         <td className="px-6 py-4 text-sm font-medium text-[var(--color-primary)]">{r.returnNumber}</td>
                         <td className="px-6 py-4 text-sm text-[#101828] whitespace-nowrap">
-                          {new Date(r.createdAt).toLocaleDateString('en-CA')}
+                          {formatStoreDate(r.createdAt, undefined, 'en-CA')}
                         </td>
                         <td className="px-6 py-4 text-sm text-[#101828]">{r.supplier || <span className="text-[#4a5565]">—</span>}</td>
                         <td className="px-6 py-4">
@@ -340,9 +325,9 @@ export default function SupplierReturnsPage() {
       {tab === 'expiring' && (
         <div className="bg-white rounded-xl shadow-sm border border-[#e4e7ec] overflow-hidden">
           <div className="px-6 py-4 border-b border-[#e4e7ec]">
-            <h2 className="text-sm font-semibold text-[#101828]">Stock at risk</h2>
+            <h2 className="text-sm font-semibold text-[#101828]">Expired stock</h2>
             <p className="text-xs text-[#4a5565] mt-0.5">
-              Products already expired, or expiring within 30 days. &quot;At risk&quot; is what a full return would deduct from revenue.
+              Products already past their expiry date and still on the shelf. &quot;At risk&quot; is what a full return would deduct from revenue.
             </p>
           </div>
 
@@ -360,7 +345,7 @@ export default function SupplierReturnsPage() {
                   <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-[#4a5565]">Loading...</td></tr>
                 ) : expiring.length === 0 ? (
                   <tr><td colSpan={8} className="px-6 py-10 text-center text-sm text-[#4a5565]">
-                    Nothing expiring soon — all tracked stock is within date
+                    No expired stock on the shelf right now
                   </td></tr>
                 ) : (
                   expiring.map((p) => (
@@ -373,7 +358,7 @@ export default function SupplierReturnsPage() {
                       <td className="px-6 py-4 text-sm text-[#4a5565]">{p.sku}</td>
                       <td className="px-6 py-4 text-sm text-[#4a5565]">{p.category}</td>
                       <td className="px-6 py-4 text-sm text-[#101828] whitespace-nowrap">
-                        {new Date(p.expiryDate).toLocaleDateString('en-CA')}
+                        {formatStoreDate(p.expiryDate, undefined, 'en-CA')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

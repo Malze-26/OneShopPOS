@@ -11,7 +11,6 @@ export const DEFAULT_CATEGORY_NAME = 'Uncategorized';
 // ── Product defaults ───────────────────────────────────────────────────────
 export const DEFAULT_LOW_STOCK_THRESHOLD = 10;
 export const DEFAULT_COST_PRICE = 0;
-export const DEFAULT_STOCK = 0;
 
 // ── Pagination ─────────────────────────────────────────────────────────────
 export const DEFAULT_PAGE = 1;
@@ -20,6 +19,7 @@ export const MAX_PAGE_LIMIT = 50;
 
 // ── GRN ───────────────────────────────────────────────────────────────────
 export const GRN_NUMBER_PAD_LENGTH = 4;
+export const GRN_REFERENCE_PAD_LENGTH = 4;
 
 // ── Supplier returns ───────────────────────────────────────────────────────
 export const RETURN_NUMBER_PAD_LENGTH = 4;

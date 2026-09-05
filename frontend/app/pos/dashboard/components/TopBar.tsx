@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../constants/tokens";
+import { formatStoreTime } from "@/app/lib/timezone";
 
 interface User {
   name: string;
@@ -109,7 +110,7 @@ export default function TopBar({
 
         {/* Clock */}
         <span className="text-white/60 text-[12px] font-mono tracking-wide">
-          {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {formatStoreTime(time, { hour: "2-digit", minute: "2-digit" })}
         </span>
 
         {/* Online/Offline badge */}

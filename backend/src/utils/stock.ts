@@ -12,15 +12,15 @@
  */
 import { FilterQuery } from 'mongoose';
 import { IProduct } from '../models/Product';
+import { startOfStoreDay } from './timezone';
 
 /**
- * Midnight this morning — the cut-off an expiry date must fall before to count
- * as expired, so stock expiring later today is still sellable today.
+ * Midnight this morning, store-local (+05:30) — the cut-off an expiry date
+ * must fall before to count as expired, so stock expiring later today is
+ * still sellable today.
  */
 export function startOfToday(): Date {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  return start;
+  return startOfStoreDay();
 }
 
 /**

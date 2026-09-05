@@ -31,7 +31,6 @@ export default function AddProductPage() {
     description: '',
     sellingPrice: '',
     costPrice: '',
-    initialStock: '',
     lowStockThreshold: '',
     expiryDate: '',
     category: '',
@@ -133,7 +132,6 @@ export default function AddProductPage() {
         description: formData.description,
         sellingPrice: Number(formData.sellingPrice),
         costPrice: Number(formData.costPrice),
-        stock: Number(formData.initialStock),
         lowStockThreshold: Number(formData.lowStockThreshold),
         expiryDate: formData.expiryDate || null,
         category: formData.category,
@@ -272,19 +270,10 @@ export default function AddProductPage() {
             {/* Inventory */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-[#e4e7ec]">
               <h2 className="text-base font-semibold text-[#101828] mb-4">Inventory</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="initialStock" className="block text-sm font-medium text-[#101828] mb-2">Initial Stock Quantity</label>
-                  <input
-                    id="initialStock"
-                    type="number"
-                    value={formData.initialStock}
-                    onChange={(e) => setFormData({ ...formData, initialStock: e.target.value })}
-                    placeholder="0"
-                    className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                    required
-                  />
-                </div>
+              <p className="text-xs text-[#4a5565] mb-4">
+                New products start at zero stock. Once saved, receive its first delivery via Receive Goods to bring it into stock.
+              </p>
+              <div className="space-y-4">
                 <div>
                   <label htmlFor="lowStockThreshold" className="block text-sm font-medium text-[#101828] mb-2">Low Stock Threshold</label>
                   <input
@@ -297,7 +286,7 @@ export default function AddProductPage() {
                     required
                   />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <label htmlFor="expiryDate" className="block text-sm font-medium text-[#101828] mb-2">
                     Expiry Date <span className="text-xs font-normal text-[#4a5565]">(leave blank for non-perishables)</span>
                   </label>

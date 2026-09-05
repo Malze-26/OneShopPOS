@@ -308,6 +308,9 @@ export default function EditProductPage() {
                     className="w-full px-4 py-2 border border-[#e4e7ec] rounded-lg text-sm text-[#101828] placeholder-[#4a5565] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                     required
                   />
+                  <p className="text-xs text-[#4a5565] mt-1.5">
+                    A product that has never received a GRN can&apos;t have this changed here — receive its first delivery via Receive Goods instead.
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="lowStockThreshold" className="block text-sm font-medium text-[#101828] mb-2">Low Stock Threshold</label>

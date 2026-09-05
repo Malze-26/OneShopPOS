@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { Transaction } from '../models/Transaction';
+import { startOfStoreMonth } from '../utils/timezone';
 
 // GET /api/customers
 export async function getCustomers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -401,8 +402,7 @@ export async function getCustomerStats(req: AuthRequest, res: Response, next: Ne
   try {
     const { Customer  } = req.models!;
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfMonth = startOfStoreMonth();
 
     const [totalCount, newThisMonth, revenueAgg] = await Promise.all([
       Customer.countDocuments({}),

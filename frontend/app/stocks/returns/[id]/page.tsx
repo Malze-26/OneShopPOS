@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { ChevronLeft, Printer } from 'lucide-react';
 import api from '@/app/lib/api';
 import { useStore } from '@/app/contexts/StoreContext';
+import { formatStoreDate } from '@/app/lib/timezone';
 
 interface ReturnItem {
   productName: string;
@@ -64,11 +65,7 @@ export default function ReturnDetailPage() {
     );
   }
 
-  const dateStr = new Date(ret.createdAt).toLocaleDateString('en-CA', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateStr = formatStoreDate(ret.createdAt, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-CA');
 
   const money = (n: number) => `${currency} ${n.toLocaleString()}`;
 
@@ -177,7 +174,7 @@ export default function ReturnDetailPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-[#4a5565] whitespace-nowrap">
-                      {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('en-CA') : '—'}
+                      {item.expiryDate ? formatStoreDate(item.expiryDate, undefined, 'en-CA') : '—'}
                     </td>
                     <td className="px-6 py-4 text-sm text-[#101828] text-right">{item.quantity}</td>
                     <td className="px-6 py-4 text-sm text-[#101828] text-right whitespace-nowrap">{money(item.costPrice)}</td>

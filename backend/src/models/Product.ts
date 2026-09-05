@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { EXPIRY_SOON_DAYS } from '../constants';
+import { startOfStoreDay } from '../utils/timezone';
 
 export type ExpiryStatus = 'expired' | 'expiring-soon' | 'fresh';
 
@@ -209,10 +210,8 @@ productSchema.virtual('expiryStatus').get(function (this: IProduct) {
 
   // Compare on date boundaries so a product expiring later today still reads as
   // 'expiring-soon' instead of flipping to 'expired' partway through the day.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiry = new Date(this.expiryDate);
-  expiry.setHours(0, 0, 0, 0);
+  const today = startOfStoreDay();
+  const expiry = startOfStoreDay(new Date(this.expiryDate));
 
   if (expiry.getTime() < today.getTime()) return 'expired';
 
