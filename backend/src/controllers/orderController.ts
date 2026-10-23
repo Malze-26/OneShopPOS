@@ -411,6 +411,38 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
   const finalStatus        = isPOS ? 'success' : 'pending';
   const finalPaymentStatus = isPOS ? 'paid' : (isCOD ? 'pending' : 'paid');
 
+  // Deduct inventory atomically for physical POS orders only
+  const deductedItems: Array<{ productId: any; quantity: number }> = [];
+  if (isPOS && Array.isArray(items) && items.length > 0) {
+    for (const item of items) {
+      const pId = item.product;
+      const qty = Number(item.quantity ?? item.qty ?? 1);
+      if (pId && qty > 0) {
+        const updated = await Product.findOneAndUpdate(
+          { _id: pId, stock: { $gte: qty } },
+          { $inc: { stock: -qty } },
+          { new: true }
+        );
+
+        if (!updated) {
+          for (const dec of deductedItems) {
+            await Product.findByIdAndUpdate(dec.productId, { $inc: { stock: dec.quantity } });
+          }
+
+          const current = await Product.findById(pId).select('name stock').lean();
+          const itemName = item.name || (current as any)?.name || 'Item';
+          const available = (current as any)?.stock ?? 0;
+          res.status(409).json({
+            message: `Insufficient stock for "${itemName}". Only ${available} available.`,
+          });
+          return;
+        }
+
+        deductedItems.push({ productId: pId, quantity: qty });
+      }
+    }
+  }
+
   const order = await Order.create({
     orderId,
     source: src,
@@ -430,14 +462,13 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
     createdBy: req.user!.id,
   });
 
-  // Deduct inventory immediately for physical POS orders only
-  if (isPOS && Array.isArray(items) && items.length > 0) {
-    for (const item of items) {
-      await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
+  // Record StockHistory for each deducted item
+  if (isPOS && deductedItems.length > 0) {
+    for (const dec of deductedItems) {
       await StockHistory.create({
-        product:  item.product,
+        product:  dec.productId,
         type:     'remove',
-        quantity: item.quantity,
+        quantity: dec.quantity,
         reason:   `POS Order ${order.orderId}`,
         by:       req.user!.id,
         storeId:  order.storeId,

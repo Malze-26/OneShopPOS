@@ -84,6 +84,9 @@ export async function getTransactionStats(req: AuthRequest, res: Response, next:
 
 // POST /api/transactions
 export async function createTransaction(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  const deductedItems: Array<{ productId: any; quantity: number }> = [];
+  let transactionCreated = false;
+
   try {
     const { Transaction, Customer, Product, StockHistory, Promo } = req.models!;
     const storeId = req.user!.storeId;
@@ -96,6 +99,41 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
     const orderStatus = 'success';
     const paymentStatus = 'paid';
 
+    // ── Atomic Inventory Deduction with Rollback ──────────────────────────────
+    // Deduct stock before recording the transaction. If any item has insufficient stock,
+    // revert all previously deducted items in this transaction and reject with 409.
+    if (status === 'success' && Array.isArray(req.body.items) && req.body.items.length > 0) {
+      for (const item of req.body.items) {
+        if (item.product) {
+          const qty = Number(item.quantity ?? 1);
+          if (qty > 0) {
+            const updated = await Product.findOneAndUpdate(
+              { _id: item.product, stock: { $gte: qty } },
+              { $inc: { stock: -qty } },
+              { new: true }
+            );
+
+            if (!updated) {
+              // Roll back any items already deducted in this transaction
+              for (const dec of deductedItems) {
+                await Product.findByIdAndUpdate(dec.productId, { $inc: { stock: dec.quantity } });
+              }
+
+              const current = await Product.findById(item.product).select('name stock').lean();
+              const itemName = item.name || (current as any)?.name || 'Item';
+              const available = (current as any)?.stock ?? 0;
+              res.status(409).json({
+                message: `Insufficient stock for "${itemName}". Only ${available} available.`,
+              });
+              return;
+            }
+
+            deductedItems.push({ productId: item.product, quantity: qty });
+          }
+        }
+      }
+    }
+
     const transaction = await Transaction.create({
       ...req.body,
       txnId,
@@ -105,6 +143,7 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       orderStatus,
       paymentStatus,
     });
+    transactionCreated = true;
 
     // Increment promo usage count if a promo code was applied
     const promoCode = req.body.discountCode || req.body.promoCode;
@@ -115,21 +154,16 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
       );
     }
 
-    // Deduct inventory for each item in the POS transaction only if status is success
-    if (status === 'success' && Array.isArray(req.body.items) && req.body.items.length > 0) {
-      for (const item of req.body.items) {
-        if (item.product) {
-          await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
-          await StockHistory.create({
-            product:  item.product,
-            type:     'remove',
-            quantity: item.quantity,
-            reason:   `POS Transaction ${txnId}`,
-            by:       userId,
-            storeId,
-          });
-        }
-      }
+    // Record StockHistory audit movements for all successfully deducted items
+    for (const dec of deductedItems) {
+      await StockHistory.create({
+        product:  dec.productId,
+        type:     'remove',
+        quantity: dec.quantity,
+        reason:   `POS Transaction ${txnId}`,
+        by:       userId,
+        storeId,
+      });
     }
 
     // Recalculate customer stats, process loyalty redemption, and send receipt email
@@ -171,6 +205,12 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
             { new: true }
           );
           if (!deductResult) {
+            for (const dec of deductedItems) {
+              await Product.findByIdAndUpdate(dec.productId, { $inc: { stock: dec.quantity } });
+            }
+            if (transactionCreated) {
+              await Transaction.findByIdAndDelete(transaction._id);
+            }
             res.status(409).json({ message: 'Insufficient loyalty points — balance may have changed. Please refresh and try again.' });
             return;
           }
@@ -226,6 +266,13 @@ export async function createTransaction(req: AuthRequest, res: Response, next: N
 
     res.status(201).json({ data: transaction });
   } catch (err) {
+    if (!transactionCreated && deductedItems.length > 0) {
+      for (const dec of deductedItems) {
+        try {
+          await req.models?.Product.findByIdAndUpdate(dec.productId, { $inc: { stock: dec.quantity } });
+        } catch {}
+      }
+    }
     next(err);
   }
 }

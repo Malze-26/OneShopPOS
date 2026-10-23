@@ -199,7 +199,7 @@ productSchema.pre('save', async function (next) {
 
 // Virtual for status
 productSchema.virtual('status').get(function (this: IProduct) {
-  if (this.stock === 0) return 'out-of-stock';
+  if (this.stock <= 0) return 'out-of-stock';
   if (this.stock <= this.lowStockThreshold) return 'low-stock';
   return 'in-stock';
 });

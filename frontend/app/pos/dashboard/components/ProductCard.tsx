@@ -22,7 +22,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const [g1, g2] = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
   const isLowStock = product.stock > 0 && product.stock <= product.lowStockThreshold;
-  const stockColor = product.stock === 0 ? C.danger : product.stock <= 10 ? "#F59E0B" : C.success;
+  const stockColor = product.stock <= 0 ? C.danger : product.stock <= 10 ? "#F59E0B" : C.success;
   const initial = product.name.charAt(0).toUpperCase();
 
   return (
@@ -31,7 +31,7 @@ export default function ProductCard({
       className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 border ${inCart ? "shadow-[0_4px_16px_rgba(27,26,85,0.15)]" : ""
         } ${addedId === product._id ? "animate-pulse" : ""}`}
       style={{
-        opacity: product.stock === 0 ? 0.6 : 1,
+        opacity: product.stock <= 0 ? 0.6 : 1,
         borderColor: inCart ? C.brand : C.border,
       }}
     >
@@ -67,7 +67,7 @@ export default function ProductCard({
         )}
 
         {/* Out of Stock Overlay */}
-        {product.stock === 0 && (
+        {product.stock <= 0 && (
           <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
             <span
               className="text-[10px] font-extrabold text-white px-3 py-[3px] rounded-full tracking-[0.5px]"

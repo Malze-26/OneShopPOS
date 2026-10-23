@@ -1318,4 +1318,98 @@ describe('Dashboard sales figure', () => {
 
     expect(await netSalesFor()).toBe(before);
   });
+
+  describe('Atomic stock deduction & race condition prevention', () => {
+    let appleId: string;
+
+    beforeEach(async () => {
+      const res = await request(app)
+        .post('/api/products')
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          name: `Single Apple ${Date.now()}`,
+          sellingPrice: 150,
+          costPrice: 100,
+          category: 'Groceries',
+          supplierId,
+        });
+      expect(res.status).toBe(201);
+      appleId = res.body.data._id;
+
+      await request(app)
+        .post('/api/stocks/grns')
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({ supplierId, items: [{ productId: appleId, quantityReceived: 1, costPrice: 100 }] });
+    });
+
+    it('prevents overselling when two checkouts attempt to buy the last item simultaneously', async () => {
+      let counter = 1;
+      const buyOne = () =>
+        request(app)
+          .post('/api/transactions')
+          .set('OneShop-Tenant-ID', TENANT)
+          .set('Authorization', `Bearer ${managerToken}`)
+          .send({
+            customer: 'Walk-in Customer',
+            orderId: `ORD-APPLE-${Date.now()}-${counter++}`,
+            paymentMethod: 'Cash',
+            amount: 150,
+            total: 150,
+            items: [{ product: appleId, quantity: 1, name: 'Single Apple', price: 150 }],
+          });
+
+      // Fire both requests simultaneously
+      const [res1, res2] = await Promise.all([buyOne(), buyOne()]);
+
+      const statuses = [res1.status, res2.status].sort();
+      expect(statuses).toEqual([201, 409]);
+
+      // Check that final stock is exactly 0, not -1
+      const p = await models.Product.findById(appleId);
+      expect(p!.stock).toBe(0);
+      expect(p!.status).toBe('out-of-stock');
+    });
+
+    it('rolls back previously deducted items if subsequent item in cart is out of stock', async () => {
+      const res = await request(app)
+        .post('/api/products')
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          name: `Out of Stock Banana ${Date.now()}`,
+          sellingPrice: 80,
+          costPrice: 50,
+          category: 'Groceries',
+          supplierId,
+        });
+      const bananaId = res.body.data._id;
+
+      // Apple has stock 1, Banana has stock 0
+      const cartRes = await request(app)
+        .post('/api/transactions')
+        .set('OneShop-Tenant-ID', TENANT)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          customer: 'Walk-in Customer',
+          orderId: `ORD-MULTI-${Date.now()}`,
+          paymentMethod: 'Cash',
+          amount: 230,
+          total: 230,
+          items: [
+            { product: appleId, quantity: 1, name: 'Single Apple', price: 150 },
+            { product: bananaId, quantity: 1, name: 'Out of Stock Banana', price: 80 },
+          ],
+        });
+
+      expect(cartRes.status).toBe(409);
+      expect(cartRes.body.message).toContain('Insufficient stock');
+
+      // Apple stock must have rolled back to 1
+      const p = await models.Product.findById(appleId);
+      expect(p!.stock).toBe(1);
+    });
+  });
 });
+
